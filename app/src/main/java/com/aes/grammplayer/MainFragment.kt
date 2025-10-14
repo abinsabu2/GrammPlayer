@@ -47,6 +47,8 @@ class MainFragment : BrowseSupportFragment() {
     private var mBackgroundTimer: Timer? = null
     private var mBackgroundUri: String? = null
 
+    private val chatList = mutableListOf<String>()
+
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         Log.i(TAG, "onCreate")
         super.onActivityCreated(savedInstanceState)
@@ -90,6 +92,10 @@ class MainFragment : BrowseSupportFragment() {
     private fun loadRows() {
         val list = MovieList.list
 
+        TelegramClientManager.loadAllGroups { chat ->
+            chatList.add(chat.title)
+        }
+
         val rowsAdapter = ArrayObjectAdapter(ListRowPresenter())
         val cardPresenter = CardPresenter()
 
@@ -101,7 +107,7 @@ class MainFragment : BrowseSupportFragment() {
             for (j in 0 until NUM_COLS) {
                 listRowAdapter.add(list[j % 5])
             }
-            val header = HeaderItem(i.toLong(), MovieList.MOVIE_CATEGORY[i])
+            val header = HeaderItem(i.toLong(), chatList[i])
             rowsAdapter.add(ListRow(header, listRowAdapter))
         }
 

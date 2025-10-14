@@ -99,6 +99,4 @@ object TelegramClientManager {
         client?.send(TdApi.Close(), null)
         client = null
     }
-
-
 }

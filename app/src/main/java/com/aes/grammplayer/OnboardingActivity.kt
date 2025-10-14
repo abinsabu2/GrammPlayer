@@ -17,6 +17,7 @@ class OnboardingActivity : FragmentActivity() {
         // Set a simple loading view initially.
         // The user will only see this for a moment.
         // Initialize Telegram client
+        TelegramClientManager.close()
         TelegramClientManager.initialize(::onResult)
     }
 
@@ -34,18 +35,10 @@ class OnboardingActivity : FragmentActivity() {
      */
     private fun onAuthorizationStateUpdated(state: TdApi.AuthorizationState) {
         runOnUiThread {
-            // If the user is already being onboarded, do nothing.
-            if (isOnboardingLoaded) {
-                return@runOnUiThread
-            }
-
-            when (state) {
-                is TdApi.AuthorizationStateReady -> {
-                    navigateToMainApp()
-                }
-                else -> {
-                    showOnboardingFragment()
-                }
+            if (state is TdApi.AuthorizationStateReady) {
+                navigateToMainApp()
+            }else if (!isOnboardingLoaded) {
+                showOnboardingFragment()
             }
         }
     }

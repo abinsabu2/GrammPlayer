@@ -1,5 +1,6 @@
 package com.aes.grammplayer
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -38,8 +39,8 @@ class LoginActivity : FragmentActivity() {
         logTextView = findViewById(R.id.logTextView)
 
         // Initialize Telegram client
+        TelegramClientManager.close()
         TelegramClientManager.initialize(::onResult)
-        appendLog("Telegram client initialized.")
 
         // Set a click listener on the submit button
         submitButton.setOnClickListener {
@@ -90,6 +91,9 @@ class LoginActivity : FragmentActivity() {
         when (update) {
             is TdApi.Error -> appendLog("Error: ${update.message}")
             is TdApi.UpdateAuthorizationState -> onAuthorizationStateUpdated(update.authorizationState)
+            is TdApi.AuthorizationStateReady -> appendLog("Authorization completed")
+            is TdApi.Ok -> appendLog("Success!")
+            else -> Log.d("TDLib", "Result: $update")
         }
     }
 
@@ -116,7 +120,11 @@ class LoginActivity : FragmentActivity() {
                 is TdApi.AuthorizationStateReady -> {
                     appendLog("Authorization successful! You are logged in.")
                     // TODO: Navigate to the main part of your application
-                    finish() // Close the login activity for now
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        // Prevent the user from returning to this activity with the back button
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(intent)
                 }
                 else -> Log.d("TDLib", "Unhandled Auth State: $state")
             }
