@@ -1,0 +1,70 @@
+# =========================================
+#  Android Studio / IntelliJ
+# =========================================
+# User-specific settings that should not be committed
+.idea/
+.gradle/
+local.properties
+*.iml
+
+# User-specific workspace files
+.idea/workspace.xml
+.idea/libraries/
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Private signing keys
+*.keystore
+*.jks
+keystore.properties
+
+# =========================================
+#  Build Files
+# =========================================
+# Generated build folders
+build/
+app/build/
+*/build/
+
+# Generated APKs, AABs, and other outputs
+*.apk
+*.aab
+*.ap_
+*.json
+*.flat
+
+# =========================================
+#  Gradle
+# =========================================
+# Gradle cache
+build-cache/
+# Gradle daemon logs
+/daemon_logs/
+
+# =========================================
+#  System Files
+# =========================================
+# macOS generated files
+.DS_Store
+# Windows thumbnail cache
+Thumbs.db
+
+# =========================================
+#  Other Generated Files
+# =========================================
+# TDLib generated database directory (from your TelegramClientManager)
+/app/src/main/files/tdlib
+
+# Captures and Profiling
+captures/
+*.hprof
+
+# Log files
+*.log
+cache/
+caches/
+android/
+daemon/
+kotlin-profile/
+native/
+wrapper/
