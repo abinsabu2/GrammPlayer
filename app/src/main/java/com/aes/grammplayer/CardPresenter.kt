@@ -1,82 +1,111 @@
 package com.aes.grammplayer
 
-import android.graphics.drawable.Drawable
-import androidx.leanback.widget.ImageCardView
-import androidx.leanback.widget.Presenter
-import androidx.core.content.ContextCompat
+import android.graphics.drawable.GradientDrawable
 import android.util.Log
+import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
-
-import com.bumptech.glide.Glide
-import kotlin.properties.Delegates
+import android.widget.FrameLayout
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.leanback.widget.Presenter
 
 /**
- * A CardPresenter is used to generate Views and bind Objects to them on demand.
- * It contains an ImageCardView.
+ * A Presenter used to generate Views and bind MediaMessage objects to them on demand.
+ * This version displays media details as text inside a card.
  */
 class CardPresenter : Presenter() {
-    private var mDefaultCardImage: Drawable? = null
-    private var sSelectedBackgroundColor: Int by Delegates.notNull()
-    private var sDefaultBackgroundColor: Int by Delegates.notNull()
 
-    override fun onCreateViewHolder(parent: ViewGroup): Presenter.ViewHolder {
+    private var sSelectedBackgroundColor: Int = 0
+    private var sDefaultBackgroundColor: Int = 0
+
+    override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
         Log.d(TAG, "onCreateViewHolder")
+        val context = parent.context
 
-        sDefaultBackgroundColor = ContextCompat.getColor(parent.context, R.color.default_background)
-        sSelectedBackgroundColor =
-            ContextCompat.getColor(parent.context, R.color.selected_background)
-        mDefaultCardImage = ContextCompat.getDrawable(parent.context, R.drawable.movie)
-
-        val cardView = object : ImageCardView(parent.context) {
-            override fun setSelected(selected: Boolean) {
-                updateCardBackgroundColor(this, selected)
-                super.setSelected(selected)
-            }
+        // Initialize colors once
+        if (sDefaultBackgroundColor == 0) {
+            sDefaultBackgroundColor = ContextCompat.getColor(context, R.color.default_background)
+            sSelectedBackgroundColor = ContextCompat.getColor(context, R.color.selected_background)
         }
 
-        cardView.isFocusable = true
-        cardView.isFocusableInTouchMode = true
-        updateCardBackgroundColor(cardView, false)
-        return Presenter.ViewHolder(cardView)
+        // --- Create a TextView for our content ---
+        val textView = TextView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START
+            setPadding(24, 24, 24, 24) // Add some padding
+            setTextColor(ContextCompat.getColor(context, android.R.color.white))
+            textSize = 12f
+        }
+
+        // --- Create a FrameLayout to act as the card ---
+        val cardLayout = FrameLayout(context).apply {
+            layoutParams = ViewGroup.LayoutParams(CARD_WIDTH, CARD_HEIGHT)
+            isFocusable = true
+            isFocusableInTouchMode = true
+            addView(textView) // Add the TextView to the card
+        }
+
+        // Return a custom ViewHolder that holds our card and text view
+        return CardViewHolder(cardLayout, textView)
     }
 
     override fun onBindViewHolder(viewHolder: Presenter.ViewHolder, item: Any) {
-        val movie = item as Movie
-        val cardView = viewHolder.view as ImageCardView
+        // Ensure the item is a MediaMessage before proceeding
+        if (item !is MediaMessage || viewHolder !is CardViewHolder) {
+            return
+        }
 
-        Log.d(TAG, "onBindViewHolder")
-        if (movie.cardImageUrl != null) {
-            cardView.titleText = movie.title
-            cardView.contentText = movie.studio
-            cardView.setMainImageDimensions(CARD_WIDTH, CARD_HEIGHT)
-            Glide.with(viewHolder.view.context)
-                .load(movie.cardImageUrl)
-                .centerCrop()
-                .error(mDefaultCardImage)
-                .into(cardView.mainImageView)
+        if ( item.fileId == 0) {
+            return
+        }
+
+        // --- Format the text to be displayed ---
+        val fileSizeMb = if (item.size > 0) String.format("%.2f MB", item.size / 1024.0 / 1024.0) else "N/A"
+        val cardText = """
+            Title: ${item.title ?: "N/A"}
+            File ID: ${item.fileId}
+            Size: $fileSizeMb
+        """.trimIndent()
+
+        // Set the formatted text on our TextView
+        viewHolder.textView.text = cardText
+
+        // --- Handle focus change for background color ---
+        viewHolder.view.setOnFocusChangeListener { v, hasFocus ->
+            updateCardBackgroundColor(v, hasFocus)
         }
     }
 
     override fun onUnbindViewHolder(viewHolder: Presenter.ViewHolder) {
         Log.d(TAG, "onUnbindViewHolder")
-        val cardView = viewHolder.view as ImageCardView
-        // Remove references to images so that the garbage collector can free up memory
-        cardView.badgeImage = null
-        cardView.mainImage = null
+        // No special cleanup needed for TextView
     }
 
-    private fun updateCardBackgroundColor(view: ImageCardView, selected: Boolean) {
+    private fun updateCardBackgroundColor(view: View, selected: Boolean) {
         val color = if (selected) sSelectedBackgroundColor else sDefaultBackgroundColor
-        // Both background colors should be set because the view"s background is temporarily visible
-        // during animations.
-        view.setBackgroundColor(color)
-        view.setInfoAreaBackgroundColor(color)
+
+        // Create a rounded rectangle drawable
+        val border = GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = 30f
+        }
+        view.background = border
     }
+
+
+    /**
+     * Custom ViewHolder to hold references to our views.
+     */
+    class CardViewHolder(view: View, val textView: TextView) : Presenter.ViewHolder(view)
 
     companion object {
-        private val TAG = "CardPresenter"
-
-        private val CARD_WIDTH = 313
-        private val CARD_HEIGHT = 176
+        private const val TAG = "CardPresenter"
+        // Let's use a more rectangular shape for text
+        private const val CARD_WIDTH = 600
+        private const val CARD_HEIGHT = 400
     }
 }

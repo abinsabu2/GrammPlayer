@@ -41,8 +41,14 @@ android {
 }
 
 dependencies {
+    // --- FIX IS HERE: Explicitly define a newer version for Leanback ---
+    // The default version in your version catalog is likely 1.0.0.
+    // Version 1.2.0-alpha02 or higher is needed for the 'windowAlignment' property.
+    implementation("androidx.leanback:leanback:1.2.0-alpha02")
+
+    // Other dependencies (no changes needed here)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.leanback)
+    // implementation(libs.androidx.leanback) // This line is now replaced by the one above
     implementation(libs.glide)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

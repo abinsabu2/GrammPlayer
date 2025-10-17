@@ -65,10 +65,15 @@ object TelegramClientManager {
         }
     }
 
-    suspend fun loadMessagesForChat(chatId: Long, limit: Int = 2000000): List<TdApi.Message> = withContext(Dispatchers.IO) {
+    suspend fun loadMessagesForChat(
+        chatId: Long,
+        fromMessageId: Long = 0, // Add this parameter
+        limit: Int = 100
+    ): List<TdApi.Message> = withContext(Dispatchers.IO) {
         val response = CompletableDeferred<TdApi.Object?>()
 
-        client?.send(TdApi.GetChatHistory(chatId, 0, 0, limit, false)) {
+        // Use the fromMessageId in the API call
+        client?.send(TdApi.GetChatHistory(chatId, fromMessageId, 0, limit, false)) {
             response.complete(it)
         }
 
@@ -78,6 +83,7 @@ object TelegramClientManager {
         }
         return@withContext emptyList()
     }
+
 
     fun startFileDownload(fileId: Int?) {
         client?.send(TdApi.DownloadFile(fileId?.toInt() ?: 0, 1, 0, 0, false)) {
