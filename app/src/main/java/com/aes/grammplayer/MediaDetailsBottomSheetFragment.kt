@@ -165,7 +165,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             if (downloadedMb > 300 && !hasAutoPlayed) {
                 hasAutoPlayed = true
                 resetButtonStates(showDownload = false, showPlay = true, isDownloading = true)
-                //playWithVLC(requireContext(), currentDownload?.localPath)
+                playWithVLC(requireContext(), currentDownload?.localPath)
             }
 
             if (file.local.isDownloadingCompleted) {
