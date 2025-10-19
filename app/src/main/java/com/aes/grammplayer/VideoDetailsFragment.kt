@@ -1,6 +1,5 @@
 package com.aes.grammplayer
 
-import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -12,38 +11,28 @@ import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.leanback.widget.ClassPresenterSelector
 import androidx.leanback.widget.DetailsOverviewRow
 import androidx.leanback.widget.FullWidthDetailsOverviewRowPresenter
-import androidx.leanback.widget.FullWidthDetailsOverviewSharedElementHelper
-import androidx.leanback.widget.HeaderItem
-import androidx.leanback.widget.ImageCardView
-import androidx.leanback.widget.ListRow
-import androidx.leanback.widget.ListRowPresenter
 import androidx.leanback.widget.OnActionClickedListener
-import androidx.leanback.widget.OnItemViewClickedListener
-import androidx.leanback.widget.Presenter
-import androidx.leanback.widget.Row
-import androidx.leanback.widget.RowPresenter
-import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import android.util.Log
 import android.widget.Toast
-
 import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.SimpleTarget
+import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 
-import java.util.Collections
-
 /**
- * A wrapper fragment for leanback details screens.
- * It shows a detailed view of video and its metadata plus related videos.
+ * A fragment that shows a detailed text view of a MediaMessage and its metadata.
  */
 class VideoDetailsFragment : DetailsSupportFragment() {
 
     private var mSelectedMovie: MediaMessage? = null
-
     private lateinit var mDetailsBackground: DetailsSupportFragmentBackgroundController
-    private lateinit var mPresenterSelector: ClassPresenterSelector
     private lateinit var mAdapter: ArrayObjectAdapter
+
+    // Define a constant for the Download action ID
+    companion object {
+        private const val TAG = "VideoDetailsFragment"
+        private const val ACTION_DOWNLOAD = 1L
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate DetailsFragment")
@@ -51,158 +40,84 @@ class VideoDetailsFragment : DetailsSupportFragment() {
 
         mDetailsBackground = DetailsSupportFragmentBackgroundController(this)
 
-        mSelectedMovie = activity!!.intent.getSerializableExtra(DetailsActivity.MOVIE) as MediaMessage
-        if (mSelectedMovie != null) {
-            mPresenterSelector = ClassPresenterSelector()
-            mAdapter = ArrayObjectAdapter(mPresenterSelector)
-            setupDetailsOverviewRow()
-            setupDetailsOverviewRowPresenter()
-            setupRelatedMovieListRow()
-            adapter = mAdapter
-            initializeBackground(mSelectedMovie)
-            onItemViewClickedListener = ItemViewClickedListener()
+        // Safely get the MediaMessage object from the intent
+        mSelectedMovie = activity?.intent?.getSerializableExtra(DetailsActivity.MOVIE) as? MediaMessage
+
+        // If the object is null, finish the activity to prevent a crash
+        if (mSelectedMovie == null) {
+            Log.e(TAG, "MediaMessage is null. Closing activity.")
+            activity?.finish()
+            return
+        }
+
+        setupUI()
+        initializeBackground(mSelectedMovie)
+    }
+
+    private fun setupUI() {
+        // This presenter will display the text details using our DetailsDescriptionPresenter
+        val detailsPresenter = FullWidthDetailsOverviewRowPresenter(DetailsDescriptionPresenter())
+
+        // Set the background color for the details row
+        detailsPresenter.backgroundColor = ContextCompat.getColor(requireContext(), R.color.selected_background)
+
+        // Set up the listener for the "Download" button
+        detailsPresenter.onActionClickedListener = OnActionClickedListener { action ->
+            if (action.id == ACTION_DOWNLOAD) {
+                handleDownloadAction()
+            } else {
+                Toast.makeText(requireContext(), action.toString(), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        val presenterSelector = ClassPresenterSelector()
+        presenterSelector.addClassPresenter(DetailsOverviewRow::class.java, detailsPresenter)
+
+        mAdapter = ArrayObjectAdapter(presenterSelector)
+        adapter = mAdapter
+
+        // Create the main details row and add it to the adapter
+        val detailsRow = DetailsOverviewRow(mSelectedMovie)
+
+        // --- NO IMAGE IS SET ON THE ROW ---
+        // The row will now only contain the text details and actions.
+
+        // Add the download action to the row
+        val actionAdapter = ArrayObjectAdapter()
+        actionAdapter.add(Action(ACTION_DOWNLOAD, "Download"))
+        detailsRow.actionsAdapter = actionAdapter
+
+        mAdapter.add(detailsRow)
+    }
+
+    private fun handleDownloadAction() {
+        val fileId = mSelectedMovie?.fileId
+        if (fileId != null && fileId != 0) {
+            Toast.makeText(requireContext(), "Starting download...", Toast.LENGTH_SHORT).show()
+            //TelegramClientManager.startFileDownload(fileId)
         } else {
-            val intent = Intent(activity!!, MainActivity::class.java)
-            startActivity(intent)
+            Toast.makeText(requireContext(), "Error: No valid file ID to download.", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun initializeBackground(movie: MediaMessage?) {
         mDetailsBackground.enableParallax()
-        Glide.with(activity!!)
+        Glide.with(this)
             .asBitmap()
             .centerCrop()
             .error(R.drawable.default_background)
             .load(movie?.backgroundImageUrl)
-            .into<SimpleTarget<Bitmap>>(object : SimpleTarget<Bitmap>() {
+            .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(
                     bitmap: Bitmap,
                     transition: Transition<in Bitmap>?
                 ) {
                     mDetailsBackground.coverBitmap = bitmap
-                    mAdapter.notifyArrayItemRangeChanged(0, mAdapter.size())
+                }
+                override fun onLoadCleared(placeholder: Drawable?) {
+                    // Clear the background if the resource is cleared
+                    mDetailsBackground.coverBitmap = null
                 }
             })
-    }
-
-    private fun setupDetailsOverviewRow() {
-        Log.d(TAG, "doInBackground: " + mSelectedMovie?.toString())
-        val row = DetailsOverviewRow(mSelectedMovie)
-        row.imageDrawable = ContextCompat.getDrawable(activity!!, R.drawable.default_background)
-        val width = convertDpToPixel(activity!!, DETAIL_THUMB_WIDTH)
-        val height = convertDpToPixel(activity!!, DETAIL_THUMB_HEIGHT)
-        Glide.with(activity!!)
-            .load(mSelectedMovie?.cardImageUrl)
-            .centerCrop()
-            .error(R.drawable.default_background)
-            .into<SimpleTarget<Drawable>>(object : SimpleTarget<Drawable>(width, height) {
-                override fun onResourceReady(
-                    drawable: Drawable,
-                    transition: Transition<in Drawable>?
-                ) {
-                    Log.d(TAG, "details overview card image url ready: " + drawable)
-                    row.imageDrawable = drawable
-                    mAdapter.notifyArrayItemRangeChanged(0, mAdapter.size())
-                }
-            })
-
-        val actionAdapter = ArrayObjectAdapter()
-
-        actionAdapter.add(
-            Action(
-                ACTION_WATCH_TRAILER,
-                resources.getString(R.string.watch_trailer_1),
-                resources.getString(R.string.watch_trailer_2)
-            )
-        )
-        actionAdapter.add(
-            Action(
-                ACTION_RENT,
-                resources.getString(R.string.rent_1),
-                resources.getString(R.string.rent_2)
-            )
-        )
-        actionAdapter.add(
-            Action(
-                ACTION_BUY,
-                resources.getString(R.string.buy_1),
-                resources.getString(R.string.buy_2)
-            )
-        )
-        row.actionsAdapter = actionAdapter
-
-        mAdapter.add(row)
-    }
-
-    private fun setupDetailsOverviewRowPresenter() {
-        // Set detail background.
-        val detailsPresenter = FullWidthDetailsOverviewRowPresenter(DetailsDescriptionPresenter())
-        detailsPresenter.backgroundColor =
-            ContextCompat.getColor(activity!!, R.color.selected_background)
-
-        // Hook up transition element.
-        val sharedElementHelper = FullWidthDetailsOverviewSharedElementHelper()
-        sharedElementHelper.setSharedElementEnterTransition(
-            activity, DetailsActivity.SHARED_ELEMENT_NAME
-        )
-        detailsPresenter.setListener(sharedElementHelper)
-        detailsPresenter.isParticipatingEntranceTransition = true
-
-        detailsPresenter.onActionClickedListener = OnActionClickedListener { action ->
-            if (action.id == ACTION_WATCH_TRAILER) {
-                val intent = Intent(activity!!, PlaybackActivity::class.java)
-                intent.putExtra(DetailsActivity.MOVIE, mSelectedMovie)
-                startActivity(intent)
-            } else {
-                Toast.makeText(activity!!, action.toString(), Toast.LENGTH_SHORT).show()
-            }
-        }
-        mPresenterSelector.addClassPresenter(DetailsOverviewRow::class.java, detailsPresenter)
-    }
-
-    private fun setupRelatedMovieListRow() {
-
-    }
-
-    private fun convertDpToPixel(context: Context, dp: Int): Int {
-        val density = context.applicationContext.resources.displayMetrics.density
-        return Math.round(dp.toFloat() * density)
-    }
-
-    private inner class ItemViewClickedListener : OnItemViewClickedListener {
-        override fun onItemClicked(
-            itemViewHolder: Presenter.ViewHolder?,
-            item: Any?,
-            rowViewHolder: RowPresenter.ViewHolder,
-            row: Row
-        ) {
-            if (item is MediaMessage) {
-                Log.d(TAG, "Item: " + item.toString())
-                val intent = Intent(activity!!, DetailsActivity::class.java)
-                intent.putExtra(resources.getString(R.string.movie), mSelectedMovie)
-
-                val bundle =
-                    ActivityOptionsCompat.makeSceneTransitionAnimation(
-                        activity!!,
-                        (itemViewHolder?.view as ImageCardView).mainImageView,
-                        DetailsActivity.SHARED_ELEMENT_NAME
-                    )
-                        .toBundle()
-                startActivity(intent, bundle)
-            }
-        }
-    }
-
-    companion object {
-        private val TAG = "VideoDetailsFragment"
-
-        private val ACTION_WATCH_TRAILER = 1L
-        private val ACTION_RENT = 2L
-        private val ACTION_BUY = 3L
-
-        private val DETAIL_THUMB_WIDTH = 274
-        private val DETAIL_THUMB_HEIGHT = 274
-
-        private val NUM_COLS = 10
     }
 }

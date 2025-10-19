@@ -10,12 +10,13 @@ data class MediaMessage(
     // Core properties
     val id: Long = 0,
     val title: String? = null,
+    val chatId: Long, // Add this property
     val description: String? = null,
     val studio: String? = null, // Can represent the source, e.g., "Telegram"
 
     // Media file properties
     val isMedia: Boolean = false,
-    val localPath: String? = null,
+    var localPath: String? = null,
     val fileId: Int = 0,
     val mimeType: String? = null,
     val videoUrl: String? = null, // Main content URL

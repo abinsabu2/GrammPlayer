@@ -2,70 +2,76 @@ package com.aes.grammplayer
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import android.view.View
 import androidx.fragment.app.FragmentActivity
 import org.drinkless.tdlib.TdApi
 
 class OnboardingActivity : FragmentActivity() {
 
-    // Add a flag to track if the onboarding UI has been shown.
-    private var isOnboardingLoaded = false
+    // Flag to prevent multiple navigations or UI changes.
+    private var isDecisionMade = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Set a simple loading view initially.
-        // The user will only see this for a moment.
-        // Initialize Telegram client
-        TelegramClientManager.close()
-        TelegramClientManager.initialize(::onResult)
-    }
+        // Set a simple loading view initially while we check the auth state.
+        setContentView(R.layout.activity_splash)
 
-    /**
-     * Central handler for all TDLib results.
-     */
-    private fun onResult(update: TdApi.Object?) {
-        when (update) {
-            is TdApi.UpdateAuthorizationState -> onAuthorizationStateUpdated(update.authorizationState)
+        // Ensure the client is initialized. This uses the global handler automatically.
+        // It's safe to call this multiple times.
+        if (!TelegramClientManager.isInitialized) {
+            TelegramClientManager.initialize()
+        }
+
+        // Observe the authorization state LiveData from our global handler.
+        TdLibUpdateHandler.authorizationState.observe(this) { authState ->
+            handleAuthorizationState(authState)
         }
     }
 
     /**
-     * Handles UI changes based on the current authorization state.
+     * Handles routing based on the current authorization state.
+     * This is called whenever the auth state changes.
      */
-    private fun onAuthorizationStateUpdated(state: TdApi.AuthorizationState) {
+    private fun handleAuthorizationState(state: TdApi.AuthorizationState) {
+        // If a navigation decision has already been made, do nothing.
+        // This prevents issues if the state updates multiple times quickly.
+        if (isDecisionMade) {
+            return
+        }
+
+        // Use runOnUiThread to be safe, although LiveData usually posts on the main thread.
         runOnUiThread {
-            if (state is TdApi.AuthorizationStateReady) {
-                navigateToMainApp()
-            }else if (!isOnboardingLoaded) {
-                showOnboardingFragment()
+            when (state) {
+                is TdApi.AuthorizationStateReady -> {
+                    // USER IS LOGGED IN
+                    isDecisionMade = true
+                    navigateToMainApp()
+                }
+                is TdApi.AuthorizationStateWaitPhoneNumber,
+                is TdApi.AuthorizationStateWaitCode -> {
+                    // USER IS NOT LOGGED IN and needs to take action
+                    isDecisionMade = true
+                    showOnboardingFragment()
+                }
+                // For other states like Closing, Closed, WaitTdlibParameters,
+                // we do nothing and wait for a more definitive state.
             }
         }
     }
 
     private fun showOnboardingFragment() {
-
-        // Check the flag before proceeding.
-        if (isOnboardingLoaded) return
-
-        // Set the flag to true to prevent this from running again.
-        isOnboardingLoaded = true
-
-        // Replace the loading layout with the onboarding layout
+        // Replace the loading layout with the main onboarding container
         setContentView(R.layout.onboarding_main)
 
-        // The original logic to show the OnboardingFragment
-        if (supportFragmentManager.findFragmentById(R.id.onboarding_fragment_container) == null) {
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.onboarding_fragment_container, OnboardingFragment())
-                .commit()
-        }
+        // Show the OnboardingFragment
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.onboarding_fragment_container, OnboardingFragment())
+            .commit()
     }
 
     private fun navigateToMainApp() {
-        // Replace 'MainActivity' with the actual main activity of your app
+        // Navigate to the main content of your app
         val intent = Intent(this, MainActivity::class.java).apply {
-            // Prevent the user from returning to this activity with the back button
+            // Prevent the user from returning to this screen with the back button
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         startActivity(intent)

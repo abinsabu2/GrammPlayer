@@ -1,5 +1,6 @@
 package com.aes.grammplayer
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -39,7 +40,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
             }
         }
 
-        gridPresenter.numberOfColumns = 6 // You can adjust the number of columns here
+        gridPresenter.numberOfColumns = 4 // You can adjust the number of columns here
         setGridPresenter(gridPresenter)
 
         // The rest of your code remains the same.
@@ -54,25 +55,22 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 itemViewHolder: Presenter.ViewHolder?,
                 item: Any?,
                 rowViewHolder: RowPresenter.ViewHolder?,
-                row: androidx.leanback.widget.Row? // Corrected type
+                row: Row?
             ) {
                 if (item is MediaMessage) {
-                    // This block will now execute when a card is clicked!
                     Log.d(TAG, "Card clicked: ${item.title}")
-                    Toast.makeText(
-                        requireActivity(),
-                        "Clicked on File ID: ${item.fileId}",
-                        Toast.LENGTH_SHORT
-                    ).show()
 
-                    // TODO: Navigate to your DetailsActivity here
-                    // val intent = Intent(activity, DetailsActivity::class.java)
-                    // intent.putExtra(DetailsActivity.MEDIA_MESSAGE, item)
-                    // startActivity(intent)
+                    // --- NEW LOGIC: SHOW BOTTOM SHEET ---
+                    // Create an instance of the bottom sheet with the clicked media message
+                    val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(item)
+
+                    // Show the bottom sheet using the fragment manager
+                    bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.TAG)
                 }
             }
         }
     }
+
 
     private fun loadMessages() {
         val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
@@ -90,12 +88,12 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 var fromMessageId: Long = 0 // Start from the most recent message
 
                 // We will loop until we have enough messages or there are no more to load.
-                while (allMessages.size < 500) {
+                while (allMessages.size < 10000) {
                     // Call the suspend function from the manager to get a chunk of messages.
                     val messagesChunk = TelegramClientManager.loadMessagesForChat(
                         chatId = chatId,
                         fromMessageId = fromMessageId, // Use the ID of the last message we received
-                        limit = 100 // It's okay to request a large chunk
+                        limit = 1000 // It's okay to request a large chunk
                     )
 
                     // If TDLib returns an empty chunk, it means we've reached the beginning of the chat history.
@@ -137,6 +135,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 val video = content.video
                 val file = video.video
                 val thumbnail = video.thumbnail
+                val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
 
                 MediaMessage(
                     // Core properties
@@ -144,19 +143,17 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                     title = video.fileName.ifEmpty { "Video" },
                     description = content.caption.text, // Use the video caption as the description
                     studio = "Telegram",
-
                     // Media file properties
+                    chatId = chatId,
                     isMedia = true,
                     localPath = file.local.path.takeIf { it.isNotEmpty() },
                     fileId = file.id,
                     mimeType = video.mimeType,
-
                     // Dimensions and duration
                     width = video.width,
                     height = video.height,
                     duration = video.duration,
                     size = file.size,
-
                     // Thumbnail properties
                     thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
                     cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() } // Use thumbnail for card image
@@ -167,6 +164,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 val document = content.document
                 val file = document.document
                 val thumbnail = document.thumbnail
+                val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
 
                 MediaMessage(
                     // Core properties
@@ -180,10 +178,9 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                     localPath = file.local.path.takeIf { it.isNotEmpty() },
                     fileId = file.id,
                     mimeType = document.mimeType,
-
+                    chatId = chatId,
                     // Dimensions and duration (not applicable for all documents)
                     size = file.size,
-
                     // Thumbnail properties
                     thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
                     cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() }
@@ -196,7 +193,9 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                     id = content.hashCode().toLong(), // Generate a stable ID for text messages
                     title = "Text Message",
                     description = content.text.text,
-                    isMedia = false
+                    isMedia = false,
+                    studio = "Telegram",
+                    chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
                 )
             }
 
@@ -206,7 +205,9 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                     id = content.hashCode().toLong(),
                     title = "Unsupported Content",
                     description = "This message type is not currently supported.",
-                    isMedia = false
+                    isMedia = false,
+                    studio = "Telegram",
+                    chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
                 )
             }
         }
@@ -214,7 +215,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
 
     companion object {
         private const val TAG = "MessageGridFragment"
-        private const val ARG_CHAT_ID = "chat_id"
+        const val ARG_CHAT_ID = "chat_id"
         private const val ARG_CHAT_TITLE = "chat_title"
 
         /**

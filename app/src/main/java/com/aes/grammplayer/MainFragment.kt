@@ -149,6 +149,6 @@ class MainFragment : BrowseSupportFragment() {
     companion object {
         private val TAG = "MainFragment"
         private val GRID_ITEM_WIDTH = 400
-        private val GRID_ITEM_HEIGHT = 100
+        private val GRID_ITEM_HEIGHT = 400
     }
 }
