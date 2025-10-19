@@ -18,6 +18,8 @@ class CardPresenter : Presenter() {
 
     private var sSelectedBackgroundColor: Int = 0
     private var sDefaultBackgroundColor: Int = 0
+    private var sSelectedBorderColor: Int = 0
+
 
     override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
         Log.d(TAG, "onCreateViewHolder")
@@ -31,7 +33,7 @@ class CardPresenter : Presenter() {
 
         // --- Create a TextView for our content ---
         val textView = TextView(context).apply {
-            layoutParams = ViewGroup.LayoutParams(
+            layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -43,16 +45,54 @@ class CardPresenter : Presenter() {
 
         // --- Create a FrameLayout to act as the card ---
         val cardLayout = FrameLayout(context).apply {
-            layoutParams = ViewGroup.LayoutParams(CARD_WIDTH, CARD_HEIGHT)
+            layoutParams = ViewGroup.MarginLayoutParams(CARD_WIDTH, CARD_HEIGHT)
             isFocusable = true
             isFocusableInTouchMode = true
             addView(textView) // Add the TextView to the card
+            // OPTIMIZATION: Set the focus listener only once when the view is created.
+            setOnFocusChangeListener { view, hasFocus ->
+                animateCardFocus(view, hasFocus)
+            }
         }
 
+        // Set the initial, un-focused state
+        animateCardFocus(cardLayout, false)
         // Return a custom ViewHolder that holds our card and text view
         return CardViewHolder(cardLayout, textView)
     }
 
+    /**
+     * DYNAMIC ANIMATION: Animates the card's scale and updates its background/border
+     * based on the focus state.
+     */
+    private fun animateCardFocus(view: View, hasFocus: Boolean) {
+        val scale = if (hasFocus) FOCUSED_SCALE else UNFOCUSED_SCALE
+        val duration = 150L // Animation duration in milliseconds
+
+        view.animate()
+            .scaleX(scale)
+            .scaleY(scale)
+            .setDuration(duration)
+            .start()
+
+        updateCardStyling(view, hasFocus)
+    }
+
+    /**
+     * Updates the card's background color and adds/removes a border.
+     */
+    private fun updateCardStyling(view: View, isSelected: Boolean) {
+        val backgroundColor = if (isSelected) sSelectedBackgroundColor else sDefaultBackgroundColor
+        val borderWidth = if (isSelected) 6 else 0 // Border width in pixels
+        val borderColor = sSelectedBorderColor
+
+        val border = GradientDrawable().apply {
+            setColor(backgroundColor)
+            cornerRadius = 8f // A smaller radius looks cleaner
+            setStroke(borderWidth, borderColor)
+        }
+        view.background = border
+    }
     override fun onBindViewHolder(viewHolder: Presenter.ViewHolder, item: Any) {
         // Ensure the item is a MediaMessage before proceeding
         if (item !is MediaMessage || viewHolder !is CardViewHolder) {
@@ -107,5 +147,9 @@ class CardPresenter : Presenter() {
         // Let's use a more rectangular shape for text
         private const val CARD_WIDTH = 400
         private const val CARD_HEIGHT = 400
+
+        // Add these two lines
+        private const val FOCUSED_SCALE = 1.1f
+        private const val UNFOCUSED_SCALE = 1.0f
     }
 }

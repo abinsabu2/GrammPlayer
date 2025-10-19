@@ -56,7 +56,6 @@ class LoginActivity : FragmentActivity() {
                 phoneNumberEditText.visibility = View.GONE
                 authCodeEditText.visibility = View.VISIBLE
                 submitButton.text = "Submit Code"
-                Toast.makeText(this, "Enter the code sent to you", Toast.LENGTH_SHORT).show()
             }
             is TdApi.AuthorizationStateReady -> {
                 val intent = Intent(this, MainActivity::class.java).apply {

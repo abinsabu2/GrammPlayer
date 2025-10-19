@@ -75,8 +75,6 @@ object TelegramClientManager {
                         }
                     }
                 }
-            } else {
-                Log.e("TDLib", "Failed to get chats: $result")
             }
         }
     }
@@ -95,14 +93,11 @@ object TelegramClientManager {
 
         subdirectoriesToClear.forEach { subdir ->
             val directory = File(baseTdlibPath, subdir)
-            Log.d("CacheClear", "Checking directory: ${directory.absolutePath}")
-
             if (directory.exists() && directory.isDirectory) {
                 // Use walkTopDown to iterate through all files and subdirectories
                 directory.walkTopDown().forEach { file ->
                     // Make sure it's a file and not a directory before deleting
                     if (file.isFile && file.delete()) {
-                        Log.d("CacheClear", "Deleted file: ${file.name}")
                         deletedFilesCount++
                     }
                 }
@@ -132,4 +127,21 @@ object TelegramClientManager {
         client?.send(TdApi.Close(), null)
         client = null
     }
+
+    // In TelegramClientManager.kt
+
+    /**
+     * Cancels an active download and deletes the partially downloaded file from the cache.
+     */
+    fun cancelDownloadAndDelete(fileId: Int?) {
+        val id = fileId ?: return
+
+        // First, tell TDLib to cancel the network operation.
+        client?.send(TdApi.CancelDownloadFile(id, false)) {
+            Log.d("TDLib", "Sent cancel command for fileId=$id")
+        }
+        clearDownloadedFiles()
+
+    }
+
 }
