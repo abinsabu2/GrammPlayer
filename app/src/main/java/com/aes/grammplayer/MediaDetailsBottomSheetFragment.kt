@@ -10,14 +10,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import androidx.compose.ui.text.intl.Locale
 import androidx.core.content.FileProvider
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.drinkless.tdlib.TdApi
 import java.io.File
-import java.text.SimpleDateFormat
 
 class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
@@ -31,11 +29,12 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
     private lateinit var downloadProgressBar: ProgressBar
     private lateinit var downloadButton: Button
     private lateinit var playButton: Button
-    private lateinit var clearCacheButton: Button
+    // REMOVED: private lateinit var clearCacheButton: Button
     private lateinit var stopDownloadButton: Button
     private lateinit var availableStorageTextView: TextView
     private lateinit var logScrollView: ScrollView
     private lateinit var logTextView: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mediaMessage = arguments?.getSerializable(ARG_MEDIA_MESSAGE) as? MediaMessage
@@ -78,7 +77,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         val closeButton: ImageButton = view.findViewById(R.id.close_button)
         downloadButton = view.findViewById(R.id.detail_download_button)
         playButton = view.findViewById(R.id.detail_play_button)
-        clearCacheButton = view.findViewById(R.id.clear_cache_button)
+        // REMOVED: clearCacheButton = view.findViewById(R.id.clear_cache_button)
         downloadProgressContainer = view.findViewById(R.id.download_progress_container)
         downloadStatusText = view.findViewById(R.id.download_status_text)
         downloadProgressBar = view.findViewById(R.id.download_progress_bar)
@@ -86,7 +85,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         availableStorageTextView = view.findViewById(R.id.available_storage_text)
         logScrollView = view.findViewById(R.id.log_scroll_view)
         logTextView = view.findViewById(R.id.log_text_view)
-
     }
 
     /**
@@ -123,16 +121,12 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         playButton.setOnClickListener {
             val localPath = currentDownload?.localPath ?: mediaMessage?.localPath
-            playWithVLC(requireContext(), localPath)
-        }
+            if (localPath.isNullOrEmpty() || !File(localPath).exists()) {
+                logError("No local path available to play.")
+                return@setOnClickListener
+            }
 
-        clearCacheButton.setOnClickListener {
-            val deletedCount = TelegramClientManager.clearDownloadedFiles()
-            updateAvailableStorageText()
-            resetButtonStates(showDownload = true)
-            // Reset autoplay flag so it can trigger again on next download
-            hasAutoPlayed = false
-            logInfo("Cleared $deletedCount downloaded files from cache.")
+            playWithVLC(requireContext(), localPath)
         }
 
         stopDownloadButton.setOnClickListener {
@@ -146,7 +140,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
             dismiss()
-
         }
     }
 
@@ -206,7 +199,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         } catch (e: Exception) {
             Toast.makeText(context, "VLC not installed", Toast.LENGTH_SHORT).show()
         }
-
     }
 
     /**
@@ -257,6 +249,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
     }
 
     /**
+
      * The core function to append a message to the log TextView.
      * It makes the log area visible and auto-scrolls to the bottom.
      */

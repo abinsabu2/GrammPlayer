@@ -65,6 +65,4 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    // VLC for media playback
-    implementation("org.videolan.android:libvlc-all:3.5.1")
 }

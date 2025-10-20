@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- State: Focused (Selected) -->
+    <!-- When the button is focused, the background is white, so the text should be black. -->
+    <item android:state_focused="true" android:color="@color/text_color_on_light" />
+
+    <!-- Default State (Not focused) -->
+    <!-- When the button is not focused, the background is black, so the text should be white. -->
+    <item android:color="@color/text_color_on_dark" />
+
+</selector>

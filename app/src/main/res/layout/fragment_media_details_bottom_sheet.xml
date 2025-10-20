@@ -1,157 +1,157 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
     android:background="@drawable/bottom_sheet_background">
 
-    <!-- The main content area -->
-    <LinearLayout
+    <!-- Top section with Close Button and Title -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:layout_height="wrap_content">
+
+        <!-- FIX: Close Button moved to top-left and styled -->
+        <ImageButton
+            android:id="@+id/close_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="top|start"
+            android:background="@drawable/close_button_background"
+            android:contentDescription="Close"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@android:color/white" />
 
         <TextView
             android:id="@+id/detail_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="40dp"
+            android:layout_marginStart="64dp"
+            android:layout_gravity="center_vertical"
             android:text="Media Title"
             android:textColor="@android:color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <!-- Corrected the TextView tag -->
-        <TextView
-            android:id="@+id/detail_description"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Description of the media file."
-            android:textColor="#E0E0E0"
-            android:textSize="14sp" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/detail_description"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Description of the media file."
+        android:textColor="#E0E0E0"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/detail_file_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:lineSpacingExtra="4dp"
+        android:text="File ID: 12345\nSize: 12.34 MB"
+        android:textColor="#B0B0B0"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/available_storage_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Available Storage: 0.00 GB"
+        android:textColor="#00E676"
+        android:textSize="12sp"
+        android:textStyle="bold"/>
+
+    <!-- DOWNLOAD PROGRESS AREA -->
+    <LinearLayout
+        android:id="@+id/download_progress_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="16dp"
+        android:visibility="gone">
 
         <TextView
-            android:id="@+id/detail_file_info"
+            android:id="@+id/download_status_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:lineSpacingExtra="4dp"
-            android:text="File ID: 12345\nSize: 12.34 MB"
-            android:textColor="#B0B0B0"
+            android:text="Downloading: 0%"
+            android:textColor="#A9A9A9"
             android:textSize="12sp" />
 
-        <TextView
-            android:id="@+id/available_storage_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Available Storage: 0.00 GB"
-            android:textColor="#00E676"
-            android:textSize="12sp"
-            android:textStyle="bold"/>
-
-        <!-- DOWNLOAD PROGRESS AREA -->
-        <LinearLayout
-            android:id="@+id/download_progress_container"
+        <ProgressBar
+            android:id="@+id/download_progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="16dp"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/download_status_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Downloading: 0%"
-                android:textColor="#A9A9A9"
-                android:textSize="12sp" />
-
-            <ProgressBar
-                android:id="@+id/download_progress_bar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:max="100" />
-        </LinearLayout>
-
-
-        <!-- ==== END OF NEW AREA ==== -->
-
-        <!-- Horizontal LinearLayout for buttons -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end"
-            android:layout_marginTop="20dp">
-
-            <Button
-                android:id="@+id/clear_cache_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
-                android:text="Clear Cache"/>
-
-            <Button
-                android:id="@+id/stop_download_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Stop Download"
-                android:visibility="gone"/>
-
-            <Button
-                android:id="@+id/detail_play_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Play File"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/detail_download_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Start Download" />
-        </LinearLayout>
-
-        <!-- ==== NEW: LOGGING AREA ==== -->
-        <ScrollView
-            android:id="@+id/log_scroll_view"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="16dp"
-            android:background="#1C1C1C"
-            android:padding="8dp"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <TextView
-                android:id="@+id/log_text_view"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textColor="#FF6B6B"
-                android:textSize="10sp"
-                tools:text="[ERROR] Not enough storage.\n[INFO] Download cancelled."/>
-        </ScrollView>
+            android:layout_marginTop="4dp"
+            android:max="100" />
     </LinearLayout>
 
-    <!-- Close Button -->
-    <ImageButton
-        android:id="@+id/close_button"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Close"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
-        app:tint="@android:color/white" />
+    <!-- Horizontal LinearLayout for buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="20dp">
 
-</FrameLayout>
+        <Button
+            android:id="@+id/stop_download_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/custom_button_background"
+            android:textColor="@drawable/custom_button_text_color"
+            style="@style/Widget.AppCompat.Button"
+            android:visibility="gone"
+            android:text="Stop"/>
+
+        <Button
+            android:id="@+id/detail_play_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/custom_button_background"
+            android:textColor="@drawable/custom_button_text_color"
+            style="@style/Widget.AppCompat.Button"
+            android:visibility="gone"
+            android:text="Play"/>
+
+        <Button
+            android:id="@+id/detail_download_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/custom_button_background"
+            android:textColor="@drawable/custom_button_text_color"
+            style="@style/Widget.AppCompat.Button"
+            android:text="Download" />
+    </LinearLayout>
+
+    <!-- LOGGING AREA (MOVED TO BOTTOM) -->
+    <ScrollView
+        android:id="@+id/log_scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:layout_marginTop="16dp"
+        android:background="#1C1C1C"
+        android:padding="8dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/log_text_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#FF6B6B"
+            android:textSize="10sp"
+            tools:text="[ERROR] Not enough storage.\n[INFO] Download cancelled."/>
+    </ScrollView>
+
+</LinearLayout>

@@ -70,7 +70,7 @@ object TelegramClientManager {
             if (result is TdApi.Chats) {
                 result.chatIds.forEach { chatId ->
                     client?.send(TdApi.GetChat(chatId)) { chatObj ->
-                        if (chatObj is TdApi.Chat && (chatObj.type is TdApi.ChatTypeSupergroup || chatObj.type is TdApi.ChatTypeBasicGroup)) {
+                        if (chatObj is TdApi.Chat) {
                             onGroupLoaded(chatObj)
                         }
                     }

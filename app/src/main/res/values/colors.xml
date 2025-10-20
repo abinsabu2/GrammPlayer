@@ -2,9 +2,22 @@
     <color name="background_gradient_start">#000000</color>
     <color name="background_gradient_end">#DDDDDD</color>
     <color name="fastlane_background">#0096a6</color>
-    <color name="search_opaque">#ffaa3f</color>
-    <color name="selected_background">#ffaa3f</color>
-    <color name="default_background">#3d3d3d</color>
+    <color name="search_opaque">#010F19</color>
+    <color name="selected_background">#000000</color>
+    <color name="default_background">#0096a6</color>
     <!-- ... your existing colors ... -->
     <color name="selected_border_color">#00E5FF</color>
+
+    <!-- Button Colors -->
+    <color name="button_default_background">#E0E0E0</color> <!-- A light grey for default state -->
+    <color name="button_focused_background">#FFAB40</color> <!-- The requested Orange for focus -->
+    <color name="button_pressed_background">#C0C0C0</color> <!-- Silver for the click state -->
+    <color name="button_default_text">#000000</color>       <!-- Black -->
+    <color name="button_focused_text">#000000</color>       <!-- Black text on orange looks good -->
+    <!-- Close Button Color -->
+    <color name="close_button_red">#F44336</color>           <!-- A standard, visible red -->
+
+
+    <color name="text_color_on_dark">#FFFFFF</color> <!-- White -->
+    <color name="text_color_on_light">#000000</color> <!-- Black -->
 </resources>

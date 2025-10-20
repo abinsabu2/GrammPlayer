@@ -75,14 +75,23 @@ class MainFragment : BrowseSupportFragment() {
         // This adapter holds all the rows.
         val rowsAdapter = ArrayObjectAdapter(ListRowPresenter())
 
+        // --- 2. ADD A NEW SETTINGS ROW (new logic) ---
+        val settingsHeader = HeaderItem("Preferences")
+        val settingsGridPresenter = GridItemPresenter() // Can reuse the same presenter
+        val settingsRowAdapter = ArrayObjectAdapter(settingsGridPresenter)
+
+        // Add items to your settings row. We'll use simple strings.
+        settingsRowAdapter.add("Clear Cache")
+        settingsRowAdapter.add("Logout")
+        settingsRowAdapter.add("App Info")
+
+        rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
+        // --- End of new logic ---
+        // --- 1. LOAD CHAT ROWS (existing logic) ---
         TelegramClientManager.loadAllGroups { chat ->
             // This adapter holds the items for a single row.
             val gridRowAdapter = ArrayObjectAdapter(mGridPresenter)
-
-            // --- FIX IS HERE ---
-            // Instead of adding a string, add the actual chat object.
-            // This makes your data model much cleaner.
-            gridRowAdapter.add(chat)
+            gridRowAdapter.add(chat) // Add the chat object to the row
 
             // Create the header for the row using the chat's ID and title.
             val header = HeaderItem(chat.id, chat.title)
@@ -90,7 +99,6 @@ class MainFragment : BrowseSupportFragment() {
             // Add the new row (header + items adapter) to the main adapter.
             rowsAdapter.add(ListRow(header, gridRowAdapter))
         }
-
         adapter = rowsAdapter
     }
 
@@ -105,21 +113,40 @@ class MainFragment : BrowseSupportFragment() {
                                     rowViewHolder: RowPresenter.ViewHolder,
                                     row: Row
         ) {
-            if (item is TdApi.Chat) {
-                val intent = Intent(activity, MessageGridActivity::class.java)
-                intent.putExtra("chat_id", item.id)
-                intent.putExtra("chat_title", item.title)
-                startActivity(intent)
+            when (item) {
+                // Handle clicks on chat items
+                is TdApi.Chat -> {
+                    val intent = Intent(activity, MessageGridActivity::class.java)
+                    intent.putExtra("chat_id", item.id)
+                    intent.putExtra("chat_title", item.title)
+                    startActivity(intent)
+                }
+                // Handle clicks on settings items
+                is String -> {
+                    when (item) {
+                        "Clear Cache" -> {
+                            val deletedCount = TelegramClientManager.clearDownloadedFiles()
+                            Toast.makeText(requireContext(), "Cleared $deletedCount downloaded files from cache.", Toast.LENGTH_SHORT).show()
+                        }
+                        "Logout" -> {
+                            // TODO: Implement logout logic
+                            Toast.makeText(requireContext(), "Logging out...", Toast.LENGTH_SHORT).show()
+                        }
+                        else -> {
+                            Toast.makeText(requireContext(), "Clicked on: $item", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             }
         }
     }
-
 
     private inner class ItemViewSelectedListener : OnItemViewSelectedListener {
         override fun onItemSelected(
             itemViewHolder: Presenter.ViewHolder?, item: Any?,
             rowViewHolder: RowPresenter.ViewHolder, row: Row
         ) {
+            // Can add logic here if you want the background to change on selection, etc.
         }
     }
 
@@ -136,10 +163,15 @@ class MainFragment : BrowseSupportFragment() {
         }
 
         override fun onBindViewHolder(viewHolder: Presenter.ViewHolder, item: Any) {
-            // --- FIX IS HERE ---
-            // Check if the item is a TdApi.Chat object and display its title.
-            if (item is TdApi.Chat) {
-                (viewHolder.view as TextView).text = "Explore"
+            // Now handle both TdApi.Chat and String types
+            val textView = viewHolder.view as TextView
+            when (item) {
+                is TdApi.Chat -> {
+                    textView.text = "Explore Chat"
+                }
+                is String -> {
+                    textView.text = item
+                }
             }
         }
 
@@ -149,6 +181,6 @@ class MainFragment : BrowseSupportFragment() {
     companion object {
         private val TAG = "MainFragment"
         private val GRID_ITEM_WIDTH = 400
-        private val GRID_ITEM_HEIGHT = 400
+        private val GRID_ITEM_HEIGHT = 200 // Made it more rectangular
     }
 }

@@ -29,6 +29,7 @@ class CardPresenter : Presenter() {
         if (sDefaultBackgroundColor == 0) {
             sDefaultBackgroundColor = ContextCompat.getColor(context, R.color.default_background)
             sSelectedBackgroundColor = ContextCompat.getColor(context, R.color.selected_background)
+            sSelectedBorderColor = ContextCompat.getColor(context, R.color.selected_background)
         }
 
         // --- Create a TextView for our content ---
@@ -88,7 +89,6 @@ class CardPresenter : Presenter() {
 
         val border = GradientDrawable().apply {
             setColor(backgroundColor)
-            cornerRadius = 8f // A smaller radius looks cleaner
             setStroke(borderWidth, borderColor)
         }
         view.background = border
@@ -131,7 +131,6 @@ class CardPresenter : Presenter() {
         // Create a rounded rectangle drawable
         val border = GradientDrawable().apply {
             setColor(color)
-            cornerRadius = 30f
         }
         view.background = border
     }
@@ -145,7 +144,7 @@ class CardPresenter : Presenter() {
     companion object {
         private const val TAG = "CardPresenter"
         // Let's use a more rectangular shape for text
-        private const val CARD_WIDTH = 400
+        private const val CARD_WIDTH = 600
         private const val CARD_HEIGHT = 400
 
         // Add these two lines

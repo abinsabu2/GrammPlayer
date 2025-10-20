@@ -40,7 +40,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
             }
         }
 
-        gridPresenter.numberOfColumns = 4 // You can adjust the number of columns here
+        gridPresenter.numberOfColumns = 3 // You can adjust the number of columns here
         setGridPresenter(gridPresenter)
 
         // The rest of your code remains the same.
@@ -58,8 +58,6 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 row: Row?
             ) {
                 if (item is MediaMessage) {
-                    Log.d(TAG, "Card clicked: ${item.title}")
-
                     // --- NEW LOGIC: SHOW BOTTOM SHEET ---
                     // Create an instance of the bottom sheet with the clicked media message
                     val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(item)
