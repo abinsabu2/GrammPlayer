@@ -20,4 +20,7 @@
 
     <color name="text_color_on_dark">#FFFFFF</color> <!-- White -->
     <color name="text_color_on_light">#000000</color> <!-- Black -->
+
+    <color name="card_detail_text">#80DEEA</color>
+
 </resources>

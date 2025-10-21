@@ -31,11 +31,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import com.aes.grammplayer.MessageGridFragment.Companion.ARG_CHAT_ID
 
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.SimpleTarget
 import com.bumptech.glide.request.transition.Transition
 import org.drinkless.tdlib.TdApi
+import kotlin.text.ifEmpty
 
 /**
  * Loads a grid of cards with movies to browse.

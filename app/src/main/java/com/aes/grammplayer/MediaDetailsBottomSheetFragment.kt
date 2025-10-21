@@ -259,7 +259,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         activity?.runOnUiThread {
             // Make the log area visible if it's hidden.
             if (logScrollView.visibility == View.GONE) {
-                logScrollView.visibility = View.VISIBLE
+                logScrollView.visibility = View.GONE
             }
 
             val currentLog = logTextView.text.toString()
@@ -269,6 +269,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             logScrollView.post {
                 logScrollView.fullScroll(View.FOCUS_DOWN)
             }
+            logScrollView.visibility = View.GONE
         }
     }
 

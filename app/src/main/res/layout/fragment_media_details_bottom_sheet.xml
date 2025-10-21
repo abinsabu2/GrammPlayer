@@ -130,7 +130,7 @@
             android:background="@drawable/custom_button_background"
             android:textColor="@drawable/custom_button_text_color"
             style="@style/Widget.AppCompat.Button"
-            android:text="Download" />
+            android:text="Save" />
     </LinearLayout>
 
     <!-- LOGGING AREA (MOVED TO BOTTOM) -->
