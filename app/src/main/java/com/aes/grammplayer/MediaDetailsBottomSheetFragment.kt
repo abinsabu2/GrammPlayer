@@ -131,7 +131,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         stopDownloadButton.setOnClickListener {
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
-            resetButtonStates(showDownload = true)
+            resetButtonStates(showDownload = true, showPlay = false, isDownloading = false)
             // Reset autoplay flag so it can trigger again on next download
             hasAutoPlayed = false
             logInfo("Download stopped and cancelled by user.")
@@ -158,7 +158,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
             // Todo add setting for autoplay
 
-            if (progress > 30 && !hasAutoPlayed) {
+            if (progress == 30 && !hasAutoPlayed) {
                 hasAutoPlayed = true
                 resetButtonStates(showDownload = false, showPlay = true, isDownloading = true)
                 playWithVLC(requireContext(), currentDownload?.localPath)

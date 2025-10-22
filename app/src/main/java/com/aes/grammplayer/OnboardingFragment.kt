@@ -12,11 +12,11 @@ import androidx.leanback.app.OnboardingSupportFragment
 
 class OnboardingFragment : OnboardingSupportFragment() {
 
-    private val pageTitles = arrayOf("Welcome to GrammPlayer", "Discover New Music", "Enjoy Your Favorites")
+    private val pageTitles = arrayOf("Welcome To GrammPlayer", "Discover Latest Movies!", "Enjoy Your Favorites")
     private val pageDescriptions = arrayOf(
-        "The ultimate music experience for your TV.",
-        "Explore a vast library of songs and curated playlists.",
-        "Create your own playlists and listen to the music you love."
+        "The Ultimate Movie Experience For Your TV.",
+        "Explore A Vast Library Of Movies And Curated Playlists.",
+        "Create Your Own Playlists And Watch The Movies You Love."
     )
     private val pageImages = intArrayOf(
         R.drawable.ic_music_note, // Replace with your own drawables
