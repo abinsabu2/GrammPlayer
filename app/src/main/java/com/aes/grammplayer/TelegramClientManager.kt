@@ -91,7 +91,7 @@ object TelegramClientManager {
         var deletedFilesCount = 0
 
         // Define the subdirectories to clear
-        val subdirectoriesToClear = listOf("documents", "temp")
+        val subdirectoriesToClear = listOf("documents", "temp", "videos")
 
         subdirectoriesToClear.forEach { subdir ->
             val directory = File(baseTdlibPath, subdir)

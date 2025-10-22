@@ -155,13 +155,16 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             downloadProgressBar.progress = progress
 
             // Auto-play logic
-            if (downloadedMb > 300 && !hasAutoPlayed) {
+
+            // Todo add setting for autoplay
+
+            if (progress > 30 && !hasAutoPlayed) {
                 hasAutoPlayed = true
                 resetButtonStates(showDownload = false, showPlay = true, isDownloading = true)
                 playWithVLC(requireContext(), currentDownload?.localPath)
             }
 
-            if (file.local.isDownloadingCompleted) {
+            if (progress == 100 && hasAutoPlayed) {
                 mediaMessage?.localPath = file.local.path
                 resetButtonStates(showDownload = false, showPlay = true, isDownloading = false)
                 logInfo("Download completed for file ID: ${file.id}")
