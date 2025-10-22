@@ -107,7 +107,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 }
 
                 // The rest of your code stays the same.
-                val mediaMessages = allMessages.map { parseMessageContent(it.content) }
+                val mediaMessages = allMessages.map { TelegramClientManager.parseMessageContent(it.content, chatId) }
 
                 if (mediaMessages.isEmpty()) {
                     return@launch
@@ -123,90 +123,6 @@ class MessageGridFragment : VerticalGridSupportFragment() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
                 // You could display an error to the user here.
-            }
-        }
-    }
-
-    private fun parseMessageContent(content: TdApi.MessageContent): MediaMessage {
-        return when (content) {
-            is TdApi.MessageVideo -> {
-                val video = content.video
-                val file = video.video
-                val thumbnail = video.thumbnail
-                val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
-
-                MediaMessage(
-                    // Core properties
-                    id = file.id.toLong(),
-                    title = video.fileName.ifEmpty { "Video" },
-                    description = content.caption.text, // Use the video caption as the description
-                    studio = "Telegram",
-                    // Media file properties
-                    chatId = chatId,
-                    isMedia = true,
-                    localPath = file.local.path.takeIf { it.isNotEmpty() },
-                    fileId = file.id,
-                    mimeType = video.mimeType,
-                    // Dimensions and duration
-                    width = video.width,
-                    height = video.height,
-                    duration = video.duration,
-                    size = file.size,
-                    // Thumbnail properties
-                    thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
-                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() } // Use thumbnail for card image
-                )
-            }
-
-            is TdApi.MessageDocument -> {
-                val document = content.document
-                val file = document.document
-                val thumbnail = document.thumbnail
-                val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
-
-                MediaMessage(
-                    // Core properties
-                    id = file.id.toLong(),
-                    title = document.fileName.ifEmpty { "Document" },
-                    description = content.caption.text, // Use the document caption
-                    studio = "Telegram",
-
-                    // Media file properties
-                    isMedia = true, // A document can be a media file (e.g., mp4, mkv)
-                    localPath = file.local.path.takeIf { it.isNotEmpty() },
-                    fileId = file.id,
-                    mimeType = document.mimeType,
-                    chatId = chatId,
-                    // Dimensions and duration (not applicable for all documents)
-                    size = file.size,
-                    // Thumbnail properties
-                    thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
-                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() }
-                )
-            }
-
-            is TdApi.MessageText -> {
-                // Handle plain text messages
-                MediaMessage(
-                    id = content.hashCode().toLong(), // Generate a stable ID for text messages
-                    title = "Text Message",
-                    description = content.text.text,
-                    isMedia = false,
-                    studio = "Telegram",
-                    chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
-                )
-            }
-
-            else -> {
-                // Default case for unhandled message types
-                MediaMessage(
-                    id = content.hashCode().toLong(),
-                    title = "Unsupported Content",
-                    description = "This message type is not currently supported.",
-                    isMedia = false,
-                    studio = "Telegram",
-                    chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
-                )
             }
         }
     }

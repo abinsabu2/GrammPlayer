@@ -1,6 +1,8 @@
 package com.aes.grammplayer
 
+import android.R
 import android.util.Log
+import com.aes.grammplayer.MessageGridFragment.Companion.ARG_CHAT_ID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -142,6 +144,88 @@ object TelegramClientManager {
         }
         clearDownloadedFiles()
 
+    }
+
+    fun parseMessageContent(content: TdApi.MessageContent, chatId: Long): MediaMessage {
+        return when (content) {
+            is TdApi.MessageVideo -> {
+                val video = content.video
+                val file = video.video
+                val thumbnail = video.thumbnail
+
+                MediaMessage(
+                    // Core properties
+                    id = file.id.toLong(),
+                    title = video.fileName.ifEmpty { "Video" },
+                    description = content.caption.text, // Use the video caption as the description
+                    studio = "Telegram",
+                    // Media file properties
+                    chatId = chatId,
+                    isMedia = true,
+                    localPath = file.local.path.takeIf { it.isNotEmpty() },
+                    fileId = file.id,
+                    mimeType = video.mimeType,
+                    // Dimensions and duration
+                    width = video.width,
+                    height = video.height,
+                    duration = video.duration,
+                    size = file.size,
+                    // Thumbnail properties
+                    thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
+                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() } // Use thumbnail for card image
+                )
+            }
+
+            is TdApi.MessageDocument -> {
+                val document = content.document
+                val file = document.document
+                val thumbnail = document.thumbnail
+
+                MediaMessage(
+                    // Core properties
+                    id = file.id.toLong(),
+                    title = document.fileName.ifEmpty { "Document" },
+                    description = content.caption.text, // Use the document caption
+                    studio = "Telegram",
+
+                    // Media file properties
+                    isMedia = true, // A document can be a media file (e.g., mp4, mkv)
+                    localPath = file.local.path.takeIf { it.isNotEmpty() },
+                    fileId = file.id,
+                    mimeType = document.mimeType,
+                    chatId = chatId,
+                    // Dimensions and duration (not applicable for all documents)
+                    size = file.size,
+                    // Thumbnail properties
+                    thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
+                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() }
+                )
+            }
+
+            is TdApi.MessageText -> {
+                // Handle plain text messages
+                MediaMessage(
+                    id = content.hashCode().toLong(), // Generate a stable ID for text messages
+                    title = content.text.text,
+                    description = content.text.text,
+                    isMedia = false,
+                    studio = "Telegram",
+                    chatId = chatId
+                )
+            }
+
+            else -> {
+                // Default case for unhandled message types
+                MediaMessage(
+                    id = content.hashCode().toLong(),
+                    title = "Unsupported Content",
+                    description = "This message type is not currently supported.",
+                    isMedia = false,
+                    studio = "Telegram",
+                    chatId = chatId
+                )
+            }
+        }
     }
 
 }

@@ -84,8 +84,7 @@ class MainFragment : BrowseSupportFragment() {
 
         // Add items to your settings row. We'll use simple strings.
         settingsRowAdapter.add("Clear Cache")
-        settingsRowAdapter.add("Logout")
-        settingsRowAdapter.add("App Info")
+        settingsRowAdapter.add("Take A break")
 
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
         // --- End of new logic ---
@@ -130,9 +129,8 @@ class MainFragment : BrowseSupportFragment() {
                             val deletedCount = TelegramClientManager.clearDownloadedFiles()
                             Toast.makeText(requireContext(), "Cleared $deletedCount downloaded files from cache.", Toast.LENGTH_SHORT).show()
                         }
-                        "Logout" -> {
-                            // TODO: Implement logout logic
-                            Toast.makeText(requireContext(), "Logging out...", Toast.LENGTH_SHORT).show()
+                        "Take A break" -> {
+                            requireActivity().finish()
                         }
                         else -> {
                             Toast.makeText(requireContext(), "Clicked on: $item", Toast.LENGTH_SHORT).show()
