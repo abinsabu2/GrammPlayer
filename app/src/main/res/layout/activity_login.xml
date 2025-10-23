@@ -30,7 +30,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:background="@drawable/edit_text_background"
-        android:hint="Phone Number"
+        android:hint="+15555555555"
         android:inputType="phone"
         android:maxLines="1"
         android:padding="16dp"

@@ -1,15 +1,14 @@
 package com.aes.grammplayer
 
-import android.R
+import android.os.Environment
 import android.util.Log
-import com.aes.grammplayer.MessageGridFragment.Companion.ARG_CHAT_ID
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.drinkless.tdlib.Client
 import org.drinkless.tdlib.TdApi
 import java.io.File
-import kotlin.io.path.exists
 
 object TelegramClientManager {
 
@@ -17,16 +16,21 @@ object TelegramClientManager {
     val isInitialized: Boolean
         get() = client != null
 
+    // --- NEW: To hold the currently active storage path ---
+    private var activeStoragePath: String = ""
+
     /**
-     * Initializes the TDLib client using the global TdLibUpdateHandler.
-     * This function no longer accepts a callback.
+     * Initializes the TDLib client, automatically selecting the best storage location.
      */
     fun initialize() {
-        if (isInitialized) return // Prevent re-initialization
+        if (isInitialized) return
 
-        // The TdLibUpdateHandler is now the single, central callback for the client.
+        // --- NEW: Storage selection logic ---
+        activeStoragePath = getBestAvailableStoragePath()
+        Log.i("StorageManager", "Using storage path: $activeStoragePath")
+        // --- End of new logic ---
+
         client = Client.create(TdLibUpdateHandler, null, null)
-
         Client.execute(TdApi.SetLogVerbosityLevel(1))
 
         val parameters = TdApi.SetTdlibParameters().apply {
@@ -36,17 +40,78 @@ object TelegramClientManager {
             deviceModel = "Android TV"
             systemVersion = "10"
             applicationVersion = "1.0"
-            databaseDirectory = GPlayerApplication.AppContext.filesDir.absolutePath + "/tdlib"
+            // --- UPDATED: Use the dynamically selected storage path ---
+            databaseDirectory = activeStoragePath
             useMessageDatabase = true
             useSecretChats = false
+            // Tell TDLib that the files directory is within our chosen path
+            filesDirectory = activeStoragePath + "/files"
         }
-        // The global handler will receive the result of this command.
         client?.send(parameters, TdLibUpdateHandler)
     }
 
     /**
-     * Sends the phone number. The result is handled by the global handler.
+     * NEW: Determines the best storage path (internal or external) based on availability.
      */
+    private fun getBestAvailableStoragePath(): String {
+        val internalPath = GPlayerApplication.AppContext.filesDir.absolutePath + "/tdlib"
+        val externalPath = getExternalStoragePath()
+
+        // Prioritize external storage if it's available and writable.
+        if (externalPath != null) {
+            val externalDir = File(externalPath)
+            // Ensure the directory can be created and written to.
+            if (externalDir.exists() || externalDir.mkdirs()) {
+                if (externalDir.canWrite()) {
+                    return externalPath
+                }
+            }
+        }
+
+        // Fallback to internal storage if external is not available or not writable.
+        return internalPath
+    }
+
+    /**
+     * NEW: Finds a writable external storage path (USB, SD card, etc.).
+     */
+    private fun getExternalStoragePath(): String? {
+        val context = GPlayerApplication.AppContext
+        // Get all possible external storage directories.
+        val externalStorageVolumes: Array<out File> = ContextCompat.getExternalFilesDirs(context, null)
+
+        // Find the first one that is removable and mounted.
+        val externalStorage = externalStorageVolumes.firstOrNull {
+            // isRemovable is the key to finding USB drives/SD cards on Android TV.
+            Environment.isExternalStorageRemovable(it) && Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED
+        }
+
+        return externalStorage?.let { it.absolutePath + "/tdlib" }
+    }
+
+
+    /**
+     * UPDATED: Deletes files from the currently active storage path.
+     * This now works for both internal and external storage.
+     */
+    fun clearDownloadedFiles(): Int {
+        // Use the activeStoragePath which could be internal or external
+        var deletedFilesCount = 0
+        val subdirectoriesToClear = listOf("documents", "temp", "videos")
+
+        subdirectoriesToClear.forEach { subdir ->
+            // Construct path based on the active storage directory
+            val directory = File(activeStoragePath, subdir)
+            if (directory.exists() && directory.isDirectory) {
+                directory.walkTopDown().forEach { file ->
+                    if (file.isFile && file.delete()) {
+                        deletedFilesCount++
+                    }
+                }
+            }
+        }
+        return deletedFilesCount
+    }
     fun sendPhoneNumber(phone: String) {
         client?.send(TdApi.SetAuthenticationPhoneNumber(phone, null), TdLibUpdateHandler)
     }
@@ -81,34 +146,6 @@ object TelegramClientManager {
         }
     }
 
-    /**
-     * Deletes all files from the TDLib 'documents' and 'temp' directories.
-     * This is a safer way to clear cache without touching the core database files.
-     * Returns the number of files deleted.
-     */
-    fun clearDownloadedFiles(): Int {
-        val baseTdlibPath = GPlayerApplication.AppContext.filesDir.absolutePath + "/tdlib"
-        var deletedFilesCount = 0
-
-        // Define the subdirectories to clear
-        val subdirectoriesToClear = listOf("documents", "temp", "videos")
-
-        subdirectoriesToClear.forEach { subdir ->
-            val directory = File(baseTdlibPath, subdir)
-            if (directory.exists() && directory.isDirectory) {
-                // Use walkTopDown to iterate through all files and subdirectories
-                directory.walkTopDown().forEach { file ->
-                    // Make sure it's a file and not a directory before deleting
-                    if (file.isFile && file.delete()) {
-                        deletedFilesCount++
-                    }
-                }
-            }
-        }
-
-        return deletedFilesCount
-    }
-
     suspend fun loadMessagesForChat(
         chatId: Long,
         fromMessageId: Long = 0,
@@ -130,15 +167,8 @@ object TelegramClientManager {
         client = null
     }
 
-    // In TelegramClientManager.kt
-
-    /**
-     * Cancels an active download and deletes the partially downloaded file from the cache.
-     */
     fun cancelDownloadAndDelete(fileId: Int?) {
         val id = fileId ?: return
-
-        // First, tell TDLib to cancel the network operation.
         client?.send(TdApi.CancelDownloadFile(id, false)) {
             Log.d("TDLib", "Sent cancel command for fileId=$id")
         }
