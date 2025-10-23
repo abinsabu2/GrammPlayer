@@ -19,41 +19,47 @@
     <application
         android:name=".GPlayerApplication"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/gp_logo"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.GrammPlayer">
         <activity
             android:name=".OnboardingActivity"
-            android:banner="@drawable/gp_banner"
-            android:icon="@drawable/gp_banner"
+            android:banner="@drawable/gp_logo"
+            android:icon="@drawable/gp_logo"
             android:logo="@drawable/gp_logo"
             android:label="@string/app_name"
             android:exported="true"
             android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".TermsActivity"
+            android:exported="true">
+            <intent-filter>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
         <activity android:name=".MessageGridActivity"
             android:exported="true">
             <intent-filter>
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
             android:name=".LoginActivity"
             android:exported="true">
             <intent-filter>
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
         <provider

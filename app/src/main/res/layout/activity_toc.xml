@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:id="@+id/text_explanation"
+        android:layout_width="178dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:text="@string/toc_heading"
+        android:textSize="14sp"
+        android:gravity="center_horizontal" />
+
+    <TextView
+    android:id="@+id/text_terms_link"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:textColor="@drawable/link_text_color_selector"
+    android:textSize="12sp"
+    android:layout_marginBottom="16dp"
+    android:focusable="true"
+    android:clickable="true" />
+
+    <TextView
+        android:id="@+id/text_privacy_link"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@drawable/link_text_color_selector"
+        android:textSize="12sp"
+        android:layout_marginBottom="24dp"
+        android:focusable="true"
+        android:clickable="true" />
+
+    <CheckBox
+        android:id="@+id/checkbox_accept"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:text="@string/toc_accept_checkbox"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/button_proceed"
+        style="@style/Widget.AppCompat.Button"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/custom_button_background"
+        android:text="Login"
+        android:textColor="@drawable/custom_button_text_color"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/text_note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/toc_note"
+        android:textSize="10sp"
+        android:paddingTop="8dp"
+        android:gravity="center_horizontal" /> </LinearLayout>

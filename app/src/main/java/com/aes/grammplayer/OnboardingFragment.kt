@@ -61,7 +61,7 @@ class OnboardingFragment : OnboardingSupportFragment() {
 
     override fun onFinishFragment() {
         super.onFinishFragment()
-        val intent = Intent(requireActivity(), LoginActivity::class.java)
+        val intent = Intent(requireActivity(), TermsActivity::class.java)
         startActivity(intent)
     }
 

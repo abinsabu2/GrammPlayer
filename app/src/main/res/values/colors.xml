@@ -23,4 +23,7 @@
 
     <color name="card_detail_text">#80DEEA</color>
 
+    <color name="link_pressed_color">#00BCD4</color>
+    <color name="link_focused_color">#FF9800</color>
+
 </resources>

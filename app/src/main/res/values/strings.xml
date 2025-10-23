@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">gPlayer</string>
+    <string name="app_name">The gPlayer</string>
     <string name="browse_title">Videos gPlayer</string>
     <string name="related_movies">Related Videos</string>
     <string name="grid_view">Grid View</string>
@@ -18,9 +18,19 @@
     <string name="dismiss_error">Dismiss</string>
     <string name="title_activity_login">LoginActivity</string>
     <string name="title_activity_toc">Terms and Conditions</string>
-    <string name="toc_heading">Terms and Conditions</string>
+    <string name="toc_heading">Our Terms and Conditions</string>
     <string name="toc_content">Please read our terms and conditions carefully. By using this application, you agree to be bound by these terms. If you do not agree to these terms, you may not use this application.</string>
     <string name="privacy_policy_heading">Privacy Policy</string>
     <string name="privacy_policy_content">We are committed to protecting your privacy. This policy outlines how we collect, use, and disclose your personal information. By using this application, you consent to the practices described in this policy.</string>
     <string name="agree_and_continue">Agree and Continue</string>
+    <string name="toc_explanation">Please accept the terms and conditions to proceed.</string>
+    <string name="toc_accept_checkbox">I accept the terms and conditions</string>
+    <string name="toc_proceed_to_login">Proceed to Login</string>
+
+    <string name="toc_note">
+        Note: The GramPlayer app does not facilitate downloading, converting, or streaming content from unauthorised third-party sources such as YouTube, Instagram, or similar services. Instead, it is designed to work exclusively with the user’s personal Telegram account using Telegram’s official TDLib API.
+        The app allows only the authenticated Telegram user to log in with their own account.
+        No external or unauthorised third-party content sources are used.The app follows Telegram’s official API/TDLib usage guidelines.
+        This app functions as a personal Telegram media manager for the signed-in user and does not provide or promote unauthorised downloads from any third-party platforms.
+        Reference : https://core.telegram.org/tdlib and https://core.telegram.org/api</string>
 </resources>
