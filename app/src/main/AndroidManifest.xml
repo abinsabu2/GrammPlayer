@@ -25,11 +25,11 @@
         android:theme="@style/Theme.GrammPlayer">
         <activity
             android:name=".OnboardingActivity"
-            android:banner="@drawable/app_icon_your_company"
-            android:exported="true"
-            android:icon="@drawable/app_icon_your_company"
+            android:banner="@drawable/gp_banner"
+            android:icon="@drawable/gp_banner"
+            android:logo="@drawable/gp_logo"
             android:label="@string/app_name"
-            android:logo="@drawable/app_icon_your_company"
+            android:exported="true"
             android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

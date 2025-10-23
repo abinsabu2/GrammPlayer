@@ -17,4 +17,10 @@
     <string name="error_fragment_message">An error occurred</string>
     <string name="dismiss_error">Dismiss</string>
     <string name="title_activity_login">LoginActivity</string>
+    <string name="title_activity_toc">Terms and Conditions</string>
+    <string name="toc_heading">Terms and Conditions</string>
+    <string name="toc_content">Please read our terms and conditions carefully. By using this application, you agree to be bound by these terms. If you do not agree to these terms, you may not use this application.</string>
+    <string name="privacy_policy_heading">Privacy Policy</string>
+    <string name="privacy_policy_content">We are committed to protecting your privacy. This policy outlines how we collect, use, and disclose your personal information. By using this application, you consent to the practices described in this policy.</string>
+    <string name="agree_and_continue">Agree and Continue</string>
 </resources>
