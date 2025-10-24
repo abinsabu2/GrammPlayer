@@ -49,10 +49,10 @@ class TermsActivity : Activity() {  // Or extend Activity if you prefer
 
         // Set click listeners to show popup with WebView
         termsText.setOnClickListener {
-            showWebViewDialog("https://sites.google.com/view/grammplayer/terms-conditions")  // Replace with actual URL
+            showWebViewDialog("https://abinsabu2.github.io/GrammPlayer/terms-conditions.html")  // Replace <your-username> with your GitHub username
         }
         privacyText.setOnClickListener {
-            showWebViewDialog("https://sites.google.com/view/grammplayer/privacy-policy")  // Replace with actual URL
+            showWebViewDialog("https://abinsabu2.github.io/GrammPlayer/privacy-policy.html")  // Replace <your-username> with your GitHub username
         }
 
         // Proceed button click
