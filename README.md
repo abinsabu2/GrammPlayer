@@ -15,7 +15,7 @@ To build and run this project, you will need [Android Studio](https://developer.
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/<your-username>/GrammPlayer.git
+    git clone https://github.com/abinsabu2/GrammPlayer.git
     ```
 2.  Open the project in Android Studio.
 3.  Build the project. This will download all the necessary dependencies.
@@ -40,6 +40,11 @@ This project includes `privacy-policy.html` and `terms-conditions.html` files. T
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request.
+
+## References
+
+*   [TDLib (Telegram Database Library)](https://core.telegram.org/tdlib): The official TDLib documentation.
+*   [Telegram API](https://core.telegram.org/api): The official Telegram API documentation.
 
 ## License
 
