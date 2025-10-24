@@ -1,20 +1,12 @@
 package com.aes.grammplayer
 
-import java.util.Collections
 import java.util.Timer
-import java.util.TimerTask
-
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import androidx.leanback.app.BackgroundManager
 import androidx.leanback.app.BrowseSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.leanback.widget.HeaderItem
-import androidx.leanback.widget.ImageCardView
 import androidx.leanback.widget.ListRow
 import androidx.leanback.widget.ListRowPresenter
 import androidx.leanback.widget.OnItemViewClickedListener
@@ -22,38 +14,23 @@ import androidx.leanback.widget.OnItemViewSelectedListener
 import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row
 import androidx.leanback.widget.RowPresenter
-import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
-import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
-import com.aes.grammplayer.MessageGridFragment.Companion.ARG_CHAT_ID
-
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.SimpleTarget
-import com.bumptech.glide.request.transition.Transition
 import org.drinkless.tdlib.TdApi
-import kotlin.text.ifEmpty
 
 /**
  * Loads a grid of cards with movies to browse.
  */
 class MainFragment : BrowseSupportFragment() {
 
-    private val mHandler = Handler(Looper.myLooper()!!)
-    private lateinit var mBackgroundManager: BackgroundManager
-    private var mDefaultBackground: Drawable? = null
-    private lateinit var mMetrics: DisplayMetrics
     private var mBackgroundTimer: Timer? = null
-    private var mBackgroundUri: String? = null
 
-    private val chatList = mutableListOf<String>()
-
-    // In your Activity or Fragment's onCreate/onCreateView method
+    // In your Activity or Fragment\'s onCreate/onCreateView method
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
     }
@@ -61,6 +38,16 @@ class MainFragment : BrowseSupportFragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         Log.i(TAG, "onCreate")
         super.onActivityCreated(savedInstanceState)
+
+        // Setup UI elements directly here
+        title = getString(R.string.app_name)
+        headersState = HEADERS_ENABLED // Ensure headers are enabled for the badge to show
+        isHeadersTransitionOnBackEnabled = true
+        brandColor = ContextCompat.getColor(requireActivity(), R.color.background_gradient_start)
+        
+        // Set the brand logo using badgeDrawable, which typically aligns to the top-right in RTL contexts
+        badgeDrawable = ContextCompat.getDrawable(requireActivity(), R.drawable.gp_logo_bk_bg)
+
         loadRows()
         setupEventListeners()
     }
@@ -82,7 +69,7 @@ class MainFragment : BrowseSupportFragment() {
         val settingsGridPresenter = GridItemPresenter() // Can reuse the same presenter
         val settingsRowAdapter = ArrayObjectAdapter(settingsGridPresenter)
 
-        // Add items to your settings row. We'll use simple strings.
+        // Add items to your settings row. We\'ll use simple strings.
         settingsRowAdapter.add("Clear Cache")
         settingsRowAdapter.add("Take A break")
 
@@ -94,7 +81,7 @@ class MainFragment : BrowseSupportFragment() {
             val gridRowAdapter = ArrayObjectAdapter(mGridPresenter)
             gridRowAdapter.add(chat) // Add the chat object to the row
 
-            // Create the header for the row using the chat's ID and title.
+            // Create the header for the row using the chat\'s ID and title.
             val header = HeaderItem(chat.id, chat.title)
 
             // Add the new row (header + items adapter) to the main adapter.
@@ -146,7 +133,7 @@ class MainFragment : BrowseSupportFragment() {
             itemViewHolder: Presenter.ViewHolder?, item: Any?,
             rowViewHolder: RowPresenter.ViewHolder, row: Row
         ) {
-            // Can add logic here if you want the background to change on selection, etc.
+            // Toast.makeText(requireContext(), "Clicked on: $item", Toast.LENGTH_SHORT).show()
         }
     }
 

@@ -1,0 +1,5 @@
+<resources>
+    <!-- Custom dimensions for the app logo -->
+    <dimen name="app_logo_width">120dp</dimen>
+    <dimen name="app_logo_height">60dp</dimen>
+</resources>

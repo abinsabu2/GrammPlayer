@@ -3,6 +3,7 @@ package com.aes.grammplayer
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.leanback.app.VerticalGridSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
@@ -16,6 +17,7 @@ import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
+import androidx.core.content.ContextCompat // Added import for ContextCompat
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -27,6 +29,9 @@ class MessageGridFragment : VerticalGridSupportFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
+        // Set the brand logo using badgeDrawable
+        //badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
+
         setupGrid()
         loadMessages()
         setupEventListeners()
