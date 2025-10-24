@@ -4,7 +4,7 @@
     <color name="fastlane_background">#0096a6</color>
     <color name="search_opaque">#FFAB40</color>
     <color name="selected_background">#000000</color>
-    <color name="default_background">#0096a6</color>
+    <color name="default_background">#00A693</color>
     <!-- ... your existing colors ... -->
     <color name="selected_border_color">#00E5FF</color>
 

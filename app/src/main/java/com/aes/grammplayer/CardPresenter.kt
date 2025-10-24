@@ -135,7 +135,7 @@ class CardPresenter : Presenter() {
             append(title)
             val titleEnd = length
             setSpan(StyleSpan(android.graphics.Typeface.BOLD), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(AbsoluteSizeSpan(18, true), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(AbsoluteSizeSpan(14, true), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(ForegroundColorSpan(sTitleTextColor), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
             append("\n\n") // Spacing
