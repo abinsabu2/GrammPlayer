@@ -34,8 +34,8 @@ object TelegramClientManager {
         Client.execute(TdApi.SetLogVerbosityLevel(1))
 
         val parameters = TdApi.SetTdlibParameters().apply {
-            apiId = 21805799
-            apiHash = "b74b95eace7c9327effac15b6a0c8d91"
+            apiId = BuildConfig.API_ID
+            apiHash = BuildConfig.API_HASH
             systemLanguageCode = "en"
             deviceModel = "Android TV"
             systemVersion = "10"

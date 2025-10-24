@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -17,6 +20,20 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use {
+                localProperties.load(it)
+            }
+        }
+
+        val apiId: Int = localProperties.getProperty("api_key")?.toIntOrNull() ?: error("API Key not found in local.properties")
+        val apiHash: String = localProperties.getProperty("api_hash") ?: error("API Hash not found in local.properties")
+
+        buildConfigField("int", "API_ID", apiId.toString())
+        buildConfigField("String", "API_HASH", "\"$apiHash\"")
+
     }
 
     buildTypes {
@@ -28,6 +45,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -37,18 +55,26 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    // 🔥 Dynamically rename release APK
+    applicationVariants.all {
+        outputs.all {
+            val appName = "tgPlayer"
+            val variant = this@all
+            val versionCode = variant.versionCode
+            val newApkName =
+                "${appName}_v${versionName}_(${versionCode})_release.apk"
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                newApkName
+        }
     }
 }
 
 dependencies {
-    // --- FIX IS HERE: Explicitly define a newer version for Leanback ---
-    // The default version in your version catalog is likely 1.0.0.
-    // Version 1.2.0-alpha02 or higher is needed for the 'windowAlignment' property.
-    implementation("androidx.leanback:leanback:1.2.0-alpha02")
-
-    // Other dependencies (no changes needed here)
+    implementation(libs.androidx.leanback)
     implementation(libs.androidx.core.ktx)
-    // implementation(libs.androidx.leanback) // This line is now replaced by the one above
     implementation(libs.glide)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
