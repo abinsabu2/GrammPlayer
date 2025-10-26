@@ -70,9 +70,8 @@ class MainFragment : BrowseSupportFragment() {
         val settingsRowAdapter = ArrayObjectAdapter(settingsGridPresenter)
 
         // Add items to your settings row. We\'ll use simple strings.
-        settingsRowAdapter.add("Clear Cache")
         settingsRowAdapter.add("Take A break")
-
+        settingsRowAdapter.add("Clear Cache")
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
         // --- End of new logic ---
         // --- 1. LOAD CHAT ROWS (existing logic) ---
@@ -114,7 +113,10 @@ class MainFragment : BrowseSupportFragment() {
                     when (item) {
                         "Clear Cache" -> {
                             val deletedCount = TelegramClientManager.clearDownloadedFiles()
-                            Toast.makeText(requireContext(), "Cleared $deletedCount downloaded files from cache.", Toast.LENGTH_SHORT).show()
+                            val appDirectorySize = TelegramClientManager.getDirectorySize()
+                            val cacheClearText = "Cleared $deletedCount downloaded files from cache.\n"
+                            val sizeClearText = "$appDirectorySize MB of app directory size saved"
+                            Toast.makeText(requireContext(), "$cacheClearText $sizeClearText", Toast.LENGTH_SHORT).show()
                         }
                         "Take A break" -> {
                             requireActivity().finish()

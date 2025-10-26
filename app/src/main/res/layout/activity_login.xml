@@ -13,35 +13,56 @@
         android:id="@+id/titleTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Sign In to GrammPlayer"
+        android:text="@string/connect_with_telegram"
         android:textColor="@android:color/white"
         android:textSize="36sp"
-        app:layout_constraintBottom_toTopOf="@+id/phoneNumberEditText"
+        app:layout_constraintBottom_toTopOf="@id/countryCodeEditText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.6"
         app:layout_constraintVertical_chainStyle="packed" />
 
-    <!-- Phone Number Input Field -->
+    <!-- Country Code Input Field -->
     <EditText
-        android:id="@+id/phoneNumberEditText"
-        android:layout_width="320dp"
+        android:id="@+id/countryCodeEditText"
+        android:layout_width="80dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:background="@drawable/edit_text_background"
-        android:hint="+15555555555"
+        android:hint="+1"
+        android:imeOptions="actionNext"
         android:inputType="phone"
         android:maxLines="1"
         android:padding="16dp"
         android:textColor="@android:color/white"
         android:textColorHint="#CCCCCC"
         android:textSize="24sp"
-        app:layout_constraintBottom_toTopOf="@+id/authCodeEditText"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_chainStyle="packed"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/phoneNumberEditText"
         app:layout_constraintTop_toBottomOf="@id/titleTextView"
-        android:imeOptions="actionNext" />
+        app:layout_constraintBottom_toTopOf="@id/authCodeEditText" />
+
+    <!-- Phone Number Input Field -->
+    <EditText
+        android:id="@+id/phoneNumberEditText"
+        android:layout_width="232dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="24dp"
+        android:background="@drawable/edit_text_background"
+        android:hint="5555555555"
+        android:imeOptions="actionNext"
+        android:inputType="phone"
+        android:maxLines="1"
+        android:padding="16dp"
+        android:textColor="@android:color/white"
+        android:textColorHint="#CCCCCC"
+        android:textSize="24sp"
+        app:layout_constraintBaseline_toBaselineOf="@id/countryCodeEditText"
+        app:layout_constraintStart_toEndOf="@id/countryCodeEditText"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Auth Code Input Field -->
     <EditText
@@ -58,7 +79,7 @@
         android:textColorHint="#CCCCCC"
         android:textSize="24sp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/submitButton"
+        app:layout_constraintBottom_toTopOf="@id/submitButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/phoneNumberEditText"
@@ -77,7 +98,7 @@
         android:text="Submit"
         android:textColor="@drawable/custom_button_text_color"
         android:textSize="20sp"
-        app:layout_constraintBottom_toTopOf="@+id/logScrollView"
+        app:layout_constraintBottom_toTopOf="@id/logScrollView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/authCodeEditText" />

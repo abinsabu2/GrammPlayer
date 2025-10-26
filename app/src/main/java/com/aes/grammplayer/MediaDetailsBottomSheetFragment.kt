@@ -16,6 +16,9 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import org.drinkless.tdlib.TdApi
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
@@ -61,9 +64,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         // 4. Observe global updates
         TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
-            if (update.file.id == message.fileId) {
-                handleFileUpdate(update)
-            }
+            handleFileUpdate(update)
         }
     }
 
@@ -92,7 +93,8 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
      */
     private fun populateInitialData(message: MediaMessage) {
         view?.findViewById<TextView>(R.id.detail_title)?.text = message.title ?: "No Title"
-        view?.findViewById<TextView>(R.id.detail_description)?.text = message.description ?: "No Description"
+        // Todo Api to fetch description from other website based on Movie details
+        //view?.findViewById<TextView>(R.id.detail_description)?.text = message.description ?: "No Description"
         val fileSizeMb = if (message.size > 0) String.format("%.2f MB", message.size / 1024.0 / 1024.0) else "N/A"
         view?.findViewById<TextView>(R.id.detail_file_info)?.text = "File ID: ${message.fileId}\nSize: $fileSizeMb"
 
@@ -135,41 +137,44 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             // Reset autoplay flag so it can trigger again on next download
             hasAutoPlayed = false
             logInfo("Download stopped and cancelled by user.")
+            logInfo("Cache Cleared automatically!")
         }
 
         view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
-            mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
             dismiss()
         }
     }
 
     private fun handleFileUpdate(update: TdApi.UpdateFile) {
-        val file = update.file
-        val progress = if (file.expectedSize > 0) (file.local.downloadedSize * 100 / file.expectedSize).toInt() else 0
-        val downloadedMb = file.local.downloadedSize.toFloat() / (1024 * 1024)
 
-        currentDownload = DownloadingFileInfo(file.id, downloadedMb, file.expectedSize.toFloat() / (1024 * 1024), progress, file.local.path.takeIf { it.isNotEmpty() })
+        val file = update.file
+        val downloaded = file.local.downloadedSize
+        val expected = file.expectedSize
+        val progress = if (expected > 0) (downloaded * 100 / expected).toInt() else 0
+        val downloadedSize = file.local.downloadedSize.toFloat() / (1024 * 1024)
+        val totalSize = file.expectedSize.toFloat() / (1024 * 1024)
+        val fileId = file.id
+
+        currentDownload = DownloadingFileInfo(file.id, downloadedSize,  totalSize, progress, file.local.path.takeIf { it.isNotEmpty() })
 
         activity?.runOnUiThread {
-            downloadStatusText.text = String.format("Downloading: %d%% (%.2f/%.2f MB)", progress, downloadedMb, currentDownload?.totalSize)
+            downloadStatusText.text = String.format("Downloading: %d%% (%.2f/%.2f MB)", progress, downloadedSize, currentDownload?.totalSize)
             downloadProgressBar.progress = progress
 
             // Auto-play logic
+            if(file.local.isDownloadingCompleted && !file.local.isDownloadingActive){
+                currentDownload?.localPath = file.local.path
+                mediaMessage?.localPath = file.local.path
+                resetButtonStates(showDownload = false, showPlay = true, isDownloading = false)
+                appendLog("Download completed. Enjoy the Movie!")
+            }
 
-            // Todo add setting for autoplay
-
-            if (progress == 30 && !hasAutoPlayed) {
+            if (file.local.path != null && progress > 30 && !hasAutoPlayed) {
                 hasAutoPlayed = true
                 resetButtonStates(showDownload = false, showPlay = true, isDownloading = true)
                 playWithVLC(requireContext(), currentDownload?.localPath)
             }
 
-            if (progress == 100 && hasAutoPlayed) {
-                mediaMessage?.localPath = file.local.path
-                resetButtonStates(showDownload = false, showPlay = true, isDownloading = false)
-                logInfo("Download completed for file ID: ${file.id}")
-                appendLog("Download completed for file ID: ${file.id}")
-            }
         }
     }
 
@@ -200,7 +205,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(context, "VLC not installed", Toast.LENGTH_SHORT).show()
+            logError("Error while launching VLC Media Player!")
         }
     }
 
@@ -262,17 +267,21 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         activity?.runOnUiThread {
             // Make the log area visible if it's hidden.
             if (logScrollView.visibility == View.GONE) {
-                logScrollView.visibility = View.GONE
+                logScrollView.visibility = View.VISIBLE
             }
-
+            val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val currentLog = logTextView.text.toString()
-            val newLog = "$message"
+            val newLog = if (currentLog.isEmpty()) {
+                "[$timestamp] $message"
+            } else {
+                "[$timestamp] $message\n$currentLog"
+            }
             logTextView.text = newLog
-            // Automatically scroll to the bottom to show the latest message.
+
+            // Auto-scroll to the bottom
             logScrollView.post {
                 logScrollView.fullScroll(View.FOCUS_DOWN)
             }
-            logScrollView.visibility = View.GONE
         }
     }
 

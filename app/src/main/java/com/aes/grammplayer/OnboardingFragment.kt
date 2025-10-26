@@ -12,7 +12,7 @@ import androidx.leanback.app.OnboardingSupportFragment
 
 class OnboardingFragment : OnboardingSupportFragment() {
 
-    private val pageTitles = arrayOf("Welcome To GrammPlayer", "Discover Latest Movies!", "Enjoy Your Favorites")
+    private val pageTitles = arrayOf("Welcome To The GramPlayer", "Discover Latest Movies!", "Enjoy Your Favorites")
     private val pageDescriptions = arrayOf(
         "The Ultimate Movie Experience For Your TV.",
         "Explore A Vast Library Of Movies And Curated Playlists.",

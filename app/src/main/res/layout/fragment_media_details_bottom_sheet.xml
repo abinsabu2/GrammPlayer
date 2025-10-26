@@ -45,6 +45,7 @@
         android:layout_marginTop="8dp"
         android:text="Description of the media file."
         android:textColor="#E0E0E0"
+        android:visibility="gone"
         android:textSize="14sp" />
 
     <TextView
@@ -141,7 +142,7 @@
         android:layout_marginTop="16dp"
         android:background="#1C1C1C"
         android:padding="8dp"
-        android:visibility="gone"
+        android:visibility="visible"
         tools:visibility="visible">
 
         <TextView

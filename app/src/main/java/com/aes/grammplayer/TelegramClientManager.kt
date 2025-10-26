@@ -18,6 +18,7 @@ object TelegramClientManager {
 
     // --- NEW: To hold the currently active storage path ---
     private var activeStoragePath: String = ""
+    private var activeFileDirectory: String = ""
 
     /**
      * Initializes the TDLib client, automatically selecting the best storage location.
@@ -32,7 +33,7 @@ object TelegramClientManager {
 
         client = Client.create(TdLibUpdateHandler, null, null)
         Client.execute(TdApi.SetLogVerbosityLevel(1))
-
+        activeFileDirectory = "$activeStoragePath/files"
         val parameters = TdApi.SetTdlibParameters().apply {
             apiId = BuildConfig.API_ID
             apiHash = BuildConfig.API_HASH
@@ -45,7 +46,7 @@ object TelegramClientManager {
             useMessageDatabase = true
             useSecretChats = false
             // Tell TDLib that the files directory is within our chosen path
-            filesDirectory = activeStoragePath + "/files"
+            filesDirectory = activeFileDirectory
         }
         client?.send(parameters, TdLibUpdateHandler)
     }
@@ -101,7 +102,7 @@ object TelegramClientManager {
 
         subdirectoriesToClear.forEach { subdir ->
             // Construct path based on the active storage directory
-            val directory = File(activeStoragePath, subdir)
+            val directory = File(activeFileDirectory, subdir)
             if (directory.exists() && directory.isDirectory) {
                 directory.walkTopDown().forEach { file ->
                     if (file.isFile && file.delete()) {
@@ -112,6 +113,26 @@ object TelegramClientManager {
         }
         return deletedFilesCount
     }
+
+    /**
+     * NEW: Calculates the size of the activeFileDirectory and its contents.
+     * @return The total size in MB, or 0.0 if the directory does not exist.
+     */
+    fun getDirectorySize(): Double {
+        val directory = File(activeFileDirectory)
+        if (!directory.exists() || !directory.isDirectory) {
+            return 0.0
+        }
+
+        var totalSize = 0L
+        directory.walkTopDown().forEach { file ->
+            if (file.isFile) {
+                totalSize += file.length()
+            }
+        }
+        return totalSize / (1024.0 * 1024.0)
+    }
+
     fun sendPhoneNumber(phone: String) {
         client?.send(TdApi.SetAuthenticationPhoneNumber(phone, null), TdLibUpdateHandler)
     }
@@ -202,7 +223,9 @@ object TelegramClientManager {
                     size = file.size,
                     // Thumbnail properties
                     thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
-                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() } // Use thumbnail for card image
+                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
+                    isDownloaded = file.local.isDownloadingCompleted,
+                    isDownloadActive = file.local.isDownloadingActive// Use thumbnail for card image
                 )
             }
 
@@ -228,7 +251,9 @@ object TelegramClientManager {
                     size = file.size,
                     // Thumbnail properties
                     thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
-                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() }
+                    cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
+                    isDownloaded = file.local.isDownloadingCompleted,
+                    isDownloadActive = file.local.isDownloadingActive
                 )
             }
 

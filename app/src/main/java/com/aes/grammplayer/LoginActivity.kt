@@ -19,6 +19,7 @@ import java.util.Locale
 
 class LoginActivity : FragmentActivity() {
 
+    private lateinit var countryCodeEditText: EditText // Declared countryCodeEditText
     private lateinit var phoneNumberEditText: EditText
     private lateinit var authCodeEditText: EditText
     private lateinit var submitButton: Button
@@ -32,6 +33,7 @@ class LoginActivity : FragmentActivity() {
         setContentView(R.layout.activity_login)
 
         // Bind all views
+        countryCodeEditText = findViewById(R.id.countryCodeEditText) // Initialized countryCodeEditText
         phoneNumberEditText = findViewById(R.id.phoneNumberEditText)
         authCodeEditText = findViewById(R.id.authCodeEditText)
         submitButton = findViewById(R.id.submitButton)
@@ -45,8 +47,13 @@ class LoginActivity : FragmentActivity() {
         }
 
         // Observe the authorization state from our central handler
-        TdLibUpdateHandler.authorizationState.observe(this) { authState ->
-            handleAuthorizationState(authState)
+        TdLibUpdateHandler.authError.observe(this) { response ->
+            handleAuthorizationState(response)
+        }
+
+        // Observe the authorization state from our central handler
+        TdLibUpdateHandler.authorizationState.observe(this) { response ->
+            handleAuthorizationState(response)
         }
 
         // Setup button click listener
@@ -58,10 +65,16 @@ class LoginActivity : FragmentActivity() {
                     TelegramClientManager.sendAuthCode(code)
                 }
             } else {
+                val countryCode = countryCodeEditText.text.toString().trim()
+                // Remove all '+' signs and then prepend a single '+'
+                val countryCodeCleaned = "+${countryCode.replace("+", "")}"
                 val phone = phoneNumberEditText.text.toString().trim()
-                if (phone.isNotEmpty()) {
-                    logMessage("Submitting phone number...")
-                    TelegramClientManager.sendPhoneNumber(phone)
+                val fullPhoneNumber = countryCodeCleaned + phone // Concatenate country code and phone number
+                if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
+                    logMessage("Submitting phone number: $fullPhoneNumber")
+                    TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                }else{
+                    logMessage("Please enter a valid phone number.")
                 }
             }
         }
@@ -70,26 +83,28 @@ class LoginActivity : FragmentActivity() {
         setupKeyboardActionListeners()
     }
 
-    private fun handleAuthorizationState(authState: TdApi.AuthorizationState) {
+    private fun handleAuthorizationState(response : TdApi.Object?) {
         runOnUiThread {
-            when (authState) {
+            when (response) {
                 is TdApi.AuthorizationStateWaitTdlibParameters -> {
                     logMessage("Waiting for TDLib parameters...")
                 }
                 is TdApi.AuthorizationStateWaitPhoneNumber -> {
                     logMessage("Please enter your phone number.")
                     isWaitingForCode = false
+                    countryCodeEditText.visibility = View.VISIBLE // Show country code field
                     phoneNumberEditText.visibility = View.VISIBLE
                     authCodeEditText.visibility = View.GONE
-                    submitButton.text = "Submit Phone Number"
-                    phoneNumberEditText.requestFocus()
+                    submitButton.text = "Submit"
+                    countryCodeEditText.requestFocus() // Request focus on country code
                 }
                 is TdApi.AuthorizationStateWaitCode -> {
                     logMessage("Please enter the code sent to you.")
                     isWaitingForCode = true
-                    phoneNumberEditText.visibility = View.GONE
+                    countryCodeEditText.visibility = View.GONE // Hide country code field
+                    phoneNumberEditText.visibility = View.GONE // Hide phone number field
                     authCodeEditText.visibility = View.VISIBLE
-                    submitButton.text = "Submit Code"
+                    submitButton.text = "Submit"
                     authCodeEditText.requestFocus()
                 }
                 is TdApi.AuthorizationStateReady -> {
@@ -97,9 +112,10 @@ class LoginActivity : FragmentActivity() {
                     Toast.makeText(this, "Login Successful!", Toast.LENGTH_LONG).show()
                     navigateToMainApp()
                 }
+                is TdApi.Error -> logMessage(response.message.toString())
                 is TdApi.AuthorizationStateClosing -> logMessage("Closing session...")
                 is TdApi.AuthorizationStateClosed -> logMessage("Session closed.")
-                else -> logMessage("Unhandled auth state: ${authState.javaClass.simpleName}")
+                else -> logMessage("Unhandled auth state")
             }
         }
     }
@@ -115,13 +131,18 @@ class LoginActivity : FragmentActivity() {
      * Sets up listeners on the EditText fields to handle IME actions (like "Next" and "Done").
      */
     private fun setupKeyboardActionListeners() {
+        // Listener for the Country Code field
+        countryCodeEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT) {
+                hideKeyboard()
+            }
+            false
+        }
+
         // Listener for the Phone Number field
         phoneNumberEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_NEXT) {
-                // When "Next" is pressed, simulate a click on the submit button.
-                // The auth state handler will then move focus to the code field.
-                submitButton.performClick()
-                return@setOnEditorActionListener true
+                hideKeyboard()
             }
             false
         }
@@ -129,10 +150,7 @@ class LoginActivity : FragmentActivity() {
         // Listener for the Auth Code field
         authCodeEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                // When "Done" is pressed, hide the keyboard and click the submit button.
                 hideKeyboard()
-                submitButton.performClick()
-                return@setOnEditorActionListener true
             }
             false
         }
@@ -158,7 +176,11 @@ class LoginActivity : FragmentActivity() {
             }
             val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val currentLog = logTextView.text.toString()
-            val newLog = if (currentLog.isEmpty()) "[$timestamp] $message" else "$currentLog\n[$timestamp] $message"
+            val newLog = if (currentLog.isEmpty()) {
+                "[$timestamp] $message"
+            } else {
+                "[$timestamp] $message\n$currentLog"
+            }
             logTextView.text = newLog
 
             // Auto-scroll to the bottom

@@ -33,4 +33,5 @@
         No external or unauthorised third-party content sources are used.The app follows Telegram’s official API/TDLib usage guidelines.
         This app functions as a personal Telegram media manager for the signed-in user and does not provide or promote unauthorised downloads from any third-party platforms.
         Reference : https://core.telegram.org/tdlib and https://core.telegram.org/api</string>
+    <string name="connect_with_telegram">Connect with Telegram</string>
 </resources>

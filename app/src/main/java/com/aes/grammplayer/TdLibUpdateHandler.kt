@@ -17,12 +17,15 @@ object TdLibUpdateHandler : Client.ResultHandler {
     private val _fileUpdate = MutableLiveData<TdApi.UpdateFile>()
     val fileUpdate: LiveData<TdApi.UpdateFile> = _fileUpdate
 
+    private val _authError = MutableLiveData<TdApi.Error>()
+    val authError: LiveData<TdApi.Error> = _authError
+
     /**
      * This 'invoke' method is the entry point for all TDLib updates.
      * It categorizes the update and posts it to the appropriate LiveData stream.
      */
     override fun onResult(obj: TdApi.Object) {
-        when (obj?.constructor) {
+        when (obj.constructor) {
             TdApi.UpdateAuthorizationState.CONSTRUCTOR -> {
                 val authState = (obj as TdApi.UpdateAuthorizationState).authorizationState
                 Log.d("TdLibUpdateHandler", "Global Auth state: ${authState.javaClass.simpleName}")
@@ -36,8 +39,9 @@ object TdLibUpdateHandler : Client.ResultHandler {
             }
 
             TdApi.Error.CONSTRUCTOR -> {
-                val error = obj as TdApi.Error
-                Log.e("TdLibUpdateHandler", "Global Error: [${error.code}] ${error.message}")
+                val authError = (obj as TdApi.Error)
+                _authError.postValue(authError)
+
             }
 
             else -> {

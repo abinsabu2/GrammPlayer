@@ -31,7 +31,6 @@ class CardPresenter : Presenter() {
     override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
         Log.d(TAG, "onCreateViewHolder")
         val context = parent.context
-
         // Initialize colors once
         if (sDefaultBackgroundColor == 0) {
             sDefaultBackgroundColor = ContextCompat.getColor(context, R.color.default_background)
