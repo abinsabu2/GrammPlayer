@@ -175,11 +175,11 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             // Auto-play logic
             if(file.local.isDownloadingCompleted && !file.local.isDownloadingActive){
                 currentDownload?.localPath = file.local.path
-                resetButtonStates(showDownload = false, showPlay = true, isDownloading = false)
+                resetButtonStates(showDownload = true, showPlay = true, isDownloading = false)
                 appendLog("Download completed. Enjoy the Movie!")
             }
 
-            if (file.local.path != null && progress > 30 && !hasAutoPlayed) {
+            if (mediaMessage?.localPath != null && progress > 30 && !hasAutoPlayed) {
                 hasAutoPlayed = true
                 resetButtonStates(showDownload = false, showPlay = true, isDownloading = true)
                 playWithVLC(requireContext(), currentDownload?.localPath)
