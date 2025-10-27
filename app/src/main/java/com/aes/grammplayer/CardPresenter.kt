@@ -184,7 +184,7 @@ class CardPresenter : Presenter() {
     companion object {
         private const val TAG = "CardPresenter"
         // Let's use a more rectangular shape for text
-        private const val CARD_WIDTH = 600
+        private const val CARD_WIDTH = 580
         private const val CARD_HEIGHT = 400
 
         // Add these two lines

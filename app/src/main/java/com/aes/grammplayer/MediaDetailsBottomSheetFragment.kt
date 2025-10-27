@@ -84,7 +84,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         downloadProgressBar = view.findViewById(R.id.download_progress_bar)
         stopDownloadButton = view.findViewById(R.id.stop_download_button)
         availableStorageTextView = view.findViewById(R.id.available_storage_text)
-        logScrollView = view.findViewById(R.id.log_scroll_view)
+        //logScrollView = view.findViewById(R.id.log_scroll_view)
         logTextView = view.findViewById(R.id.log_text_view)
     }
 
@@ -102,7 +102,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         // Set initial button state based on whether the file is already downloaded
         val localFileExists = !message.localPath.isNullOrEmpty() && File(message.localPath).exists()
-        resetButtonStates(showPlay = localFileExists, showDownload = !localFileExists)
+        resetButtonStates(showPlay = localFileExists, showDownload = !localFileExists, isDownloading = false)
     }
 
     /**
@@ -164,7 +164,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             // Auto-play logic
             if(file.local.isDownloadingCompleted && !file.local.isDownloadingActive){
                 currentDownload?.localPath = file.local.path
-                mediaMessage?.localPath = file.local.path
                 resetButtonStates(showDownload = false, showPlay = true, isDownloading = false)
                 appendLog("Download completed. Enjoy the Movie!")
             }
@@ -266,8 +265,8 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         // Ensure UI updates are on the main thread.
         activity?.runOnUiThread {
             // Make the log area visible if it's hidden.
-            if (logScrollView.visibility == View.GONE) {
-                logScrollView.visibility = View.VISIBLE
+            if (logTextView.visibility == View.GONE) {
+                logTextView.visibility = View.VISIBLE
             }
             val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val currentLog = logTextView.text.toString()
@@ -278,10 +277,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             }
             logTextView.text = newLog
 
-            // Auto-scroll to the bottom
-            logScrollView.post {
-                logScrollView.fullScroll(View.FOCUS_DOWN)
-            }
         }
     }
 

@@ -54,7 +54,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:lineSpacingExtra="4dp"
-        android:text="File ID: 12345\nSize: 12.34 MB"
+        android:text="File ID: 12345
+Size: 12.34 MB"
         android:textColor="#B0B0B0"
         android:textSize="12sp" />
 
@@ -111,7 +112,9 @@
             android:textColor="@drawable/custom_button_text_color"
             style="@style/Widget.AppCompat.Button"
             android:visibility="gone"
-            android:text="Stop"/>
+            android:textAlignment="textStart"
+            android:drawableLeft="@android:drawable/ic_delete"
+            android:text="@string/stop"/>
 
         <Button
             android:id="@+id/detail_play_button"
@@ -122,7 +125,10 @@
             android:textColor="@drawable/custom_button_text_color"
             style="@style/Widget.AppCompat.Button"
             android:visibility="gone"
-            android:text="Play"/>
+            android:text="@string/play"
+            android:textAlignment="textStart"
+            android:drawableLeft="@android:drawable/ic_media_play"
+            android:drawablePadding="8dp"/>
 
         <Button
             android:id="@+id/detail_download_button"
@@ -130,29 +136,21 @@
             android:layout_height="wrap_content"
             android:background="@drawable/custom_button_background"
             android:textColor="@drawable/custom_button_text_color"
+            android:drawableLeft="@android:drawable/ic_menu_save"
+            android:textAlignment="textStart"
             style="@style/Widget.AppCompat.Button"
-            android:text="Save" />
+            android:text="@string/save" />
     </LinearLayout>
 
     <!-- LOGGING AREA (MOVED TO BOTTOM) -->
-    <ScrollView
-        android:id="@+id/log_scroll_view"
+    <TextView
+        android:id="@+id/log_text_view"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:layout_marginTop="16dp"
-        android:background="#1C1C1C"
-        android:padding="8dp"
-        android:visibility="visible"
-        tools:visibility="visible">
-
-        <TextView
-            android:id="@+id/log_text_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:textColor="#FF6B6B"
-            android:textSize="10sp"
-            tools:text="[ERROR] Not enough storage.\n[INFO] Download cancelled."/>
-    </ScrollView>
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:textColor="#FF6B6B"
+        android:textSize="10sp"
+        tools:text="[ERROR] Not enough storage.
+[INFO] Download cancelled."/>
 
 </LinearLayout>
