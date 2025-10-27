@@ -64,8 +64,12 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         // 4. Observe global updates
         TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
+            val id = update.file.id
+            val belongsToThisCard = (id == message.fileId)
+            if (!belongsToThisCard) return@observe
             handleFileUpdate(update)
         }
+
     }
 
     /**
@@ -133,6 +137,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         stopDownloadButton.setOnClickListener {
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
+            mediaMessage?.localPath?.let { File(it).delete() }
             resetButtonStates(showDownload = true, showPlay = false, isDownloading = false)
             // Reset autoplay flag so it can trigger again on next download
             hasAutoPlayed = false
@@ -142,6 +147,9 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
             dismiss()
+            mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
+            mediaMessage?.localPath?.let { File(it).delete() }
+            resetButtonStates(showDownload = true, showPlay = false, isDownloading = false)
         }
     }
 
