@@ -18,6 +18,7 @@ import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.core.content.ContextCompat // Added import for ContextCompat
+import androidx.fragment.app.DialogFragment
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -64,10 +65,16 @@ class MessageGridFragment : VerticalGridSupportFragment() {
             ) {
                 if (item is MediaMessage) {
                     // --- NEW LOGIC: SHOW BOTTOM SHEET ---
-                    // Create an instance of the bottom sheet with the clicked media message
+                    // Dismiss any existing bottom sheet to ensure we don't stack them
+                    val existing = parentFragmentManager.findFragmentByTag(MediaDetailsBottomSheetFragment.TAG)
+                    if (existing != null && existing is DialogFragment) {
+                        existing.dismiss()
+                    }
+
+                    // Create a new instance of the bottom sheet with the clicked media message
                     val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(item)
 
-                    // Show the bottom sheet using the fragment manager
+                    // Show the new bottom sheet using the fragment manager
                     bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.TAG)
                 }
             }

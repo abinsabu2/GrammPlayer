@@ -76,7 +76,7 @@ Size: 12.34 MB"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_marginTop="16dp"
-        android:visibility="gone">
+        android:visibility="visible">
 
         <TextView
             android:id="@+id/download_status_text"
@@ -138,6 +138,7 @@ Size: 12.34 MB"
             android:textColor="@drawable/custom_button_text_color"
             android:drawableLeft="@android:drawable/ic_menu_save"
             android:textAlignment="textStart"
+            android:visibility="gone"
             style="@style/Widget.AppCompat.Button"
             android:text="@string/save" />
     </LinearLayout>

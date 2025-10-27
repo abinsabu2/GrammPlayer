@@ -62,17 +62,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         // 3. Set up all listeners
         setupEventListeners(message)
 
-        // 4. Observe global updates
-        TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
-            val id = update.file.remote.uniqueId
-            val belongsToThisCard = (id == message.uniqueId)
-            if (!belongsToThisCard) {
-                logInfo("Debug log!: Update belongs to another card. Id: $id, Expected: ${message.uniqueId}")
-                return@observe
-            }
-            handleFileUpdate(update)
-        }
-
     }
 
     /**
@@ -107,9 +96,12 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         updateAvailableStorageText()
 
+        hasAutoPlayed = false
+
         // Set initial button state based on whether the file is already downloaded
         val localFileExists = !message.localPath.isNullOrEmpty() && File(message.localPath).exists()
-        resetButtonStates(showPlay = localFileExists, showDownload = !localFileExists, isDownloading = false)
+        setPlayButtonVisibility(localFileExists)
+        setDownloadButtonVisibility(true)
     }
 
     /**
@@ -123,8 +115,12 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             }
             if (message.fileId != 0) {
                 logInfo("Download command sent for file ID: ${message.fileId}")
-                resetButtonStates(isDownloading = true)
                 TelegramClientManager.startFileDownload(message.fileId)
+                TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
+                    handleFileUpdate(update)
+                }
+                setDownloadButtonVisibility(false)
+                setStopDownloadButtonVisibility(true)
             }
         }
 
@@ -141,18 +137,20 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         stopDownloadButton.setOnClickListener {
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
             mediaMessage?.localPath?.let { File(it).delete() }
-            resetButtonStates(showDownload = true, showPlay = false, isDownloading = false)
-            // Reset autoplay flag so it can trigger again on next download
-            hasAutoPlayed = false
-            logInfo("Download stopped and cancelled by user.")
-            logInfo("Cache Cleared automatically!")
+            setPlayButtonVisibility(false)
+            setDownloadButtonVisibility(true)
+            setStopDownloadButtonVisibility(false)
+            logInfo("Download stopped and cancelled by user. Cache Cleared!")
+            mediaMessage = null
+            currentDownload = null
+            dismiss()
         }
 
         view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
-            dismiss()
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
-            mediaMessage?.localPath?.let { File(it).delete() }
-            resetButtonStates(showDownload = true, showPlay = false, isDownloading = false)
+            mediaMessage = null
+            currentDownload = null
+            dismiss()
         }
     }
 
@@ -173,15 +171,13 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             downloadProgressBar.progress = progress
 
             // Auto-play logic
-            if(file.local.isDownloadingCompleted && !file.local.isDownloadingActive){
+            if(progress == 100){
                 currentDownload?.localPath = file.local.path
-                resetButtonStates(showDownload = true, showPlay = true, isDownloading = false)
-                appendLog("Download completed. Enjoy the Movie!")
+                setPlayButtonVisibility(true)
             }
 
-            if (mediaMessage?.localPath != null && progress > 30 && !hasAutoPlayed) {
+            if (progress > 5 && !hasAutoPlayed) {
                 hasAutoPlayed = true
-                resetButtonStates(showDownload = false, showPlay = true, isDownloading = true)
                 playWithVLC(requireContext(), currentDownload?.localPath)
             }
 
@@ -219,14 +215,17 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         }
     }
 
-    /**
-     * OPTIMIZED: Manages the visibility of all action buttons based on the current state.
-     */
-    private fun resetButtonStates(showPlay: Boolean = false, showDownload: Boolean = false, isDownloading: Boolean = false) {
-        playButton.visibility = if (showPlay) View.VISIBLE else View.GONE
-        downloadButton.visibility = if (showDownload) View.VISIBLE else View.GONE
-        downloadProgressContainer.visibility = if (isDownloading) View.VISIBLE else View.GONE
-        stopDownloadButton.visibility = if (isDownloading) View.VISIBLE else View.GONE
+
+    private fun setPlayButtonVisibility(isVisible: Boolean) {
+        playButton.visibility = if (isVisible) View.VISIBLE else View.GONE
+    }
+
+    private fun setDownloadButtonVisibility(isVisible: Boolean) {
+        downloadButton.visibility = if (isVisible) View.VISIBLE else View.GONE
+    }
+
+    private fun setStopDownloadButtonVisibility(isVisible: Boolean) {
+        stopDownloadButton.visibility = if (isVisible) View.VISIBLE else View.GONE
     }
 
     /**
