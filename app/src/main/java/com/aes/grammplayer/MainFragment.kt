@@ -113,10 +113,10 @@ class MainFragment : BrowseSupportFragment() {
                     when (item) {
                         "Clear Cache" -> {
                             val deletedCount = TelegramClientManager.clearDownloadedFiles()
-                            val appDirectorySize = TelegramClientManager.getDirectorySize()
-                            val cacheClearText = "Cleared $deletedCount downloaded files from cache.\n"
-                            val sizeClearText = "$appDirectorySize MB of app directory size saved"
-                            Toast.makeText(requireContext(), "$cacheClearText $sizeClearText", Toast.LENGTH_SHORT).show()
+                            //val appDirectorySize = TelegramClientManager.getDirectorySize()
+                            val cacheClearText = "Cleared $deletedCount downloaded files from cache"
+                            //val sizeClearText = "$appDirectorySize MB of app directory size saved"
+                            Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT).show()
                         }
                         "Take A break" -> {
                             requireActivity().finish()

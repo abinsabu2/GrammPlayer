@@ -225,7 +225,8 @@ object TelegramClientManager {
                     thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
                     cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
                     isDownloaded = file.local.isDownloadingCompleted,
-                    isDownloadActive = file.local.isDownloadingActive// Use thumbnail for card image
+                    isDownloadActive = file.local.isDownloadingActive,// Use thumbnail for card image
+                    uniqueId = file.remote.uniqueId.takeIf { it.isNotEmpty() }
                 )
             }
 
@@ -253,7 +254,8 @@ object TelegramClientManager {
                     thumbnailPath = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
                     cardImageUrl = thumbnail?.file?.local?.path?.takeIf { it.isNotEmpty() },
                     isDownloaded = file.local.isDownloadingCompleted,
-                    isDownloadActive = file.local.isDownloadingActive
+                    isDownloadActive = file.local.isDownloadingActive,
+                    uniqueId = file.remote.uniqueId.takeIf { it.isNotEmpty() }
                 )
             }
 

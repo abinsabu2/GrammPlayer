@@ -32,7 +32,8 @@ data class MediaMessage(
     val cardImageUrl: String? = null, // Main thumbnail for cards
     val backgroundImageUrl: String? = null, // Background image for details screen
     val isDownloaded: Boolean = false,
-    val isDownloadActive: Boolean = false
+    val isDownloadActive: Boolean = false,
+    val uniqueId: String? = null
 ) : Serializable {
 
     override fun toString(): String {

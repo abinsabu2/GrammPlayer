@@ -64,9 +64,12 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         // 4. Observe global updates
         TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
-            val id = update.file.id
-            val belongsToThisCard = (id == message.fileId)
-            if (!belongsToThisCard) return@observe
+            val id = update.file.remote.uniqueId
+            val belongsToThisCard = (id == message.uniqueId)
+            if (!belongsToThisCard) {
+                logInfo("Debug log!: Update belongs to another card. Id: $id, Expected: ${message.uniqueId}")
+                return@observe
+            }
             handleFileUpdate(update)
         }
 
