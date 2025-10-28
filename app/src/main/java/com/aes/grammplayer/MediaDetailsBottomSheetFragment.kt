@@ -174,10 +174,13 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             if(progress == 100){
                 currentDownload?.localPath = file.local.path
                 setPlayButtonVisibility(true)
+                setStopDownloadButtonVisibility(false)
+                setDownloadButtonVisibility(false)
             }
 
             if (progress > 5 && !hasAutoPlayed) {
                 hasAutoPlayed = true
+                setPlayButtonVisibility(true)
                 playWithVLC(requireContext(), currentDownload?.localPath)
             }
 
