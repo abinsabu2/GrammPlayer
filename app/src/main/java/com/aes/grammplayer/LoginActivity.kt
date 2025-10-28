@@ -41,8 +41,8 @@ class LoginActivity : FragmentActivity() {
         logTextView = findViewById(R.id.logTextView)
 
         // Initialize the client, which uses the global handler
-        if (!TelegramClientManager.isInitialized) {
-            TelegramClientManager.initialize()
+        if (!TelegramClientFacade.isInitialized) {
+            TelegramClientFacade.initialize()
             logMessage("Client Initializing...")
         }
 
@@ -62,7 +62,7 @@ class LoginActivity : FragmentActivity() {
                 val code = authCodeEditText.text.toString().trim()
                 if (code.isNotEmpty()) {
                     logMessage("Submitting code...")
-                    TelegramClientManager.sendAuthCode(code)
+                    TelegramClientFacade.sendAuthCode(code)
                 }
             } else {
                 val countryCode = countryCodeEditText.text.toString().trim()
@@ -72,7 +72,7 @@ class LoginActivity : FragmentActivity() {
                 val fullPhoneNumber = countryCodeCleaned + phone // Concatenate country code and phone number
                 if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
                     logMessage("Submitting phone number: $fullPhoneNumber")
-                    TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                    TelegramClientFacade.sendPhoneNumber(fullPhoneNumber)
                 }else{
                     logMessage("Please enter a valid phone number.")
                 }

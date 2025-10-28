@@ -100,7 +100,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 // We will loop until we have enough messages or there are no more to load.
                 while (allMessages.size < 10000) {
                     // Call the suspend function from the manager to get a chunk of messages.
-                    val messagesChunk = TelegramClientManager.loadMessagesForChat(
+                    val messagesChunk = TelegramClientFacade.loadMessagesForChat(
                         chatId = chatId,
                         fromMessageId = fromMessageId, // Use the ID of the last message we received
                         limit = 1000 // It's okay to request a large chunk
@@ -119,7 +119,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 }
 
                 // The rest of your code stays the same.
-                val mediaMessages = allMessages.map { TelegramClientManager.parseMessageContent(it.content, chatId) }
+                val mediaMessages = allMessages.map { TelegramClientFacade.parseMessageContent(it.content, chatId) }
 
                 if (mediaMessages.isEmpty()) {
                     return@launch

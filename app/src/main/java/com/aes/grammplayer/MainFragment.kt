@@ -75,7 +75,7 @@ class MainFragment : BrowseSupportFragment() {
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
         // --- End of new logic ---
         // --- 1. LOAD CHAT ROWS (existing logic) ---
-        TelegramClientManager.loadAllGroups { chat ->
+        TelegramClientFacade.loadAllGroups { chat ->
             // This adapter holds the items for a single row.
             val gridRowAdapter = ArrayObjectAdapter(mGridPresenter)
             gridRowAdapter.add(chat) // Add the chat object to the row
@@ -112,8 +112,8 @@ class MainFragment : BrowseSupportFragment() {
                 is String -> {
                     when (item) {
                         "Clear Cache" -> {
-                            val deletedCount = TelegramClientManager.clearDownloadedFiles()
-                            //val appDirectorySize = TelegramClientManager.getDirectorySize()
+                            val deletedCount = TelegramClientFacade.clearDownloadedFiles()
+                            //val appDirectorySize = TelegramClientFacade.getDirectorySize()
                             val cacheClearText = "Cleared $deletedCount downloaded files from cache"
                             //val sizeClearText = "$appDirectorySize MB of app directory size saved"
                             Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT).show()

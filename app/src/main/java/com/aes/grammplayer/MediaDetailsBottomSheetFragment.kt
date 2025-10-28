@@ -115,7 +115,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             }
             if (message.fileId != 0) {
                 logInfo("Download command sent for file ID: ${message.fileId}")
-                TelegramClientManager.startFileDownload(message.fileId)
+                TelegramClientFacade.startFileDownload(message.fileId)
                 TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
                     handleFileUpdate(update)
                 }
@@ -135,7 +135,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         }
 
         stopDownloadButton.setOnClickListener {
-            mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
+            mediaMessage?.fileId?.let { TelegramClientFacade.cancelDownloadAndDelete(it) }
             mediaMessage?.localPath?.let { File(it).delete() }
             setPlayButtonVisibility(false)
             setDownloadButtonVisibility(true)
@@ -147,7 +147,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         }
 
         view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
-            mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
+            mediaMessage?.fileId?.let { TelegramClientFacade.cancelDownloadAndDelete(it) }
             mediaMessage = null
             currentDownload = null
             dismiss()

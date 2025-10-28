@@ -17,8 +17,8 @@ class OnboardingActivity : FragmentActivity() {
 
         // Ensure the client is initialized. This uses the global handler automatically.
         // It's safe to call this multiple times.
-        if (!TelegramClientManager.isInitialized) {
-            TelegramClientManager.initialize()
+        if (!TelegramClientFacade.isInitialized) {
+            TelegramClientFacade.initialize()
         }
 
         // Observe the authorization state LiveData from our global handler.
