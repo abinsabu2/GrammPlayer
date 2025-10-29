@@ -1,5 +1,6 @@
 package com.aes.grammplayer
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -83,6 +84,7 @@ class LoginActivity : FragmentActivity() {
         setupKeyboardActionListeners()
     }
 
+    @SuppressLint("SetTextI18n")
     private fun handleAuthorizationState(response : TdApi.Object?) {
         runOnUiThread {
             when (response) {
