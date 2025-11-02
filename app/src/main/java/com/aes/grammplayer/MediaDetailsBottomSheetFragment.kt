@@ -26,6 +26,8 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
     private var currentDownload: DownloadingFileInfo? = null
     private var hasAutoPlayed = false
 
+    private var hasDownloadStoped = true
+
     // UI Views
     private lateinit var downloadProgressContainer: LinearLayout
     private lateinit var downloadStatusText: TextView
@@ -100,7 +102,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         // Set initial button state based on whether the file is already downloaded
         val localFileExists = !message.localPath.isNullOrEmpty() && File(message.localPath).exists()
-
+        setPlayButtonVisibility(false)
         if(currentDownload != null && currentDownload!!.downloadedSize > 300) {
             setPlayButtonVisibility(true)
         }
@@ -112,7 +114,9 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
      */
     private fun setupEventListeners(message: MediaMessage) {
         downloadButton.setOnClickListener {
+            this.hasDownloadStoped = true
             stopVLCPlayback()
+            setPlayButtonVisibility(false)
             if (getAvailableInternalMemorySize() < message.size) {
                 logError("Not enough storage. Available: ${String.format("%.2f GB", getAvailableInternalMemorySize() / 1024.0 / 1024.0 / 1024.0)}")
                 return@setOnClickListener
@@ -120,8 +124,11 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             if (message.fileId != 0) {
                 logInfo("Download command sent for file ID: ${message.fileId}")
                 TelegramClientManager.startFileDownload(message.fileId)
+                this.hasDownloadStoped = false
                 TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
-                    handleFileUpdate(update)
+                    if(!this.hasDownloadStoped){
+                        handleFileUpdate(update)
+                    }
                 }
                 setDownloadButtonVisibility(false)
                 setStopDownloadButtonVisibility(true)
@@ -141,6 +148,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         }
 
         stopDownloadButton.setOnClickListener {
+            this.hasDownloadStoped = true
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
             mediaMessage?.localPath?.let { File(it).delete() }
             stopVLCPlayback()
@@ -154,10 +162,16 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         }
 
         view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
+            this.hasDownloadStoped = true
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
+            mediaMessage?.localPath?.let { File(it).delete() }
+            stopVLCPlayback()
+            setPlayButtonVisibility(false)
+            setDownloadButtonVisibility(true)
+            setStopDownloadButtonVisibility(false)
+            logInfo("Download stopped and cancelled by user. Cache Cleared!")
             mediaMessage = null
             currentDownload = null
-            stopVLCPlayback()
             dismiss()
         }
     }
