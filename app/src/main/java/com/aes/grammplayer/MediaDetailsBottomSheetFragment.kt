@@ -96,11 +96,14 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
 
         updateAvailableStorageText()
 
-        hasAutoPlayed = false
+        this.hasAutoPlayed = false
 
         // Set initial button state based on whether the file is already downloaded
         val localFileExists = !message.localPath.isNullOrEmpty() && File(message.localPath).exists()
-        setPlayButtonVisibility(localFileExists)
+
+        if(currentDownload != null && currentDownload!!.downloadedSize > 300) {
+            setPlayButtonVisibility(true)
+        }
         setDownloadButtonVisibility(true)
     }
 
@@ -109,6 +112,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
      */
     private fun setupEventListeners(message: MediaMessage) {
         downloadButton.setOnClickListener {
+            stopVLCPlayback()
             if (getAvailableInternalMemorySize() < message.size) {
                 logError("Not enough storage. Available: ${String.format("%.2f GB", getAvailableInternalMemorySize() / 1024.0 / 1024.0 / 1024.0)}")
                 return@setOnClickListener
@@ -125,18 +129,21 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         }
 
         playButton.setOnClickListener {
-            val localPath = currentDownload?.localPath ?: mediaMessage?.localPath
-            if (localPath.isNullOrEmpty() || !File(localPath).exists()) {
+            if(currentDownload != null && currentDownload!!.downloadedSize > 300) {
+                stopVLCPlayback()
+                this.hasAutoPlayed = true
+                playWithVLC(requireContext(), currentDownload!!.localPath)
+            }else{
                 logError("No local path available to play.")
                 return@setOnClickListener
             }
 
-            playWithVLC(requireContext(), localPath)
         }
 
         stopDownloadButton.setOnClickListener {
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
             mediaMessage?.localPath?.let { File(it).delete() }
+            stopVLCPlayback()
             setPlayButtonVisibility(false)
             setDownloadButtonVisibility(true)
             setStopDownloadButtonVisibility(false)
@@ -150,10 +157,22 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             mediaMessage?.fileId?.let { TelegramClientManager.cancelDownloadAndDelete(it) }
             mediaMessage = null
             currentDownload = null
+            stopVLCPlayback()
             dismiss()
         }
     }
 
+    fun stopVLCPlayback() {
+        val stopIntent = Intent("org.videolan.vlc.remote.StopPlayback")
+        stopIntent.setPackage("org.videolan.vlc")
+        try {
+            context?.sendBroadcast(stopIntent)
+            logInfo("Player Playback Stoped!")
+        } catch (e: Exception) {
+            logError("Error while stopping VLC Playback: ${e.message}")
+        }
+        this.hasAutoPlayed = false
+    }
     private fun handleFileUpdate(update: TdApi.UpdateFile) {
 
         val file = update.file
@@ -164,6 +183,8 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
         val totalSize = file.expectedSize.toFloat() / (1024 * 1024)
         val fileId = file.id
 
+        updateAvailableStorageText()
+
         currentDownload = DownloadingFileInfo(file.id, downloadedSize,  totalSize, progress, file.local.path.takeIf { it.isNotEmpty() })
 
         activity?.runOnUiThread {
@@ -171,14 +192,11 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment() {
             downloadProgressBar.progress = progress
 
             // Auto-play logic
-            if(progress == 100){
+            if(file.local.isDownloadingCompleted){
                 currentDownload?.localPath = file.local.path
-                setPlayButtonVisibility(true)
-                setStopDownloadButtonVisibility(false)
-                setDownloadButtonVisibility(false)
             }
 
-            if (progress > 5 && !hasAutoPlayed) {
+            if (file.local.path != null && progress > 30 && !this.hasAutoPlayed) {
                 hasAutoPlayed = true
                 setPlayButtonVisibility(true)
                 playWithVLC(requireContext(), currentDownload?.localPath)

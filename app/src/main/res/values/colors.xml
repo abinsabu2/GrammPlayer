@@ -26,4 +26,6 @@
     <color name="link_pressed_color">#00BCD4</color>
     <color name="link_focused_color">#FF9800</color>
 
+    <color name="downloading_border">#FFFF00</color> <!-- Bright Yellow for downloading -->
+
 </resources>

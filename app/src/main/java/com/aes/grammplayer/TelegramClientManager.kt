@@ -184,13 +184,13 @@ object TelegramClientManager {
     }
 
     fun close() {
-        client?.send(TdApi.Close(), null)
+        client?.send(TdApi.Close(), TdLibUpdateHandler)
         client = null
     }
 
     fun cancelDownloadAndDelete(fileId: Int?) {
         val id = fileId ?: return
-        client?.send(TdApi.CancelDownloadFile(id, false)) {
+        client?.send(TdApi.CancelDownloadFile(id, false),TdLibUpdateHandler) {
             Log.d("TDLib", "Sent cancel command for fileId=$id")
         }
         clearDownloadedFiles()

@@ -38,6 +38,16 @@ class MessageGridFragment : VerticalGridSupportFragment() {
         setupEventListeners()
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // Observe file updates from TdLibUpdateHandler
+        TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
+            handleFileUpdate(update)
+        }
+        // Refresh all cards to ensure latest CardPresenter styling is applied
+        refreshAllCards()
+    }
+
     private fun setupGrid() {
         // We need a custom presenter to access the grid view.
         val gridPresenter = object : VerticalGridPresenter() {
@@ -53,7 +63,6 @@ class MessageGridFragment : VerticalGridSupportFragment() {
         gridAdapter = ArrayObjectAdapter(CardPresenter())
         adapter = gridAdapter
     }
-
 
     private fun setupEventListeners() {
         onItemViewClickedListener = object : OnItemViewClickedListener {
@@ -71,8 +80,10 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                         existing.dismiss()
                     }
 
+                    val clone = item.copy()
+
                     // Create a new instance of the bottom sheet with the clicked media message
-                    val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(item)
+                    val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(clone)
 
                     // Show the new bottom sheet using the fragment manager
                     bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.TAG)
@@ -80,7 +91,6 @@ class MessageGridFragment : VerticalGridSupportFragment() {
             }
         }
     }
-
 
     private fun loadMessages() {
         val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
@@ -137,6 +147,31 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 // You could display an error to the user here.
             }
         }
+    }
+
+    private fun handleFileUpdate(update: TdApi.UpdateFile) {
+        val updatedFile = update.file
+        // Iterate through the adapter to find the MediaMessage with the matching fileId
+        for (i in 0 until gridAdapter.size()) {
+            val item = gridAdapter.get(i)
+            if (item is MediaMessage && item.fileId == updatedFile.id) {
+                // Create a new MediaMessage with the updated download status
+                val updatedMediaMessage = item.copy(
+                    isDownloaded = updatedFile.local.isDownloadingCompleted,
+                    isDownloadActive = updatedFile.local.isDownloadingActive,
+                    localPath = updatedFile.local.path.takeIf { it.isNotEmpty() } ?: item.localPath
+                )
+                // Replace the old item with the new one and notify the adapter
+                gridAdapter.replace(i, updatedMediaMessage)
+                break // Exit loop once the item is found and updated
+            }
+        }
+    }
+
+    private fun refreshAllCards() {
+        // Notify the adapter that the entire dataset might have changed,
+        // forcing all visible items to be re-bound and re-rendered.
+        gridAdapter.notifyItemRangeChanged(0, gridAdapter.size())
     }
 
     companion object {
