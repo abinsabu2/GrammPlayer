@@ -3,6 +3,10 @@ package com.aes.grammplayer
 import android.content.Intent
 import android.os.Bundle
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 
 class OnboardingActivity : FragmentActivity() {
@@ -22,8 +26,12 @@ class OnboardingActivity : FragmentActivity() {
         }
 
         // Observe the authorization state LiveData from our global handler.
-        TdLibUpdateHandler.authorizationState.observe(this) { authState ->
-            handleAuthorizationState(authState)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TdLibUpdateHandler.authorizationState.collect { authState ->
+                    handleAuthorizationState(authState)
+                }
+            }
         }
     }
 
@@ -31,7 +39,7 @@ class OnboardingActivity : FragmentActivity() {
      * Handles routing based on the current authorization state.
      * This is called whenever the auth state changes.
      */
-    private fun handleAuthorizationState(state: TdApi.AuthorizationState) {
+    private fun handleAuthorizationState(state: TdApi.AuthorizationState?) {
         // If a navigation decision has already been made, do nothing.
         // This prevents issues if the state updates multiple times quickly.
         if (isDecisionMade) {

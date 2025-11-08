@@ -13,6 +13,10 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -48,13 +52,21 @@ class LoginActivity : FragmentActivity() {
         }
 
         // Observe the authorization state from our central handler
-        TdLibUpdateHandler.authError.observe(this) { response ->
-            handleAuthorizationState(response)
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TdLibUpdateHandler.authError.collect { response ->
+                    handleAuthorizationState(response)
+                }
+            }
         }
 
-        // Observe the authorization state from our central handler
-        TdLibUpdateHandler.authorizationState.observe(this) { response ->
-            handleAuthorizationState(response)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TdLibUpdateHandler.authorizationState.collect { response ->
+                    handleAuthorizationState(response)
+                }
+            }
         }
 
         // Setup button click listener

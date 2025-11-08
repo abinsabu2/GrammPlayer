@@ -40,10 +40,6 @@ class MessageGridFragment : VerticalGridSupportFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // Observe file updates from TdLibUpdateHandler
-        TdLibUpdateHandler.fileUpdate.observe(viewLifecycleOwner) { update ->
-            handleFileUpdate(update)
-        }
         // Refresh all cards to ensure latest CardPresenter styling is applied
         refreshAllCards()
     }
