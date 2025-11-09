@@ -18,6 +18,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import java.io.File
@@ -31,7 +32,8 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
     private var currentDownload: DownloadingFileInfo? = null
     private var hasAutoPlayed = false
 
-    private var hasDownloadStoped = true
+    private var hasDownloadStoped = true // Consider if this flag is still needed or if `currentDownload == null` suffices
+    private var fileUpdateCollectorJob: Job? = null // To manage the collector lifecycle
 
     // UI Views
     private lateinit var downloadProgressContainer: LinearLayout
@@ -39,13 +41,18 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
     private lateinit var downloadProgressBar: ProgressBar
     private lateinit var downloadButton: Button
     private lateinit var playButton: Button
-    // REMOVED: private lateinit var clearCacheButton: Button
     private lateinit var stopDownloadButton: Button
     private lateinit var availableStorageTextView: TextView
     private lateinit var logScrollView: ScrollView
     private lateinit var logTextView: TextView
 
     val activeDownloads = mutableSetOf<Int>()
+
+    // Define a minimum playable size.
+    // Setting this to 500 MB as requested. This is a very large minimum for playback.
+    private val MIN_PLAYABLE_SIZE_BYTES = 200L * 1024 * 1024 // 500 MB
+    private val MIN_PLAY_PROGRESS_PERCENTAGE = 30 // Minimum progress percentage to enable playback/auto-play
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,70 +69,84 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
 
         val message = mediaMessage ?: run { dismiss(); return }
 
-        // 1. Find all views
         bindViews(view)
-
-        // 2. Populate initial UI state
         populateInitialData(message)
-
-        // 3. Set up all listeners
         setupEventListeners(message)
 
+        // If a file was already being downloaded when this fragment was opened/recreated,
+        // we should try to re-attach to its updates if it's the current media.
+        // This is important for configuration changes or if the fragment is reused.
+        if (activeDownloads.contains(message.fileId.toInt())) {
+            startFileUpdateCollection()
+            setDownloadButtonVisibility(false)
+            setStopDownloadButtonVisibility(true)
+        }
     }
 
-    /**
-     * Finds and assigns all UI view properties.
-     */
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Cancel the collector job when the view is destroyed to avoid leaks
+        fileUpdateCollectorJob?.cancel()
+    }
+
     private fun bindViews(view: View) {
-        val titleTextView: TextView = view.findViewById(R.id.detail_title)
-        val descriptionTextView: TextView = view.findViewById(R.id.detail_description)
-        val fileInfoTextView: TextView = view.findViewById(R.id.detail_file_info)
-        val closeButton: ImageButton = view.findViewById(R.id.close_button)
+        // ... (titleTextView, descriptionTextView, fileInfoTextView, closeButton are local vars, so no change needed)
         downloadButton = view.findViewById(R.id.detail_download_button)
         playButton = view.findViewById(R.id.detail_play_button)
-        // REMOVED: clearCacheButton = view.findViewById(R.id.clear_cache_button)
         downloadProgressContainer = view.findViewById(R.id.download_progress_container)
         downloadStatusText = view.findViewById(R.id.download_status_text)
         downloadProgressBar = view.findViewById(R.id.download_progress_bar)
         stopDownloadButton = view.findViewById(R.id.stop_download_button)
         availableStorageTextView = view.findViewById(R.id.available_storage_text)
-        //logScrollView = view.findViewById(R.id.log_scroll_view)
         logTextView = view.findViewById(R.id.log_text_view)
     }
 
-    /**
-     * Populates the static text fields and sets the initial button visibility.
-     */
     private fun populateInitialData(message: MediaMessage) {
         view?.findViewById<TextView>(R.id.detail_title)?.text = message.title ?: "No Title"
-        // Todo Api to fetch description from other website based on Movie details
-        //view?.findViewById<TextView>(R.id.detail_description)?.text = message.description ?: "No Description"
         val fileSizeMb = if (message.size > 0) String.format("%.2f MB", message.size / 1024.0 / 1024.0) else "N/A"
         view?.findViewById<TextView>(R.id.detail_file_info)?.text = "File ID: ${message.fileId}\nSize: $fileSizeMb"
 
         updateAvailableStorageText()
+        this.hasAutoPlayed = false // Reset hasAutoPlayed on initial setup
 
-        this.hasAutoPlayed = false
+        // Initial check for play button based on *actual* local file
+        val localFile = message.localPath?.let { File(it) }
+        val localFileExistsAndIsPlayable = localFile != null && localFile.exists() && (localFile.length() >= MIN_PLAYABLE_SIZE_BYTES || currentDownload?.progress!! > MIN_PLAY_PROGRESS_PERCENTAGE)
 
-        // Set initial button state based on whether the file is already downloaded
-        val localFileExists = !message.localPath.isNullOrEmpty() && File(message.localPath).exists()
-        setPlayButtonVisibility(false)
-        if(currentDownload != null && currentDownload!!.downloadedSize > 300) {
+        // If a download is currently active for this file, the buttons might already be in the correct state
+        // Otherwise, determine initial visibility based on existing file.
+        if (activeDownloads.contains(message.fileId.toInt())) {
+            setDownloadButtonVisibility(false)
+            setStopDownloadButtonVisibility(true)
+            setPlayButtonVisibility(false) // Will be updated by handleFileUpdate if progress is enough
+            // Consider if you want to initialize currentDownload from TelegramClientManager if a download is truly active
+        } else if (localFileExistsAndIsPlayable) {
+            setDownloadButtonVisibility(false)
+            setStopDownloadButtonVisibility(false) // Not downloading anymore
             setPlayButtonVisibility(true)
+            // Initialize currentDownload if the file is already downloaded
+            currentDownload = DownloadingFileInfo(
+                fileId = message.fileId,
+                downloadedSize = localFile.length().toFloat() / (1024 * 1024),
+                totalSize = localFile.length().toFloat() / (1024 * 1024),
+                progress = 100,
+                localPath = message.localPath
+            )
+        } else {
+            // No active download, no local playable file
+            setDownloadButtonVisibility(true)
+            setStopDownloadButtonVisibility(false)
+            setPlayButtonVisibility(false)
+            currentDownload = null // Ensure no stale download info
         }
-        setDownloadButtonVisibility(true)
     }
 
-    /**
-     * Sets up click listeners for all interactive elements.
-     */
     private fun setupEventListeners(message: MediaMessage) {
         downloadButton.setOnClickListener {
-            TelegramClientManager.cancelDownloadAndDelete(activeDownloads)
-            activeDownloads.clear()
-            this.hasDownloadStoped = true
-            stopVLCPlayback()
-            setPlayButtonVisibility(false)
+            // Explicitly clear any previous download state before starting a new one
+            cancelAndClearDownloadState()
+
+            this.hasAutoPlayed = false // Reset hasAutoPlayed for new download
             if (getAvailableInternalMemorySize() < message.size) {
                 logError("Not enough storage. Available: ${String.format("%.2f GB", getAvailableInternalMemorySize() / 1024.0 / 1024.0 / 1024.0)}")
                 return@setOnClickListener
@@ -134,60 +155,80 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
                 activeDownloads.add(message.fileId.toInt())
                 TelegramClientManager.startFileDownload(message.fileId)
                 logInfo("Download command sent for file ID: ${message.fileId}")
-                this.hasDownloadStoped = false
-                lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        TdLibUpdateHandler.fileUpdate.collect { update ->
-                            handleFileUpdate(update)
-                        }
-                    }
-                }
+                this.hasDownloadStoped = false // This flag might become redundant
+                startFileUpdateCollection() // Start (or restart) collecting updates
 
                 setDownloadButtonVisibility(false)
                 setStopDownloadButtonVisibility(true)
+                setPlayButtonVisibility(false) // Hide play button until playable progress
             }
         }
 
         playButton.setOnClickListener {
-            if(currentDownload != null && currentDownload!!.downloadedSize > 300) {
-                stopVLCPlayback()
-                this.hasAutoPlayed = true
-                playWithVLC(requireContext(), currentDownload!!.localPath)
-            }else{
-                logError("No local path available to play.")
-                return@setOnClickListener
-            }
+            val path = currentDownload?.localPath ?: mediaMessage?.localPath
+            val fileId = mediaMessage?.fileId ?: 0
 
+            // Crucially, check if the physical file exists and is of sufficient size
+            val localFile = path?.let { File(it) }
+            if (localFile != null && localFile.exists() && localFile.length() >= MIN_PLAYABLE_SIZE_BYTES) {
+                stopVLCPlayback() // Ensure previous playback is stopped
+                this.hasAutoPlayed = true // Mark as played to prevent auto-play re-triggering
+                playWithVLC(requireContext(), path)
+            } else {
+                logError("Cannot play: File not found or not large enough for playback. Path: $path, Exists: ${localFile?.exists()}, Size: ${localFile?.length()}")
+                setPlayButtonVisibility(false) // Hide if it's not actually playable
+            }
         }
 
         stopDownloadButton.setOnClickListener {
-            this.hasDownloadStoped = true
-            TelegramClientManager.cancelDownloadAndDelete(activeDownloads)
-            activeDownloads.clear()
-            mediaMessage?.localPath?.let { File(it).delete() }
-            stopVLCPlayback()
-            setPlayButtonVisibility(false)
-            setDownloadButtonVisibility(true)
-            setStopDownloadButtonVisibility(false)
-            logInfo("Download stopped and cancelled by user. Cache Cleared!")
-            mediaMessage = null
-            currentDownload = null
-            dismiss()
+            cancelAndClearDownloadState()
+            dismiss() // Close the bottom sheet after cancellation
         }
 
         view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
-            this.hasDownloadStoped = true
-            TelegramClientManager.cancelDownloadAndDelete(activeDownloads)
-            activeDownloads.clear()
-            mediaMessage?.localPath?.let { File(it).delete() }
-            stopVLCPlayback()
-            setPlayButtonVisibility(false)
-            setDownloadButtonVisibility(true)
-            setStopDownloadButtonVisibility(false)
-            logInfo("Download stopped and cancelled by user. Cache Cleared!")
-            mediaMessage = null
-            currentDownload = null
-            dismiss()
+            cancelAndClearDownloadState()
+            dismiss() // Close the bottom sheet
+        }
+    }
+
+    /**
+     * Helper to centralize download cancellation and state clearing.
+     */
+    private fun cancelAndClearDownloadState() {
+        fileUpdateCollectorJob?.cancel() // Stop listening for updates
+        this.hasDownloadStoped = true
+        TelegramClientManager.cancelDownloadAndDelete(activeDownloads)
+        activeDownloads.clear()
+        mediaMessage?.localPath?.let { path ->
+            val file = File(path)
+            if (file.exists()) {
+                if (file.delete()) {
+                    logInfo("Successfully deleted local file: $path")
+                } else {
+                    logError("Failed to delete local file: $path")
+                }
+            }
+        }
+        stopVLCPlayback()
+        setPlayButtonVisibility(false)
+        setDownloadButtonVisibility(true)
+        setStopDownloadButtonVisibility(false)
+        logInfo("Download stopped and cancelled by user. Cache Cleared!")
+        // IMPORTANT: Clear currentDownload to prevent stale data
+        currentDownload = null
+        // Reset mediaMessage or refresh its state if necessary
+        // For now, we assume dismiss() will handle the fragment instance clean up
+    }
+
+    private fun startFileUpdateCollection() {
+        // Cancel any existing job to ensure only one collector is active
+        fileUpdateCollectorJob?.cancel()
+        fileUpdateCollectorJob = lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TdLibUpdateHandler.fileUpdate.collect { update ->
+                    handleFileUpdate(update)
+                }
+            }
         }
     }
 
@@ -202,35 +243,70 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         }
         this.hasAutoPlayed = false
     }
+
     private fun handleFileUpdate(update: TdApi.UpdateFile) {
-
         val file = update.file
-        val downloaded = file.local.downloadedSize
-        val expected = file.expectedSize
-        val progress = if (expected > 0) (downloaded * 100 / expected).toInt() else 0
-        val downloadedSize = file.local.downloadedSize.toFloat() / (1024 * 1024)
-        val totalSize = file.expectedSize.toFloat() / (1024 * 1024)
-        val fileId = file.id
+        val currentMediaFileId = mediaMessage?.fileId ?: 0
 
-        updateAvailableStorageText()
-
-        currentDownload = DownloadingFileInfo(file.id, downloadedSize,  totalSize, progress, file.local.path.takeIf { it.isNotEmpty() })
+        // Filter out updates not for the current mediaMessage
+        if (currentMediaFileId == 0 || file.id != currentMediaFileId) {
+            Log.d(TAG, "Ignoring file update for ID ${file.id}. Expected ID: $currentMediaFileId")
+            return
+        }
 
         activity?.runOnUiThread {
-            downloadStatusText.text = String.format("Downloading: %d%% (%.2f/%.2f MB)", progress, downloadedSize, currentDownload?.totalSize)
+            // Update UI elements related to download progress
+            val downloaded = file.local.downloadedSize
+            val expected = file.expectedSize
+            val progress = if (expected > 0) (downloaded * 100 / expected).toInt() else 0
+            val downloadedSizeMb = file.local.downloadedSize.toFloat() / (1024 * 1024)
+            val totalSizeMb = file.expectedSize.toFloat() / (1024 * 1024)
+
+            updateAvailableStorageText()
+
+            // Update currentDownload info, ensuring localPath is set if available
+            currentDownload = DownloadingFileInfo(
+                fileId = file.id,
+                downloadedSize = downloadedSizeMb,
+                totalSize = totalSizeMb,
+                progress = progress,
+                localPath = file.local.path.takeIf { it.isNotEmpty() }
+            )
+
+            downloadStatusText.text = String.format("Downloading: %d%% (%.2f/%.2f MB)", progress, downloadedSizeMb, currentDownload?.totalSize)
             downloadProgressBar.progress = progress
 
-            // Auto-play logic
-            if(file.local.isDownloadingCompleted){
-                currentDownload?.localPath = file.local.path
-            }
+            // --- Critical Check: Physical file existence and size for playing ---
+            val localPathForPlay = currentDownload?.localPath
+            val actualFile = localPathForPlay?.let { File(it) }
 
-            if (file.local.path != null && progress > 30 && !this.hasAutoPlayed) {
-                hasAutoPlayed = true
+            // NEW CONDITION: Play button is visible if file exists AND (progress > 30 OR actual file length is >= MIN_PLAYABLE_SIZE_BYTES)
+            val isPlayableEnough = actualFile != null && actualFile.exists() && !this.hasAutoPlayed &&
+                    (progress > MIN_PLAY_PROGRESS_PERCENTAGE || actualFile.length() >= MIN_PLAYABLE_SIZE_BYTES)
+
+            if (isPlayableEnough) {
                 setPlayButtonVisibility(true)
-                playWithVLC(requireContext(), currentDownload?.localPath)
+                hasAutoPlayed = true
+                playWithVLC(requireContext(), localPathForPlay)
             }
 
+            // If download completes, ensure buttons reflect that
+            if (file.local.isDownloadingCompleted && actualFile != null && actualFile.exists() && (progress > MIN_PLAY_PROGRESS_PERCENTAGE || actualFile.length() >= MIN_PLAYABLE_SIZE_BYTES)) {
+                setDownloadButtonVisibility(false)
+                setStopDownloadButtonVisibility(false)
+                setPlayButtonVisibility(true) // Should already be true from above check
+                logInfo("Download completed for file ID: ${file.id}")
+            } else if (file.local.isDownloadingCompleted && (actualFile == null || !actualFile.exists())) {
+                // Edge case: TdLib says complete but file doesn't exist on disk (e.g. deleted externally)
+                logError("TDLib reported download completed for ${file.id}, but physical file does not exist at ${localPathForPlay}. Resetting state.")
+                // Trigger a reset of the UI state to allow re-download
+                setDownloadButtonVisibility(true)
+                setStopDownloadButtonVisibility(false)
+                setPlayButtonVisibility(false)
+                currentDownload = null
+                TelegramClientManager.cancelDownloadAndDelete(activeDownloads) // Clean up TdLib state
+                activeDownloads.clear()
+            }
         }
     }
 
@@ -239,14 +315,18 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
      */
     private fun playWithVLC(context: Context, localPath: String?) {
         val fileId = mediaMessage?.fileId ?: 0
-        if (localPath.isNullOrEmpty() || fileId == 0) {
+        val file = localPath?.let { File(it) }
+
+        if (file == null || !file.exists() || fileId == 0) {
+            logError("Cannot play: File path invalid, does not exist, or too small: $localPath")
+            setPlayButtonVisibility(false) // Ensure button is hidden if conditions aren't met
             return
         }
 
         if (PlaybackStateManager.isCurrentlyPlaying(fileId)) {
+            logInfo("File ID $fileId is already playing.")
             return
         }
-        val file = File(localPath)
         try {
             val contentUri: Uri = FileProvider.getUriForFile(
                 context,
@@ -260,8 +340,9 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
+            logInfo("Started VLC playback for file ID: $fileId, path: $localPath")
         } catch (e: Exception) {
-            logError("Error while launching VLC Media Player!")
+            logError("Error while launching VLC Media Player for $localPath: ${e.message}")
         }
     }
 
@@ -278,9 +359,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         stopDownloadButton.visibility = if (isVisible) View.VISIBLE else View.GONE
     }
 
-    /**
-     * OPTIMIZED: Calculates and updates the available storage text view.
-     */
     private fun updateAvailableStorageText() {
         val availableSpaceBytes = getAvailableInternalMemorySize()
         availableStorageTextView.text = String.format("Available Storage: %.2f GB", availableSpaceBytes / 1024.0 / 1024.0 / 1024.0)
@@ -302,29 +380,18 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         val stat = android.os.StatFs(path)
         return stat.availableBlocksLong * stat.blockSizeLong
     }
-    /**
-     * Logs a message with an [ERROR] prefix.
-     */
+
     private fun logError(message: String) {
         appendLog("[ERROR] $message")
     }
-    /**
-     * Logs a message with an [INFO] prefix.
-     */
+
     private fun logInfo(message: String) {
         appendLog("[INFO] $message")
     }
 
-    /**
-
-     * The core function to append a message to the log TextView.
-     * It makes the log area visible and auto-scrolls to the bottom.
-     */
     @SuppressLint("SimpleDateFormat")
     private fun appendLog(message: String) {
-        // Ensure UI updates are on the main thread.
         activity?.runOnUiThread {
-            // Make the log area visible if it's hidden.
             if (logTextView.visibility == View.GONE) {
                 logTextView.visibility = View.VISIBLE
             }
@@ -336,7 +403,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
                 "[$timestamp] $message\n$currentLog"
             }
             logTextView.text = newLog
-
         }
     }
 
