@@ -188,6 +188,16 @@ object TelegramClientManager {
         client = null
     }
 
+    /**
+     * Logs the user out by closing the session and deleting all local data.
+     * This is an irreversible action for the current session.
+     */
+    fun logOut() {
+        // Send the LogOut request to the server.
+        client?.send(TdApi.LogOut(), TdLibUpdateHandler)
+        // Set the client to null immediately. After logout, the client is unusable.
+        this.close()
+    }
     fun cancelDownloadAndDelete(fileIds: MutableSet<Int>) {
 
         for (fileId in fileIds) {

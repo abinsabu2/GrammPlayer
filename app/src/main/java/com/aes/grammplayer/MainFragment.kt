@@ -64,28 +64,27 @@ class MainFragment : BrowseSupportFragment() {
         // This adapter holds all the rows.
         val rowsAdapter = ArrayObjectAdapter(ListRowPresenter())
 
+        val messageHeader = HeaderItem("My Messages")
+        val messageGridPresenter = GridItemPresenter() // Can reuse the same presenter
+        val messageRowAdapter = ArrayObjectAdapter(messageGridPresenter)
+        messageRowAdapter.add("My Messages")
+        rowsAdapter.add(ListRow(messageHeader, messageRowAdapter))
+
         // --- 2. ADD A NEW SETTINGS ROW (new logic) ---
         val settingsHeader = HeaderItem("Preferences")
         val settingsGridPresenter = GridItemPresenter() // Can reuse the same presenter
         val settingsRowAdapter = ArrayObjectAdapter(settingsGridPresenter)
 
         // Add items to your settings row. We\'ll use simple strings.
-        settingsRowAdapter.add("Take A break")
+        settingsRowAdapter.add("Buffer Setting")
+        settingsRowAdapter.add("Auto Play Settings")
+        settingsRowAdapter.add("Player Settings")
         settingsRowAdapter.add("Clear Cache")
+        settingsRowAdapter.add("Logout")
+
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
-        // --- End of new logic ---
-        // --- 1. LOAD CHAT ROWS (existing logic) ---
-        TelegramClientManager.loadAllGroups { chat ->
-            // This adapter holds the items for a single row.
-            val gridRowAdapter = ArrayObjectAdapter(mGridPresenter)
-            gridRowAdapter.add(chat) // Add the chat object to the row
 
-            // Create the header for the row using the chat\'s ID and title.
-            val header = HeaderItem(chat.id, chat.title)
 
-            // Add the new row (header + items adapter) to the main adapter.
-            rowsAdapter.add(ListRow(header, gridRowAdapter))
-        }
         adapter = rowsAdapter
     }
 
@@ -101,13 +100,6 @@ class MainFragment : BrowseSupportFragment() {
                                     row: Row
         ) {
             when (item) {
-                // Handle clicks on chat items
-                is TdApi.Chat -> {
-                    val intent = Intent(activity, MessageGridActivity::class.java)
-                    intent.putExtra("chat_id", item.id)
-                    intent.putExtra("chat_title", item.title)
-                    startActivity(intent)
-                }
                 // Handle clicks on settings items
                 is String -> {
                     when (item) {
@@ -118,9 +110,19 @@ class MainFragment : BrowseSupportFragment() {
                             //val sizeClearText = "$appDirectorySize MB of app directory size saved"
                             Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT).show()
                         }
-                        "Take A break" -> {
+                        "Logout" -> {
+                            TelegramClientManager.clearDownloadedFiles()
+                            TelegramClientManager.logOut();
                             requireActivity().finish()
                         }
+
+                        "My Messages" -> {
+                            val intent = Intent(activity, ChatsGridActivity::class.java)
+                            intent.putExtra("chat_id", 1000)
+                            intent.putExtra("chat_title", "My Messages")
+                            startActivity(intent)
+                        }
+
                         else -> {
                             Toast.makeText(requireContext(), "Clicked on: $item", Toast.LENGTH_SHORT).show()
                         }
@@ -135,7 +137,19 @@ class MainFragment : BrowseSupportFragment() {
             itemViewHolder: Presenter.ViewHolder?, item: Any?,
             rowViewHolder: RowPresenter.ViewHolder, row: Row
         ) {
-            // Toast.makeText(requireContext(), "Clicked on: $item", Toast.LENGTH_SHORT).show()
+            when (item) {
+                // Handle clicks on settings items
+                is String -> {
+                    when (item) {
+                        "My Messages" -> {
+                            val intent = Intent(activity, ChatsGridActivity::class.java)
+                            intent.putExtra("chat_id", 1000)
+                            intent.putExtra("chat_title", "My Messages")
+                            startActivity(intent)
+                        }
+                    }
+                }
+            }
         }
     }
 

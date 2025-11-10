@@ -55,6 +55,7 @@ class OnboardingActivity : FragmentActivity() {
                     navigateToMainApp()
                 }
                 is TdApi.AuthorizationStateWaitPhoneNumber,
+                is TdApi.AuthorizationStateClosed,
                 is TdApi.AuthorizationStateWaitCode -> {
                     // USER IS NOT LOGGED IN and needs to take action
                     isDecisionMade = true
