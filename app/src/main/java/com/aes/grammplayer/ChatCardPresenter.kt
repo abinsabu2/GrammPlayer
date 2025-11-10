@@ -178,7 +178,7 @@ class ChatCardPresenter : Presenter() {
     companion object {
         private const val TAG = "ChatCardPresenter"
         // Let's use a more square shape for chat cards
-        private const val CHAT_CARD_WIDTH = 600 // dp
+        private const val CHAT_CARD_WIDTH = 300 // dp
         private const val CHAT_CARD_HEIGHT = 200 // dp
 
         private const val FOCUSED_SCALE = 1.1f

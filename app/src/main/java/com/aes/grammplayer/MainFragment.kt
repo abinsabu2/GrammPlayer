@@ -112,7 +112,7 @@ class MainFragment : BrowseSupportFragment() {
                         }
                         "Logout" -> {
                             TelegramClientManager.clearDownloadedFiles()
-                            TelegramClientManager.logOut();
+                            //TelegramClientManager.logOut();
                             requireActivity().finish()
                         }
 

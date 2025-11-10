@@ -29,9 +29,9 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
+        //title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
         // Set the brand logo using badgeDrawable
-        //badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
+        badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
 
         setupGrid()
         loadMessages()
@@ -52,7 +52,7 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
             }
         }
 
-        gridPresenter.numberOfColumns = 4 // You can adjust the number of columns here
+        gridPresenter.numberOfColumns = 5 // You can adjust the number of columns here
         setGridPresenter(gridPresenter)
 
         // The rest of your code remains the same.
@@ -81,6 +81,16 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
     private fun loadMessages() {
         // Use Coroutines to call the suspend function on the main thread.
         TelegramClientManager.loadAllGroups { chat ->
+            var lastMessage = chat.lastMessage
+            if (lastMessage != null) {
+                val messageContent = lastMessage.content
+                when (messageContent) {
+                    is TdApi.MessageContactRegistered -> {
+                        return@loadAllGroups
+                    }
+
+                }
+            }
             gridAdapter.add(chat)
         }
 
