@@ -19,9 +19,9 @@
             android:id="@+id/close_button"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_gravity="top|start"
+            android:layout_gravity="top|end"
             android:background="@drawable/close_button_background"
-            android:contentDescription="Close"
+            android:contentDescription="@string/close_button_description"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             app:tint="@android:color/white" />
 
@@ -29,9 +29,8 @@
             android:id="@+id/detail_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="64dp"
-            android:layout_gravity="center_vertical"
-            android:text="Media Title"
+            android:layout_gravity="top|start"
+            android:text="@string/media_title_placeholder"
             android:textColor="@android:color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -43,7 +42,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Description of the media file."
+        android:text="@string/media_description_placeholder"
         android:textColor="#E0E0E0"
         android:visibility="gone"
         android:textSize="14sp" />
@@ -54,7 +53,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:lineSpacingExtra="4dp"
-        android:text="File ID: 12345 Size: 12.34 MB"
+        android:text="@string/file_info_placeholder"
         android:textColor="#B0B0B0"
         android:textSize="12sp" />
 
@@ -63,7 +62,17 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Available Storage: 0.00 GB"
+        android:text="@string/available_storage_placeholder"
+        android:textColor="#00E676"
+        android:textSize="12sp"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/applied_settings_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/applied_settings_placeholder"
         android:textColor="#00E676"
         android:textSize="12sp"
         android:textStyle="bold"/>
@@ -81,7 +90,7 @@
             android:id="@+id/download_status_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Downloading: 0%"
+            android:text="@string/download_status_placeholder"
             android:textColor="#A9A9A9"
             android:textSize="12sp" />
 
@@ -112,7 +121,7 @@
             style="@style/Widget.AppCompat.Button"
             android:visibility="gone"
             android:textAlignment="textStart"
-            android:drawableLeft="@android:drawable/ic_delete"
+            android:drawableStart="@android:drawable/ic_delete"
             android:text="@string/stop"/>
 
         <Button
@@ -126,7 +135,7 @@
             android:visibility="gone"
             android:text="@string/play"
             android:textAlignment="textStart"
-            android:drawableLeft="@android:drawable/ic_media_play"
+            android:drawableStart="@android:drawable/ic_media_play"
             android:drawablePadding="8dp"/>
 
         <Button
@@ -135,7 +144,7 @@
             android:layout_height="wrap_content"
             android:background="@drawable/custom_button_background"
             android:textColor="@drawable/custom_button_text_color"
-            android:drawableLeft="@android:drawable/ic_menu_save"
+            android:drawableStart="@android:drawable/ic_menu_save"
             android:textAlignment="textStart"
             android:visibility="gone"
             style="@style/Widget.AppCompat.Button"

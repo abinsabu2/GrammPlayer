@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -11,17 +12,19 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.core.content.FileProvider
+import androidx.core.view.isGone
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import java.io.File
+import java.io.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -42,21 +45,23 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
     private lateinit var downloadButton: Button
     private lateinit var playButton: Button
     private lateinit var stopDownloadButton: Button
+
+    private lateinit var closeButton: ImageButton
     private lateinit var availableStorageTextView: TextView
-    private lateinit var logScrollView: ScrollView
     private lateinit var logTextView: TextView
+    private lateinit var appliedSettingsTextView: TextView
 
     val activeDownloads = mutableSetOf<Int>()
 
-    // Define a minimum playable size.
-    // Setting this to 500 MB as requested. This is a very large minimum for playback.
-    private val MIN_PLAYABLE_SIZE_BYTES = 200L * 1024 * 1024 // 500 MB
-    private val MIN_PLAY_PROGRESS_PERCENTAGE = 30 // Minimum progress percentage to enable playback/auto-play
-
+    private lateinit var settingsDataStore: SettingsDataStore
+    private var isAutoPlayEnabled: Boolean = false
+    private var progressThreshold: Int = 30 // Default value
+    private var bufferSizeThreshold: Int = 300 // Default value in MB
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mediaMessage = arguments?.getSerializable(ARG_MEDIA_MESSAGE) as? MediaMessage
+        settingsDataStore = SettingsDataStore(requireActivity())
+        mediaMessage = arguments?.getSerializableCompat(ARG_MEDIA_MESSAGE, MediaMessage::class.java)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -73,10 +78,21 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         populateInitialData(message)
         setupEventListeners(message)
 
+        // Load settings values
+        lifecycleScope.launch {
+            isAutoPlayEnabled = settingsDataStore.autoPlay.first()
+            progressThreshold = settingsDataStore.progressThreshold.first()
+            bufferSizeThreshold = settingsDataStore.bufferSizeThreshold.first()
+            appliedSettingsTextView.text = getString(R.string.applied_settings_placeholder_off)
+            if (isAutoPlayEnabled){
+                appliedSettingsTextView.text = getString(R.string.applied_settings_placeholder, isAutoPlayEnabled, progressThreshold, bufferSizeThreshold)
+            }
+        }
+
         // If a file was already being downloaded when this fragment was opened/recreated,
         // we should try to re-attach to its updates if it's the current media.
         // This is important for configuration changes or if the fragment is reused.
-        if (activeDownloads.contains(message.fileId.toInt())) {
+        if (activeDownloads.contains(message.fileId)) {
             startFileUpdateCollection()
             setDownloadButtonVisibility(false)
             setStopDownloadButtonVisibility(true)
@@ -99,44 +115,65 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         stopDownloadButton = view.findViewById(R.id.stop_download_button)
         availableStorageTextView = view.findViewById(R.id.available_storage_text)
         logTextView = view.findViewById(R.id.log_text_view)
+        closeButton = view.findViewById(R.id.close_button)
+        appliedSettingsTextView = view.findViewById(R.id.applied_settings_text)
     }
 
     private fun populateInitialData(message: MediaMessage) {
-        view?.findViewById<TextView>(R.id.detail_title)?.text = message.title ?: "No Title"
-        val fileSizeMb = if (message.size > 0) String.format("%.2f MB", message.size / 1024.0 / 1024.0) else "N/A"
-        view?.findViewById<TextView>(R.id.detail_file_info)?.text = "File ID: ${message.fileId}\nSize: $fileSizeMb"
+        view?.findViewById<TextView>(R.id.detail_title)?.text = message.title ?: getString(R.string.media_title_placeholder)
+        val fileSizeMb = if (message.size > 0) String.format(Locale.US, "%.2f MB", message.size / 1024.0 / 1024.0) else "N/A"
+        view?.findViewById<TextView>(R.id.detail_file_info)?.text = getString(R.string.file_info_placeholder, message.fileId, fileSizeMb)
 
         updateAvailableStorageText()
         this.hasAutoPlayed = false // Reset hasAutoPlayed on initial setup
 
         // Initial check for play button based on *actual* local file
         val localFile = message.localPath?.let { File(it) }
-        val localFileExistsAndIsPlayable = localFile != null && localFile.exists() && (localFile.length() >= MIN_PLAYABLE_SIZE_BYTES || currentDownload?.progress!! > MIN_PLAY_PROGRESS_PERCENTAGE)
+        val downloadedSizeMb = localFile?.length()?.toFloat()?.div(1024 * 1024) ?: 0f
+        val totalSizeMb = message.size.toFloat() / (1024 * 1024)
+        val progress = if (totalSizeMb > 0) ((downloadedSizeMb / totalSizeMb) * 100).toInt() else 0
+        val localFileExistsAndIsPlayable = localFile != null && localFile.exists() &&
+                (progress >= progressThreshold || downloadedSizeMb >= bufferSizeThreshold)
 
+
+        downloadStatusText.visibility  = View.GONE
+        downloadProgressBar.visibility = View.GONE
         // If a download is currently active for this file, the buttons might already be in the correct state
         // Otherwise, determine initial visibility based on existing file.
-        if (activeDownloads.contains(message.fileId.toInt())) {
+        if (activeDownloads.contains(message.fileId)) {
+            downloadStatusText.visibility  = View.VISIBLE
+            downloadProgressBar.visibility = View.VISIBLE
+            setCloseButtonVisibility(false)
             setDownloadButtonVisibility(false)
             setStopDownloadButtonVisibility(true)
             setPlayButtonVisibility(false) // Will be updated by handleFileUpdate if progress is enough
             // Consider if you want to initialize currentDownload from TelegramClientManager if a download is truly active
         } else if (localFileExistsAndIsPlayable) {
+            downloadStatusText.visibility  = View.GONE
+            downloadProgressBar.visibility = View.GONE
             setDownloadButtonVisibility(false)
             setStopDownloadButtonVisibility(false) // Not downloading anymore
             setPlayButtonVisibility(true)
+            setCloseButtonVisibility(true)
             // Initialize currentDownload if the file is already downloaded
             currentDownload = DownloadingFileInfo(
                 fileId = message.fileId,
-                downloadedSize = localFile.length().toFloat() / (1024 * 1024),
-                totalSize = localFile.length().toFloat() / (1024 * 1024),
-                progress = 100,
+                downloadedSize = downloadedSizeMb,
+                totalSize = totalSizeMb,
+                progress = progress,
                 localPath = message.localPath
             )
+            // For initial load, if auto-play is enabled and conditions met, trigger auto-play
+            if (isAutoPlayEnabled && !hasAutoPlayed) {
+                hasAutoPlayed = true
+                playWithVLC(requireContext(), message.localPath)
+            }
         } else {
             // No active download, no local playable file
             setDownloadButtonVisibility(true)
             setStopDownloadButtonVisibility(false)
             setPlayButtonVisibility(false)
+            setCloseButtonVisibility(true)
             currentDownload = null // Ensure no stale download info
         }
     }
@@ -148,11 +185,11 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
 
             this.hasAutoPlayed = false // Reset hasAutoPlayed for new download
             if (getAvailableInternalMemorySize() < message.size) {
-                logError("Not enough storage. Available: ${String.format("%.2f GB", getAvailableInternalMemorySize() / 1024.0 / 1024.0 / 1024.0)}")
+                logError("Not enough storage. Available: ${String.format(Locale.US, "%.2f GB", getAvailableInternalMemorySize() / 1024.0 / 1024.0 / 1024.0)}")
                 return@setOnClickListener
             }
             if (message.fileId != 0) {
-                activeDownloads.add(message.fileId.toInt())
+                activeDownloads.add(message.fileId)
                 // *** ADD THIS LINE to save the MediaMessage to the history ***
                 HistoryManager.addHistoryItem(message)
                 TelegramClientManager.startFileDownload(message.fileId)
@@ -163,16 +200,18 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
                 setDownloadButtonVisibility(false)
                 setStopDownloadButtonVisibility(true)
                 setPlayButtonVisibility(false) // Hide play button until playable progress
+                setCloseButtonVisibility(false)
+                downloadStatusText.visibility  = View.VISIBLE
+                downloadProgressBar.visibility = View.VISIBLE
             }
         }
 
         playButton.setOnClickListener {
             val path = currentDownload?.localPath ?: mediaMessage?.localPath
-            val fileId = mediaMessage?.fileId ?: 0
 
             // Crucially, check if the physical file exists and is of sufficient size
             val localFile = path?.let { File(it) }
-            if (localFile != null && localFile.exists() && localFile.length() >= MIN_PLAYABLE_SIZE_BYTES) {
+            if (localFile != null && localFile.exists()) {
                 stopVLCPlayback() // Ensure previous playback is stopped
                 this.hasAutoPlayed = true // Mark as played to prevent auto-play re-triggering
                 playWithVLC(requireContext(), path)
@@ -184,10 +223,15 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
 
         stopDownloadButton.setOnClickListener {
             cancelAndClearDownloadState()
-            dismiss() // Close the bottom sheet after cancellation
+            setDownloadButtonVisibility(true)
+            setStopDownloadButtonVisibility(false)
+            setCloseButtonVisibility(true)
+            downloadStatusText.visibility  = View.GONE
+            downloadProgressBar.visibility = View.GONE
+            //dismiss() // Close the bottom sheet after cancellation
         }
 
-        view?.findViewById<ImageButton>(R.id.close_button)?.setOnClickListener {
+        closeButton.setOnClickListener {
             cancelAndClearDownloadState()
             dismiss() // Close the bottom sheet
         }
@@ -282,21 +326,24 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
             val localPathForPlay = currentDownload?.localPath
             val actualFile = localPathForPlay?.let { File(it) }
 
-            // NEW CONDITION: Play button is visible if file exists AND (progress > 30 OR actual file length is >= MIN_PLAYABLE_SIZE_BYTES)
+            // NEW CONDITION: Play button is visible if file exists AND (progress >= progressThreshold OR downloadedSizeMb >= bufferSizeThreshold)
             val isPlayableEnough = actualFile != null && actualFile.exists() && !this.hasAutoPlayed &&
-                    (progress > MIN_PLAY_PROGRESS_PERCENTAGE || actualFile.length() >= MIN_PLAYABLE_SIZE_BYTES)
+                    (progress >= progressThreshold || downloadedSizeMb >= bufferSizeThreshold)
 
-            if (isPlayableEnough) {
+            if (isPlayableEnough && isAutoPlayEnabled) {
                 setPlayButtonVisibility(true)
                 hasAutoPlayed = true
                 playWithVLC(requireContext(), localPathForPlay)
+                logInfo("Auto-play triggered: Progress = $progress% (>= $progressThreshold%), Buffer = $downloadedSizeMb MB (>= $bufferSizeThreshold MB)")
             }
 
             // If download completes, ensure buttons reflect that
-            if (file.local.isDownloadingCompleted && actualFile != null && actualFile.exists() && (progress > MIN_PLAY_PROGRESS_PERCENTAGE || actualFile.length() >= MIN_PLAYABLE_SIZE_BYTES)) {
+            if (file.local.isDownloadingCompleted && actualFile != null && actualFile.exists() &&
+                (progress >= progressThreshold || downloadedSizeMb >= bufferSizeThreshold)) {
                 setDownloadButtonVisibility(false)
                 setStopDownloadButtonVisibility(false)
                 setPlayButtonVisibility(true) // Should already be true from above check
+                setCloseButtonVisibility(true)
                 logInfo("Download completed for file ID: ${file.id}")
             } else if (file.local.isDownloadingCompleted && (actualFile == null || !actualFile.exists())) {
                 // Edge case: TdLib says complete but file doesn't exist on disk (e.g. deleted externally)
@@ -305,6 +352,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
                 setDownloadButtonVisibility(true)
                 setStopDownloadButtonVisibility(false)
                 setPlayButtonVisibility(false)
+                setCloseButtonVisibility(true)
                 currentDownload = null
                 TelegramClientManager.cancelDownloadAndDelete(activeDownloads) // Clean up TdLib state
                 activeDownloads.clear()
@@ -361,9 +409,13 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         stopDownloadButton.visibility = if (isVisible) View.VISIBLE else View.GONE
     }
 
+    private fun setCloseButtonVisibility(isVisible: Boolean) {
+        closeButton.visibility = if (isVisible) View.VISIBLE else View.GONE
+    }
+
     private fun updateAvailableStorageText() {
         val availableSpaceBytes = getAvailableInternalMemorySize()
-        availableStorageTextView.text = String.format("Available Storage: %.2f GB", availableSpaceBytes / 1024.0 / 1024.0 / 1024.0)
+        availableStorageTextView.text = getString(R.string.available_storage_placeholder, availableSpaceBytes / 1024.0 / 1024.0 / 1024.0)
     }
 
     private fun expandBottomSheet() {
@@ -394,7 +446,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
     @SuppressLint("SimpleDateFormat")
     private fun appendLog(message: String) {
         activity?.runOnUiThread {
-            if (logTextView.visibility == View.GONE) {
+            if (logTextView.isGone) {
                 logTextView.visibility = View.VISIBLE
             }
             val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
@@ -427,4 +479,14 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         val progress: Int,
         var localPath: String? = null
     )
+}
+
+@Suppress("DEPRECATION")
+fun <T : Serializable?> Bundle.getSerializableCompat(key: String, clazz: Class<T>): T? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getSerializable(key, clazz)
+    } else {
+        @Suppress("UNCHECKED_CAST")
+        getSerializable(key) as? T
+    }
 }

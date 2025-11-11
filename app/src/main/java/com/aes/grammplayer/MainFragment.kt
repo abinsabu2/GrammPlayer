@@ -95,10 +95,8 @@ class MainFragment : BrowseSupportFragment() {
         val settingsRowAdapter = ArrayObjectAdapter(settingsGridPresenter)
 
         // Add items to your settings row. We\'ll use simple strings.
-        settingsRowAdapter.add("Buffer Setting")
-        settingsRowAdapter.add("Auto Play Settings")
-        settingsRowAdapter.add("Player Settings")
         settingsRowAdapter.add("Clear Cache")
+        settingsRowAdapter.add("Settings")
         settingsRowAdapter.add("Logout")
 
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
@@ -127,6 +125,11 @@ class MainFragment : BrowseSupportFragment() {
                             val cacheClearText = "Cleared $deletedCount downloaded files from cache"
                             //val sizeClearText = "$appDirectorySize MB of app directory size saved"
                             Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT).show()
+                        }
+                        "Settings" -> {
+                            val intent = Intent(activity, SettingsActivity::class.java)
+                            startActivity(intent)
+
                         }
                         "Logout" -> {
                             TelegramClientManager.clearDownloadedFiles()
@@ -187,9 +190,6 @@ class MainFragment : BrowseSupportFragment() {
             // Now handle both TdApi.Chat and String types
             val textView = viewHolder.view as TextView
             when (item) {
-                is TdApi.Chat -> {
-                    textView.text = "Explore Chat"
-                }
                 is String -> {
                     textView.text = item
                 }

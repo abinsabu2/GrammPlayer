@@ -145,25 +145,6 @@ class MessageGridFragment : VerticalGridSupportFragment() {
         }
     }
 
-    private fun handleFileUpdate(update: TdApi.UpdateFile) {
-        val updatedFile = update.file
-        // Iterate through the adapter to find the MediaMessage with the matching fileId
-        for (i in 0 until gridAdapter.size()) {
-            val item = gridAdapter.get(i)
-            if (item is MediaMessage && item.fileId == updatedFile.id) {
-                // Create a new MediaMessage with the updated download status
-                val updatedMediaMessage = item.copy(
-                    isDownloaded = updatedFile.local.isDownloadingCompleted,
-                    isDownloadActive = updatedFile.local.isDownloadingActive,
-                    localPath = updatedFile.local.path.takeIf { it.isNotEmpty() } ?: item.localPath
-                )
-                // Replace the old item with the new one and notify the adapter
-                gridAdapter.replace(i, updatedMediaMessage)
-                break // Exit loop once the item is found and updated
-            }
-        }
-    }
-
     private fun refreshAllCards() {
         // Notify the adapter that the entire dataset might have changed,
         // forcing all visible items to be re-bound and re-rendered.

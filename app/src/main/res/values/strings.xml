@@ -37,4 +37,13 @@
     <string name="play">Play</string>
     <string name="save">Save</string>
     <string name="stop">Stop</string>
+
+    <string name="close_button_description">Close</string>
+    <string name="media_title_placeholder">Media Title</string>
+    <string name="media_description_placeholder">Description of the media file.</string>
+    <string name="file_info_placeholder">File ID: %1$d\nSize: %2$s</string>
+    <string name="available_storage_placeholder">Available Storage: %.2f GB</string>
+    <string name="applied_settings_placeholder">Settings: Auto-Play, Progress Threshold: %2$d%%, Buffer Threshold: %3$dMB</string>
+    <string name="applied_settings_placeholder_off">Auto-Play : Off</string>
+    <string name="download_status_placeholder">Downloading: %1$d%% | %.2f MB of %.2f MB</string>
 </resources>
