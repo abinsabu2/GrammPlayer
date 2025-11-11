@@ -153,6 +153,8 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
             }
             if (message.fileId != 0) {
                 activeDownloads.add(message.fileId.toInt())
+                // *** ADD THIS LINE to save the MediaMessage to the history ***
+                HistoryManager.addHistoryItem(message)
                 TelegramClientManager.startFileDownload(message.fileId)
                 logInfo("Download command sent for file ID: ${message.fileId}")
                 this.hasDownloadStoped = false // This flag might become redundant

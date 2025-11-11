@@ -81,7 +81,13 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
     private fun loadMessages() {
         // Use Coroutines to call the suspend function on the main thread.
         TelegramClientManager.loadAllGroups { chat ->
-            var lastMessage = chat.lastMessage
+
+            val chatTitle = chat.title
+            if(chatTitle == "Telegram"){
+                return@loadAllGroups
+            }
+
+            val lastMessage = chat.lastMessage
             if (lastMessage != null) {
                 val messageContent = lastMessage.content
                 when (messageContent) {

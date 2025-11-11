@@ -21,6 +21,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 
 /**
@@ -64,11 +69,25 @@ class MainFragment : BrowseSupportFragment() {
         // This adapter holds all the rows.
         val rowsAdapter = ArrayObjectAdapter(ListRowPresenter())
 
-        val messageHeader = HeaderItem("My Messages")
+        val messageHeader = HeaderItem("Chats")
         val messageGridPresenter = GridItemPresenter() // Can reuse the same presenter
         val messageRowAdapter = ArrayObjectAdapter(messageGridPresenter)
-        messageRowAdapter.add("My Messages")
+        messageRowAdapter.add("Chats")
         rowsAdapter.add(ListRow(messageHeader, messageRowAdapter))
+
+        // --- 2. ADD A NEW SETTINGS ROW (new logic) ---
+        val historyHeader = HeaderItem("History")
+        val historyGridPresenter = GridItemPresenter() // Can reuse the same presenter
+        val historyRowAdapter = ArrayObjectAdapter(historyGridPresenter)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                HistoryManager.history.collect { newItem ->
+                    historyRowAdapter.add("New history item added: ${newItem.mediaMessage.title}")
+                }
+            }
+        }
+        // Todo History Module
+        //rowsAdapter.add(ListRow(historyHeader, historyRowAdapter))
 
         // --- 2. ADD A NEW SETTINGS ROW (new logic) ---
         val settingsHeader = HeaderItem("Preferences")
@@ -83,7 +102,6 @@ class MainFragment : BrowseSupportFragment() {
         settingsRowAdapter.add("Logout")
 
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
-
 
         adapter = rowsAdapter
     }
@@ -116,10 +134,10 @@ class MainFragment : BrowseSupportFragment() {
                             requireActivity().finish()
                         }
 
-                        "My Messages" -> {
+                        "Chats" -> {
                             val intent = Intent(activity, ChatsGridActivity::class.java)
                             intent.putExtra("chat_id", 1000)
-                            intent.putExtra("chat_title", "My Messages")
+                            intent.putExtra("chat_title", "Chats")
                             startActivity(intent)
                         }
 
@@ -141,10 +159,10 @@ class MainFragment : BrowseSupportFragment() {
                 // Handle clicks on settings items
                 is String -> {
                     when (item) {
-                        "My Messages" -> {
+                        "Chats" -> {
                             val intent = Intent(activity, ChatsGridActivity::class.java)
                             intent.putExtra("chat_id", 1000)
-                            intent.putExtra("chat_title", "My Messages")
+                            intent.putExtra("chat_title", "Chats")
                             startActivity(intent)
                         }
                     }
