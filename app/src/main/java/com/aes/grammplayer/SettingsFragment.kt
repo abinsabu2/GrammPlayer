@@ -55,7 +55,7 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 newActions.add(
                     GuidedAction.Builder(requireContext())
                         .id(ACTION_ID_PROGRESS_THRESHOLD)
-                        .title("Auto Play Will Start when Download Progress Reaches:")
+                        .title("Start when Download Progress Reaches:")
                         .description("$progressThreshold%")
                         .build()
                 )
@@ -64,7 +64,7 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 newActions.add(
                     GuidedAction.Builder(requireContext())
                         .id(ACTION_ID_BUFFER_SIZE_THRESHOLD)
-                        .title("Auto Play Will Start when Download Buffer Size Reaches:")
+                        .title("Start when Download Buffer Size Reaches:")
                         .description("$bufferSizeThreshold MB")
                         .build()
                 )
