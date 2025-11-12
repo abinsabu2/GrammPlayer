@@ -372,11 +372,6 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
             setPlayButtonVisibility(false) // Ensure button is hidden if conditions aren't met
             return
         }
-
-        if (PlaybackStateManager.isCurrentlyPlaying(fileId)) {
-            logInfo("File ID $fileId is already playing.")
-            return
-        }
         try {
             val contentUri: Uri = FileProvider.getUriForFile(
                 context,
