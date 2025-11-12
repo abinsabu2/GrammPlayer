@@ -46,4 +46,7 @@
     <string name="applied_settings_placeholder">Settings: Auto-Play, Progress Threshold: %2$d%%, Buffer Threshold: %3$dMB</string>
     <string name="applied_settings_placeholder_off">Auto-Play : Off</string>
     <string name="download_status_placeholder">Downloading: %1$d%% | %.2f MB of %.2f MB</string>
+    <string name="authentication_code">Authentication Code</string>
+    <string name="_5555555555">5555555555</string>
+    <string name="submit">Submit</string>
 </resources>

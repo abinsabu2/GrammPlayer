@@ -16,7 +16,7 @@
         android:text="@string/connect_with_telegram"
         android:textColor="@android:color/white"
         android:textSize="36sp"
-        app:layout_constraintBottom_toTopOf="@id/countryCodeEditText"
+        app:layout_constraintBottom_toTopOf="@+id/countryCodeEditText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -40,9 +40,9 @@
         android:textSize="24sp"
         app:layout_constraintHorizontal_chainStyle="packed"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/phoneNumberEditText"
-        app:layout_constraintTop_toBottomOf="@id/titleTextView"
-        app:layout_constraintBottom_toTopOf="@id/authCodeEditText" />
+        app:layout_constraintEnd_toStartOf="@+id/phoneNumberEditText"
+        app:layout_constraintTop_toBottomOf="@+id/titleTextView"
+        app:layout_constraintBottom_toTopOf="@+id/authCodeEditText" />
 
     <!-- Phone Number Input Field -->
     <EditText
@@ -52,7 +52,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="24dp"
         android:background="@drawable/edit_text_background"
-        android:hint="5555555555"
+        android:hint="@string/_5555555555"
         android:imeOptions="actionNext"
         android:inputType="phone"
         android:maxLines="1"
@@ -60,8 +60,8 @@
         android:textColor="@android:color/white"
         android:textColorHint="#CCCCCC"
         android:textSize="24sp"
-        app:layout_constraintBaseline_toBaselineOf="@id/countryCodeEditText"
-        app:layout_constraintStart_toEndOf="@id/countryCodeEditText"
+        app:layout_constraintBaseline_toBaselineOf="@+id/countryCodeEditText"
+        app:layout_constraintStart_toEndOf="@+id/countryCodeEditText"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Auth Code Input Field -->
@@ -71,7 +71,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:background="@drawable/edit_text_background"
-        android:hint="Authentication Code"
+        android:hint="@string/authentication_code"
         android:inputType="number"
         android:maxLines="1"
         android:padding="16dp"
@@ -79,11 +79,10 @@
         android:textColorHint="#CCCCCC"
         android:textSize="24sp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/submitButton"
+        app:layout_constraintBottom_toTopOf="@+id/submitButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/phoneNumberEditText"
-        tools:visibility="visible"
+        app:layout_constraintTop_toBottomOf="@+id/phoneNumberEditText"
         android:imeOptions="actionDone" />
 
     <!-- Submit Button -->
@@ -95,39 +94,53 @@
         android:layout_marginTop="16dp"
         android:background="@drawable/custom_button_background"
         android:padding="16dp"
-        android:text="Submit"
+        android:text="@string/submit"
         android:textColor="@drawable/custom_button_text_color"
         android:textSize="20sp"
-        app:layout_constraintBottom_toTopOf="@id/logScrollView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/authCodeEditText" />
+        app:layout_constraintTop_toBottomOf="@+id/authCodeEditText" />
 
-    <!-- Status Log Area -->
-    <ScrollView
-        android:id="@+id/logScrollView"
-        android:layout_width="0dp"
-        android:layout_height="100dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="24dp"
-        android:background="#222222"
-        android:padding="8dp"
+    <!-- Log Popup -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/logCardView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:visibility="gone"
+        app:cardBackgroundColor="#333333"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/submitButton"
-        app:layout_constraintWidth_percent="0.6"
+        app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible">
 
-        <TextView
-            android:id="@+id/logTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:textColor="#A9A9A9"
-            android:textSize="14sp"
-            tools:text="[10:30:01] Initializing client..." />
-    </ScrollView>
+        <LinearLayout
+            android:layout_width="350dp"
+            android:layout_height="250dp"
+            android:background="@drawable/gp_logo"
+            android:gravity="bottom|center"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:indeterminateTint="@color/text_color_on_dark"
+                android:indeterminateTintMode="src_in" />
+
+            <TextView
+                android:id="@+id/logTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="#A9A9A9"
+                android:textSize="14sp"
+                tools:text="[10:30:01] Initializing client..." />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
