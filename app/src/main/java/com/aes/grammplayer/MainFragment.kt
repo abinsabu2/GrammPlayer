@@ -97,7 +97,7 @@ class MainFragment : BrowseSupportFragment() {
         // Add items to your settings row. We\'ll use simple strings.
         settingsRowAdapter.add("Clear Cache")
         settingsRowAdapter.add("Settings")
-        settingsRowAdapter.add("Logout")
+        settingsRowAdapter.add("Close")
 
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
 
@@ -131,7 +131,7 @@ class MainFragment : BrowseSupportFragment() {
                             startActivity(intent)
 
                         }
-                        "Logout" -> {
+                        "Close" -> {
                             TelegramClientManager.clearDownloadedFiles()
                             //TelegramClientManager.logOut();
                             requireActivity().finish()

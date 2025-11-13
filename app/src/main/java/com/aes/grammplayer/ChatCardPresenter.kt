@@ -139,6 +139,15 @@ class ChatCardPresenter : Presenter() {
 
         val spannable = SpannableStringBuilder().apply {
             // Title value: Bold, larger size, primary color
+            val tStart = length
+            append(chatTypeReadable.toString())
+            val tEnd = length
+            setSpan(StyleSpan(android.graphics.Typeface.BOLD), tStart, tEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(AbsoluteSizeSpan(10, true), tStart, tEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // Adjust size for chat title
+            setSpan(ForegroundColorSpan(sTitleTextColor), tStart, tEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+            append("\n") // Spacing
+
             val titleStart = length
             append(title)
             val titleEnd = length
@@ -146,14 +155,7 @@ class ChatCardPresenter : Presenter() {
             setSpan(AbsoluteSizeSpan(14, true), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // Adjust size for chat title
             setSpan(ForegroundColorSpan(sTitleTextColor), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-            append("\n") // Spacing
 
-            val tStart = length
-            append(chatTypeReadable.toString())
-            val tEnd = length
-            setSpan(StyleSpan(android.graphics.Typeface.BOLD), tStart, tEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(AbsoluteSizeSpan(10, true), tStart, tEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // Adjust size for chat title
-            setSpan(ForegroundColorSpan(sTitleTextColor), tStart, tEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
 
         }
@@ -178,7 +180,7 @@ class ChatCardPresenter : Presenter() {
     companion object {
         private const val TAG = "ChatCardPresenter"
         // Let's use a more square shape for chat cards
-        private const val CHAT_CARD_WIDTH = 300 // dp
+        private const val CHAT_CARD_WIDTH = 400 // dp
         private const val CHAT_CARD_HEIGHT = 200 // dp
 
         private const val FOCUSED_SCALE = 1.1f
