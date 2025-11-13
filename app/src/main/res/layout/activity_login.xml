@@ -52,7 +52,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="24dp"
         android:background="@drawable/edit_text_background"
-        android:hint="@string/_5555555555"
+        android:hint="@string/phone_hint"
         android:imeOptions="actionNext"
         android:inputType="phone"
         android:maxLines="1"
@@ -84,24 +84,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/phoneNumberEditText"
         android:imeOptions="actionDone" />
-
-    <!-- Submit Button -->
-    <Button
-        android:id="@+id/submitButton"
-        style="@style/Widget.AppCompat.Button"
-        android:layout_width="320dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/custom_button_background"
-        android:padding="16dp"
-        android:text="@string/submit"
-        android:textColor="@drawable/custom_button_text_color"
-        android:textSize="20sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/authCodeEditText" />
-
-    <!-- Log Popup -->
     <androidx.cardview.widget.CardView
         android:id="@+id/logCardView"
         android:layout_width="wrap_content"
@@ -117,10 +99,10 @@
         tools:visibility="visible">
 
         <LinearLayout
-            android:layout_width="350dp"
-            android:layout_height="250dp"
-            android:background="@drawable/gp_logo"
-            android:gravity="bottom|center"
+            android:layout_width="600dp"
+            android:layout_height="450dp"
+            android:background="@color/button_default_text"
+            android:gravity="center|center"
             android:orientation="vertical"
             android:padding="16dp">
 
@@ -142,5 +124,22 @@
                 tools:text="[10:30:01] Initializing client..." />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
+    <!-- Submit Button -->
+    <Button
+        android:id="@+id/submitButton"
+        style="@style/Widget.AppCompat.Button"
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/custom_button_background"
+        android:padding="16dp"
+        android:text="@string/submit"
+        android:textColor="@drawable/custom_button_text_color"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/authCodeEditText" />
+
+    <!-- Log Popup -->
 
 </androidx.constraintlayout.widget.ConstraintLayout>

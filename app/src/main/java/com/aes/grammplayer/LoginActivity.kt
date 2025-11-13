@@ -87,7 +87,7 @@ class LoginActivity : FragmentActivity() {
                         TelegramClientManager.sendAuthCode(code)
                     }
                 } else {
-                    logMessage("Please enter a valid code.")
+                    logMessage("Invalid Authentication Code!")
                 }
             } else {
                 val countryCode = countryCodeEditText.text.toString().trim()
@@ -95,7 +95,7 @@ class LoginActivity : FragmentActivity() {
                 val phone = phoneNumberEditText.text.toString().trim()
                 val fullPhoneNumber = countryCodeCleaned + phone
                 if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
-                    logMessage("Submitting phone number: $fullPhoneNumber")
+                    logMessage("Processing: $fullPhoneNumber")
                     showPopup(true)
                     lifecycleScope.launch {
                         delay(1000)
@@ -104,7 +104,7 @@ class LoginActivity : FragmentActivity() {
 
                 } else {
                     showPopup(true)
-                    logMessage("Please enter a valid phone number.")
+                    logMessage("Invalid phone number!")
                 }
             }
         }
