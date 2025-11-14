@@ -13,6 +13,7 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.core.content.FileProvider
 import androidx.core.view.isGone
+import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -31,6 +32,7 @@ import java.util.Locale
 
 class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
 
+    private lateinit var gridAdapter: ArrayObjectAdapter
     private var mediaMessage: MediaMessage? = null
     private var currentDownload: DownloadingFileInfo? = null
     private var hasAutoPlayed = false
@@ -132,8 +134,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         val downloadedSizeMb = localFile?.length()?.toFloat()?.div(1024 * 1024) ?: 0f
         val totalSizeMb = message.size.toFloat() / (1024 * 1024)
         val progress = if (totalSizeMb > 0) ((downloadedSizeMb / totalSizeMb) * 100).toInt() else 0
-        val localFileExistsAndIsPlayable = localFile != null && localFile.exists() &&
-                (progress >= progressThreshold || downloadedSizeMb >= bufferSizeThreshold)
+        val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
 
 
         downloadStatusText.visibility  = View.GONE
@@ -146,7 +147,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
             setCloseButtonVisibility(false)
             setDownloadButtonVisibility(false)
             setStopDownloadButtonVisibility(true)
-            setPlayButtonVisibility(false) // Will be updated by handleFileUpdate if progress is enough
+            setPlayButtonVisibility(true) // Will be updated by handleFileUpdate if progress is enough
             // Consider if you want to initialize currentDownload from TelegramClientManager if a download is truly active
         } else if (localFileExistsAndIsPlayable) {
             downloadStatusText.visibility  = View.GONE
@@ -191,6 +192,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
             if (message.fileId != 0) {
                 activeDownloads.add(message.fileId)
                 // *** ADD THIS LINE to save the MediaMessage to the history ***
+                message.isDownloadActive = true
                 HistoryManager.addHistoryItem(message)
                 TelegramClientManager.startFileDownload(message.fileId)
                 logInfo("Download command sent for file ID: ${message.fileId}")
@@ -340,6 +342,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
             // If download completes, ensure buttons reflect that
             if (file.local.isDownloadingCompleted && actualFile != null && actualFile.exists() &&
                 (progress >= progressThreshold || downloadedSizeMb >= bufferSizeThreshold)) {
+                mediaMessage?.isDownloaded = true
                 setDownloadButtonVisibility(false)
                 setStopDownloadButtonVisibility(false)
                 setPlayButtonVisibility(true) // Should already be true from above check

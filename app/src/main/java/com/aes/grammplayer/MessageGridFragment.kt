@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.leanback.app.VerticalGridSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
@@ -19,6 +20,12 @@ import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.core.content.ContextCompat // Added import for ContextCompat
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.aes.grammplayer.MediaDetailsBottomSheetFragment.DownloadingFileInfo
+import kotlinx.coroutines.Job
+import java.io.File
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -75,14 +82,12 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                     if (existing != null && existing is DialogFragment) {
                         existing.dismiss()
                     }
-
-                    val clone = item.copy()
-
                     // Create a new instance of the bottom sheet with the clicked media message
-                    val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(clone)
+                    val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(item)
 
                     // Show the new bottom sheet using the fragment manager
                     bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.TAG)
+                    refreshAllCards()
                 }
             }
         }
@@ -137,7 +142,11 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                     }
 
                 }
-
+                refreshAllCards()
+                Log.d(
+                    TAG,
+                    "Loaded ${mediaMessages.size} messages from chat $chatId"
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
                 // You could display an error to the user here.

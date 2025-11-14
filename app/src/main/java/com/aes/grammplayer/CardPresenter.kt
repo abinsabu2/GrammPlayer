@@ -15,6 +15,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.leanback.widget.Presenter
+import java.io.File
 
 /**
  * A Presenter used to generate Views and bind MediaMessage objects to them on demand.
@@ -117,6 +118,11 @@ class CardPresenter : Presenter() {
         if (item !is MediaMessage || viewHolder !is CardViewHolder) {
             return
         }
+        val localFile = item.localPath?.let { File(it) }
+        val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
+        if(localFileExistsAndIsPlayable){
+            updateCardStyling(viewHolder.view, true)
+        }
 
         if (item.fileId == 0) {
             return
@@ -129,6 +135,19 @@ class CardPresenter : Presenter() {
         val size = fileSizeMb
 
         val spannable = SpannableStringBuilder().apply {
+            if(localFileExistsAndIsPlayable){
+                val titleBannerStart = length
+                if(item.isDownloadActive){
+                    append("Downloading")
+                }else{
+                    append("Available locally")
+                }
+                val titleBannerEnd = length
+                setSpan(StyleSpan(android.graphics.Typeface.BOLD), titleBannerStart, titleBannerEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(AbsoluteSizeSpan(10, true), titleBannerStart, titleBannerEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(ForegroundColorSpan(sTitleTextColor), titleBannerStart, titleBannerEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                append("\n\n") // Spacing
+            }
             // Title value: Bold, larger size, primary color
             val titleStart = length
             append(title)
