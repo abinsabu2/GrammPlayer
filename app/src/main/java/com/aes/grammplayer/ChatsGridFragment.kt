@@ -52,7 +52,7 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
             }
         }
 
-        gridPresenter.numberOfColumns = 5 // You can adjust the number of columns here
+        gridPresenter.numberOfColumns = 3 // You can adjust the number of columns here
         setGridPresenter(gridPresenter)
 
         // The rest of your code remains the same.

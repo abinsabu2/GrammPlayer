@@ -234,7 +234,7 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
         }
 
         closeButton.setOnClickListener {
-            cancelAndClearDownloadState()
+            //cancelAndClearDownloadState()
             dismiss() // Close the bottom sheet
         }
     }
