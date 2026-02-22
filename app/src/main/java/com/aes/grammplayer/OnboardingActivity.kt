@@ -7,6 +7,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.aes.grammplayer.db.view.SettingsViewModel
+import kotlinx.coroutines.flow.first
 
 class OnboardingActivity : FragmentActivity() {
 
@@ -40,18 +41,43 @@ class OnboardingActivity : FragmentActivity() {
         startActivity(intent)
     }
 
-    private fun observeData(){
-        // Observe settings
+
+    private fun navigateToToc() {
+        // Navigate to the main content of your app
+        val intent = Intent(this, TermsActivity::class.java).apply {
+            // Prevent the user from returning to this screen with the back button
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+    }
+
+
+    private fun navigateToLogin() {
+        // Navigate to the main content of your app
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            // Prevent the user from returning to this screen with the back button
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+    }
+
+
+    private fun observeData() {
         lifecycleScope.launch {
             viewModel.getSettings(1).collect { settings ->
-                when (settings?.toc) {
-                    true -> {
-                        isDecisionMade = true
-                        navigateToMainApp()
-                    }
-                    false, null -> {
-                        isDecisionMade = true
+                isDecisionMade = true
+                when {
+                    settings == null || !settings.onBoard -> {
                         showOnboardingFragment()
+                    }
+                    !settings.toc -> {
+                        navigateToToc()
+                    }
+                    settings.activeUserId == null || settings.activeUserId == 0 -> {
+                        navigateToLogin()
+                    }
+                    else -> {
+                        navigateToMainApp()
                     }
                 }
             }

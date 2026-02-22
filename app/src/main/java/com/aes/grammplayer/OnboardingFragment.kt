@@ -5,12 +5,16 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
-import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
 import androidx.leanback.app.OnboardingSupportFragment
+import com.aes.grammplayer.db.view.SettingsViewModel
 
 class OnboardingFragment : OnboardingSupportFragment() {
+
+    private val viewModel: SettingsViewModel by lazy {
+        ViewModelProvider(requireActivity())[SettingsViewModel::class.java]
+    }
 
     private val pageTitles = arrayOf("Welcome To The GramPlayer", "Discover Latest Movies!", "Enjoy Your Favorites")
     private val pageDescriptions = arrayOf(
@@ -19,7 +23,7 @@ class OnboardingFragment : OnboardingSupportFragment() {
         "Create Your Own Playlists And Watch The Movies You Love."
     )
     private val pageImages = intArrayOf(
-        R.drawable.ic_music_note, // Replace with your own drawables
+        R.drawable.ic_music_note,
         R.drawable.ic_album,
         R.drawable.ic_playlist
     )
@@ -30,10 +34,7 @@ class OnboardingFragment : OnboardingSupportFragment() {
 
     override fun getPageDescription(pageIndex: Int): CharSequence = pageDescriptions[pageIndex]
 
-    override fun onCreateBackgroundView(inflater: LayoutInflater, container: ViewGroup?): View? {
-        // You can set a background drawable or color here
-        return null
-    }
+    override fun onCreateBackgroundView(inflater: LayoutInflater, container: ViewGroup?): View? = null
 
     override fun onCreateContentView(inflater: LayoutInflater, container: ViewGroup?): View? {
         val content = inflater.inflate(R.layout.onboarding_content, container, false)
@@ -43,24 +44,18 @@ class OnboardingFragment : OnboardingSupportFragment() {
     }
 
     override fun onCreateForegroundView(inflater: LayoutInflater, container: ViewGroup?): View? {
-        // Inflate your custom layout for controls
         return inflater.inflate(R.layout.onboarding_custom_controls, container, false)
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
     }
 
     override fun onPageChanged(newPage: Int, previousPage: Int) {
         super.onPageChanged(newPage, previousPage)
-        // Access the view hierarchy to find the ImageView and update the image
         val imageView = view?.findViewById<ImageView>(R.id.onboarding_image)
         imageView?.setImageResource(pageImages[newPage])
     }
 
     override fun onFinishFragment() {
         super.onFinishFragment()
+        viewModel.updateOnboarding()
         val intent = Intent(requireActivity(), TermsActivity::class.java)
         startActivity(intent)
     }
@@ -68,5 +63,4 @@ class OnboardingFragment : OnboardingSupportFragment() {
     override fun onProvideTheme(): Int {
         return androidx.leanback.R.style.Theme_Leanback_Onboarding
     }
-
 }
