@@ -23,4 +23,7 @@ interface UserDao {
 
     @Query("SELECT * FROM Users WHERE validated = 1 LIMIT 1")
     fun getValidatedUser(): Flow<User?>
+
+    @Query("SELECT COUNT(*) FROM Users")
+    suspend fun count(): Int
 }

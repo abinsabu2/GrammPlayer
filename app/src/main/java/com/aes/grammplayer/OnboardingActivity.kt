@@ -44,16 +44,14 @@ class OnboardingActivity : FragmentActivity() {
         // Observe settings
         lifecycleScope.launch {
             viewModel.getSettings(1).collect { settings ->
-                runOnUiThread {
-                    when (settings?.toc) {
-                        true -> {
-                            isDecisionMade = true
-                            navigateToMainApp()
-                        }
-                        false, null -> {
-                            isDecisionMade = false
-                            showOnboardingFragment()
-                        }
+                when (settings?.toc) {
+                    true -> {
+                        isDecisionMade = true
+                        navigateToMainApp()
+                    }
+                    false, null -> {
+                        isDecisionMade = true
+                        showOnboardingFragment()
                     }
                 }
             }

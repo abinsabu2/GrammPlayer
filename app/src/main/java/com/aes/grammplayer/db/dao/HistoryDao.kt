@@ -17,4 +17,7 @@ interface HistoryDao {
 
     @Query("DELETE FROM History WHERE user = :userId")
     suspend fun clearHistoryForUser(userId: Int)
+
+    @Query("SELECT COUNT(*) FROM History")
+    suspend fun count(): Int
 }

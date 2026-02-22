@@ -1,8 +1,8 @@
 package com.aes.grammplayer
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.os.Bundle
-import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -10,15 +10,27 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
-import android.app.Activity
 import android.content.Intent
+import androidx.activity.viewModels
+import com.aes.grammplayer.db.view.SettingsViewModel
+import kotlin.getValue
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
+import com.aes.grammplayer.db.model.Settings
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
-class TermsActivity : Activity() {  // Or extend Activity if you prefer
+class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
 
     private lateinit var checkBox: CheckBox
     private lateinit var proceedButton: Button
     private lateinit var termsText: TextView
     private lateinit var privacyText: TextView
+
+    private val viewModel: SettingsViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,7 +69,10 @@ class TermsActivity : Activity() {  // Or extend Activity if you prefer
 
         // Proceed button click
         proceedButton.setOnClickListener {
-
+            lifecycleScope.launch {
+                val current = viewModel.getSettings(1).first() ?: return@launch
+                viewModel.update(current.copy(toc = true))
+            }
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
             finish()  // Optional: Prevent back to terms

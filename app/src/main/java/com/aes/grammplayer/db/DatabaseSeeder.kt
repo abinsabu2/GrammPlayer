@@ -5,14 +5,15 @@ import com.aes.grammplayer.db.model.*
 object DatabaseSeeder {
 
     suspend fun seed(db: AppDatabase) {
-        seedSettings(db)
         val userIds = seedUsers(db)
+        seedSettings(db, userIds)
         val chatIds = seedChats(db, userIds)
         val messageIds = seedMediaMessages(db, chatIds)
         seedHistory(db, userIds, chatIds, messageIds)
     }
 
-    private suspend fun seedSettings(db: AppDatabase) {
+    private suspend fun seedSettings(db: AppDatabase, userIds: List<Long>) {
+        if (db.settingsDao().count() > 0) return
         val settings = listOf(
             Settings(
                 bufferSize = 1024,
@@ -20,13 +21,15 @@ object DatabaseSeeder {
                 autoplay = true,
                 toc = false,
                 onBoard = false,
-                gridSize = 4
+                gridSize = 4,
+                activeUserId = null
             )
         )
         settings.forEach { db.settingsDao().insert(it) }
     }
 
     private suspend fun seedUsers(db: AppDatabase): List<Long> {
+        if (db.userDao().count() > 0) return emptyList()
         val users = listOf(
             User(phone = "+1234567890", isTest = false, validated = true),
             User(phone = "+0987654321", isTest = true,  validated = false),
@@ -38,6 +41,7 @@ object DatabaseSeeder {
     }
 
     private suspend fun seedChats(db: AppDatabase, userIds: List<Long>): List<Long> {
+        if (userIds.isEmpty() || db.chatDao().count() > 0) return emptyList()
         val chats = listOf(
             Chat(name = "Movies Channel",      type = 1, user = userIds[0].toInt()),
             Chat(name = "Series Hub",          type = 1, user = userIds[0].toInt()),
@@ -51,6 +55,7 @@ object DatabaseSeeder {
     }
 
     private suspend fun seedMediaMessages(db: AppDatabase, chatIds: List<Long>): List<Long> {
+        if (chatIds.isEmpty() || db.mediaMessageDao().count() > 0) return emptyList()
         val messages = listOf(
             MediaMessage(
                 chat = chatIds[0].toInt(),
@@ -230,6 +235,7 @@ object DatabaseSeeder {
         chatIds: List<Long>,
         messageIds: List<Long>
     ) {
+        if (messageIds.isEmpty() || db.historyDao().count() > 0) return
         val history = listOf(
             History(user = userIds[0].toInt(), chat = chatIds[0].toInt(), message = messageIds[0].toInt()),
             History(user = userIds[0].toInt(), chat = chatIds[0].toInt(), message = messageIds[1].toInt()),

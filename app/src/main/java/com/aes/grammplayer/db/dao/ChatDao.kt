@@ -23,4 +23,7 @@ interface ChatDao {
 
     @Query("SELECT * FROM Chats WHERE user = :userId")
     fun getByUser(userId: Int): Flow<List<Chat>>
+
+    @Query("SELECT COUNT(*) FROM Chats")
+    suspend fun count(): Int
 }

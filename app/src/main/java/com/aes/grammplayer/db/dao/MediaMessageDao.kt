@@ -29,4 +29,7 @@ interface MediaMessageDao {
 
     @Query("UPDATE MediaMessage SET isDownloaded = :downloaded WHERE id = :id")
     suspend fun updateDownloadStatus(id: Int, downloaded: Boolean)
+
+    @Query("SELECT COUNT(*) FROM MediaMessage")
+    suspend fun count(): Int
 }

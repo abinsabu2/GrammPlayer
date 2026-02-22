@@ -17,4 +17,7 @@ interface SettingsDao {
 
     @Query("SELECT * FROM Settings LIMIT 1")
     fun getFirstSettings(): Flow<Settings?>
+
+    @Query("SELECT COUNT(*) FROM Settings")
+    suspend fun count(): Int
 }
