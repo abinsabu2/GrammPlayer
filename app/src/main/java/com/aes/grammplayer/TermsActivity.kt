@@ -57,6 +57,7 @@ class TermsActivity : Activity() {  // Or extend Activity if you prefer
 
         // Proceed button click
         proceedButton.setOnClickListener {
+
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
             finish()  // Optional: Prevent back to terms
