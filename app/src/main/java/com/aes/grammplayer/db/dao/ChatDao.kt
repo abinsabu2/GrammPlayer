@@ -19,10 +19,13 @@ interface ChatDao {
     fun getAll(): Flow<List<Chat>>
 
     @Query("SELECT * FROM Chats WHERE id = :id")
-    suspend fun getById(id: Int): Chat?
+    fun getById(id: Int): Flow<Chat?>
 
-    @Query("SELECT * FROM Chats WHERE user = :userId")
-    fun getByUser(userId: Int): Flow<List<Chat>>
+    @Query("SELECT * FROM Chats WHERE userId = :userId ORDER BY `order` ASC")
+    fun getByUserId(userId: Int): Flow<List<Chat>>
+
+    @Query("SELECT * FROM Chats WHERE userId = :userId AND isPinned = 1 ORDER BY `order` ASC")
+    fun getPinnedChats(userId: Int): Flow<List<Chat>>
 
     @Query("SELECT COUNT(*) FROM Chats")
     suspend fun count(): Int

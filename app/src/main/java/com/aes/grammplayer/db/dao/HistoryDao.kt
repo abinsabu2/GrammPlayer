@@ -12,8 +12,14 @@ interface HistoryDao {
     @Delete
     suspend fun delete(history: History)
 
-    @Query("SELECT * FROM History WHERE user = :userId")
+    @Query("SELECT * FROM History")
+    fun getAll(): Flow<List<History>>
+
+    @Query("SELECT * FROM History WHERE user = :userId ORDER BY id DESC")
     fun getByUser(userId: Int): Flow<List<History>>
+
+    @Query("SELECT * FROM History WHERE chat = :chatId ORDER BY id DESC")
+    fun getByChat(chatId: Int): Flow<List<History>>
 
     @Query("DELETE FROM History WHERE user = :userId")
     suspend fun clearHistoryForUser(userId: Int)

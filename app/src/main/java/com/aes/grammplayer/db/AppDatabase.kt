@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
         MediaMessage::class,
         History::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -49,6 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
                             }
                         }
                     })
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
             }

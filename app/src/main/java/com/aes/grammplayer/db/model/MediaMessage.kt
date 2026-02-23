@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.io.Serializable
 
 @Entity(
     tableName = "MediaMessage",
@@ -18,24 +19,28 @@ import androidx.room.PrimaryKey
     indices = [Index("chat")]
 )
 data class MediaMessage(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey val id: Int,
     val chat: Int,
     val title: String,
     val description: String,
     val studio: String,
+    val width: Int,
+    val height: Int,
+    val duration: Int,
+    val size: Int,
     val isMedia: Boolean,
     val localPath: String,
     val fileId: Int,
     val mimeType: String,
     val videoUrl: String,
-    val width: Int,
-    val height: Int,
-    val duration: Int,
-    val size: Int,
     val thumbnailPath: String,
     val cardImageUrl: String,
     val backgroundImageUrl: String,
     val isDownloaded: Boolean,
     val isDownloadActive: Boolean,
     val uniqueId: String
-)
+) : Serializable {
+    companion object {
+        internal const val serialVersionUID = 727566175075960653L
+    }
+}

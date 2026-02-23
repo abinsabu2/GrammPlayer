@@ -1,13 +1,15 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.onboarding
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import com.aes.grammplayer.ui.features.login.LoginActivity
+import com.aes.grammplayer.MainActivity
+import com.aes.grammplayer.R
 import kotlinx.coroutines.launch
 import com.aes.grammplayer.db.view.SettingsViewModel
-import kotlinx.coroutines.flow.first
 
 class OnboardingActivity : FragmentActivity() {
 
@@ -67,13 +69,13 @@ class OnboardingActivity : FragmentActivity() {
             viewModel.getSettings(1).collect { settings ->
                 isDecisionMade = true
                 when {
-                    settings == null || !settings.onBoard -> {
+                    settings == null || !settings.isOnBoard -> {
                         showOnboardingFragment()
                     }
-                    !settings.toc -> {
+                    !settings.isTocAccepted -> {
                         navigateToToc()
                     }
-                    settings.activeUserId == null || settings.activeUserId == 0 -> {
+                    !settings.userConnected!! -> {
                         navigateToLogin()
                     }
                     else -> {

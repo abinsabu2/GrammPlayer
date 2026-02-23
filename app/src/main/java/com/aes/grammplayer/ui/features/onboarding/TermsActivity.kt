@@ -1,6 +1,5 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.onboarding
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.ViewGroup
@@ -14,11 +13,10 @@ import android.content.Intent
 import androidx.activity.viewModels
 import com.aes.grammplayer.db.view.SettingsViewModel
 import kotlin.getValue
-import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
-import com.aes.grammplayer.db.model.Settings
+import com.aes.grammplayer.ui.features.login.LoginActivity
+import com.aes.grammplayer.R
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -71,7 +69,7 @@ class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
         proceedButton.setOnClickListener {
             lifecycleScope.launch {
                 val current = viewModel.getSettings(1).first() ?: return@launch
-                viewModel.update(current.copy(toc = true))
+                viewModel.update(current.copy(isTocAccepted = true))
             }
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)

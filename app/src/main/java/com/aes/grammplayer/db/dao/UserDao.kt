@@ -19,10 +19,10 @@ interface UserDao {
     fun getAll(): Flow<List<User>>
 
     @Query("SELECT * FROM Users WHERE id = :id")
-    suspend fun getById(id: Int): User?
+    fun getById(id: Int): Flow<User?>
 
-    @Query("SELECT * FROM Users WHERE validated = 1 LIMIT 1")
-    fun getValidatedUser(): Flow<User?>
+    @Query("SELECT * FROM Users WHERE phone = :phone")
+    suspend fun getByPhone(phone: String): User?
 
     @Query("SELECT COUNT(*) FROM Users")
     suspend fun count(): Int

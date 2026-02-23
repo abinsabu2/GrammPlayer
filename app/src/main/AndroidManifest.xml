@@ -29,7 +29,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GrammPlayer">
         <activity
-            android:name=".OnboardingActivity"
+            android:name=".ui.features.onboarding.OnboardingActivity"
             android:banner="@drawable/app_logo_svg"
             android:icon="@drawable/app_logo_svg"
             android:logo="@drawable/app_logo_svg"
@@ -42,7 +42,7 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".TermsActivity"
+        <activity android:name=".ui.features.onboarding.TermsActivity"
             android:exported="true">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -71,7 +71,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".LoginActivity"
+            android:name=".ui.features.login.LoginActivity"
             android:exported="true"
             android:windowSoftInputMode="stateAlwaysHidden">
             <intent-filter>

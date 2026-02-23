@@ -1,13 +1,13 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.onboarding
 
 import android.content.Intent
-import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.lifecycle.ViewModelProvider
 import androidx.leanback.app.OnboardingSupportFragment
+import com.aes.grammplayer.R
 import com.aes.grammplayer.db.view.SettingsViewModel
 
 class OnboardingFragment : OnboardingSupportFragment() {
@@ -58,9 +58,5 @@ class OnboardingFragment : OnboardingSupportFragment() {
         viewModel.updateOnboarding()
         val intent = Intent(requireActivity(), TermsActivity::class.java)
         startActivity(intent)
-    }
-
-    override fun onProvideTheme(): Int {
-        return androidx.leanback.R.style.Theme_Leanback_Onboarding
     }
 }

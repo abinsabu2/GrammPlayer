@@ -12,18 +12,19 @@ import androidx.room.PrimaryKey
             entity = User::class,
             parentColumns = ["id"],
             childColumns = ["activeUserId"],
-            onDelete = ForeignKey.SET_NULL
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [Index("activeUserId")]
 )
 data class Settings(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val bufferSize: Int?,
-    val bufferPercentage: Int?,
+    @PrimaryKey val id: Int,
+    val bufferSize: Int? = null,
+    val bufferPercentage: Int? = null,
     val autoplay: Boolean,
-    val toc: Boolean = false,
-    val onBoard: Boolean = false,
-    val gridSize: Int,
-    val activeUserId: Int? = null
+    val isTocAccepted: Boolean = false,
+    val isOnBoard: Boolean = false,
+    val gridSize: Int = 4,
+    val activeUserId: Int,
+    val userConnected: Boolean? = null
 )

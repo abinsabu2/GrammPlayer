@@ -7,28 +7,25 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface MediaMessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(media: MediaMessage): Long
+    suspend fun insert(mediaMessage: MediaMessage): Long
 
     @Update
-    suspend fun update(media: MediaMessage)
+    suspend fun update(mediaMessage: MediaMessage)
 
     @Delete
-    suspend fun delete(media: MediaMessage)
+    suspend fun delete(mediaMessage: MediaMessage)
 
     @Query("SELECT * FROM MediaMessage")
     fun getAll(): Flow<List<MediaMessage>>
 
     @Query("SELECT * FROM MediaMessage WHERE id = :id")
-    suspend fun getById(id: Int): MediaMessage?
+    fun getById(id: Int): Flow<MediaMessage?>
 
-    @Query("SELECT * FROM MediaMessage WHERE chat = :chatId")
-    fun getByChat(chatId: Int): Flow<List<MediaMessage>>
+    @Query("SELECT * FROM MediaMessage WHERE chat = :chatId ORDER BY id DESC")
+    fun getByChatId(chatId: Int): Flow<List<MediaMessage>>
 
-    @Query("SELECT * FROM MediaMessage WHERE isDownloaded = 1")
-    fun getDownloaded(): Flow<List<MediaMessage>>
-
-    @Query("UPDATE MediaMessage SET isDownloaded = :downloaded WHERE id = :id")
-    suspend fun updateDownloadStatus(id: Int, downloaded: Boolean)
+    @Query("SELECT * FROM MediaMessage WHERE isDownloaded = 1 ORDER BY id DESC")
+    fun getDownloadedMedia(): Flow<List<MediaMessage>>
 
     @Query("SELECT COUNT(*) FROM MediaMessage")
     suspend fun count(): Int
