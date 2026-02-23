@@ -19,6 +19,7 @@ import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.core.content.ContextCompat // Added import for ContextCompat
 import androidx.fragment.app.DialogFragment
+import com.aes.grammplayer.util.TelegramClientManager
 
 /**
  * A fragment to display messages of a specific chat in a grid.

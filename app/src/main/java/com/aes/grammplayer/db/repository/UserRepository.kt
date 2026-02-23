@@ -20,17 +20,4 @@ class UserRepository(private val userDao: UserDao) {
 
     suspend fun count(): Int = userDao.count()
 
-    /**
-     * Main entry point — call this after the user submits their phone number.
-     * Returns the user data from the correct source.
-     */
-    suspend fun resolveUser(phoneNumber: String): String {
-        UserSession.initialize(phoneNumber)
-
-        return if (UserSession.isTestUser()) {
-            UserSession.userType.toString()
-        } else {
-            UserSession.userType.toString()
-        }
-    }
 }

@@ -17,6 +17,8 @@ import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.aes.grammplayer.util.TdLibUpdateHandler
+import com.aes.grammplayer.util.TelegramClientManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment

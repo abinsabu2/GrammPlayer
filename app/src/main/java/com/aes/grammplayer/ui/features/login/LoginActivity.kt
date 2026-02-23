@@ -10,7 +10,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.activity.viewModels
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
@@ -18,21 +17,21 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.MainActivity
 import com.aes.grammplayer.R
-import com.aes.grammplayer.TdLibUpdateHandler
-import com.aes.grammplayer.TelegramClientManager
-import com.aes.grammplayer.db.repository.UserRepository
-import com.aes.grammplayer.db.view.SettingsViewModel
+import com.aes.grammplayer.util.TdLibUpdateHandler
+import com.aes.grammplayer.util.TelegramClientManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.getValue
 
 class LoginActivity : FragmentActivity() {
+
+    companion object {
+        private const val TEST_PHONE_NUMBER = "+00123456789"
+    }
 
     private lateinit var countryCodeEditText: EditText
     private lateinit var phoneNumberEditText: EditText
@@ -43,9 +42,8 @@ class LoginActivity : FragmentActivity() {
     private lateinit var progressBar: ProgressBar
 
     private var isWaitingForCode = false
+    private var isTestMode = false
     private var popupJob: Job? = null
-
-    private val viewModel: UserRepository by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,18 +57,18 @@ class LoginActivity : FragmentActivity() {
         logCardView = findViewById(R.id.logCardView)
         logTextView = findViewById(R.id.logTextView)
         progressBar = findViewById(R.id.progressBar)
-
-
-        // Initialize the client, which uses the global handler
-        if (!TelegramClientManager.isInitialized) {
-            TelegramClientManager.initialize()
+        // Initialize the real Telegram client only when not in test mode
+        if (!isTestMode) {
+            if (!TelegramClientManager.isInitialized) {
+                TelegramClientManager.initialize()
+            }
         }
 
-        // Observe the authorization state from our central handler
+        // Observe real auth states
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 TdLibUpdateHandler.authError.collect { response ->
-                    handleAuthorizationState(response)
+                    if (!isTestMode) handleAuthorizationState(response)
                 }
             }
         }
@@ -78,60 +76,80 @@ class LoginActivity : FragmentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 TdLibUpdateHandler.authorizationState.collect { response ->
-                    handleAuthorizationState(response)
+                    if (!isTestMode) handleAuthorizationState(response)
                 }
             }
         }
 
-        // Setup button click listener
         submitButton.setOnClickListener {
-            showPopup(true)
-            if (isWaitingForCode) {
-                val code = authCodeEditText.text.toString().trim()
-                if (code.isNotEmpty()) {
-                    logMessage("Submitting code...")
-                    lifecycleScope.launch {
-                        delay(5000)
-                        TelegramClientManager.sendAuthCode(code)
-                    }
-                } else {
-                    logMessage("Invalid Authentication Code!")
-                }
-            } else {
-                val countryCode = countryCodeEditText.text.toString().trim()
-                val countryCodeCleaned = "+${countryCode.replace("+", "")}"
-                val phone = phoneNumberEditText.text.toString().trim()
-                val fullPhoneNumber = countryCodeCleaned + phone
-                if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
-                    logMessage("Processing: $fullPhoneNumber")
-                    showPopup(true)
-                    lifecycleScope.launch {
-                        delay(1000)
-                        val userType = viewModel.resolveUser(fullPhoneNumber)
-
-                        if (userType == "TEST") {
-                            TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
-                        }else{
-                            TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
-                        }
-
-                    }
-
-                } else {
-                    showPopup(true)
-                    logMessage("Invalid phone number!")
-                }
-            }
+            handleRealModeSubmit()
         }
 
         setupKeyboardActionListeners()
     }
 
+    // -------------------------------------------------------------------------
+    // Shared helpers (unchanged)
+    // -------------------------------------------------------------------------
+
+    private fun handleRealModeSubmit() {
+        showPopup(true)
+        if (isWaitingForCode) {
+            val code = authCodeEditText.text.toString().trim()
+            if (code.isNotEmpty()) {
+                if (isTestMode) {
+                    logMessage("Test code accepted — logging in...")
+                    lifecycleScope.launch {
+                        delay(800)
+                        navigateToMainApp()
+                    }
+                    return
+                }
+                logMessage("Submitting code...")
+                lifecycleScope.launch {
+                    delay(5000)
+                    TelegramClientManager.sendAuthCode(code)
+                }
+            } else {
+                logMessage("Invalid Authentication Code!")
+            }
+        } else {
+            val countryCode = countryCodeEditText.text.toString().trim()
+            val countryCodeCleaned = "+${countryCode.replace("+", "")}"
+            val phone = phoneNumberEditText.text.toString().trim()
+            val fullPhoneNumber = countryCodeCleaned + phone
+            if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
+                if (fullPhoneNumber == TEST_PHONE_NUMBER) {
+                    isTestMode = true
+                    logMessage("Test account detected — enter code to continue")
+                    isWaitingForCode = true
+                    countryCodeEditText.visibility = View.GONE
+                    phoneNumberEditText.visibility = View.GONE
+                    authCodeEditText.visibility = View.VISIBLE
+                    authCodeEditText.setText("12345")
+                    authCodeEditText.requestFocus()
+                    showPopup(true)
+                    return
+                }
+                logMessage("Processing: $fullPhoneNumber")
+                lifecycleScope.launch {
+                    delay(1000)
+                    TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                }
+            } else {
+                logMessage("Invalid phone number!")
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Shared helpers (unchanged)
+    // -------------------------------------------------------------------------
+
     private fun showPopup(show: Boolean) {
         popupJob?.cancel()
         if (show) {
             logCardView.visibility = View.VISIBLE
-            // Auto-close if not showing progress
             popupJob = lifecycleScope.launch {
                 delay(3000)
                 logCardView.visibility = View.GONE
@@ -139,9 +157,8 @@ class LoginActivity : FragmentActivity() {
         }
     }
 
-
     @SuppressLint("SetTextI18n")
-    private fun handleAuthorizationState(response : TdApi.Object?) {
+    private fun handleAuthorizationState(response: TdApi.Object?) {
         runOnUiThread {
             when (response) {
                 is TdApi.AuthorizationStateWaitTdlibParameters -> {
@@ -203,23 +220,15 @@ class LoginActivity : FragmentActivity() {
 
     private fun setupKeyboardActionListeners() {
         countryCodeEditText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_NEXT) {
-                hideKeyboard()
-            }
+            if (actionId == EditorInfo.IME_ACTION_NEXT) hideKeyboard()
             false
         }
-
         phoneNumberEditText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_NEXT) {
-                hideKeyboard()
-            }
+            if (actionId == EditorInfo.IME_ACTION_NEXT) hideKeyboard()
             false
         }
-
         authCodeEditText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                hideKeyboard()
-            }
+            if (actionId == EditorInfo.IME_ACTION_DONE) hideKeyboard()
             false
         }
     }
@@ -233,7 +242,7 @@ class LoginActivity : FragmentActivity() {
     private fun logMessage(message: String) {
         runOnUiThread {
             val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-            logTextView.text = "$message"
+            logTextView.text = message
         }
     }
 }

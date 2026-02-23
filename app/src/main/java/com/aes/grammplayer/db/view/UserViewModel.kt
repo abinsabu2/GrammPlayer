@@ -20,5 +20,5 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     fun delete(user: User) = viewModelScope.launch { repository.delete(user) }
 
 
-    suspend fun getUserType(phone: String) = repository.resolveUser(phone)
+    suspend fun getUserType(phone: String) = repository.getUserByPhone(phone)
 }
