@@ -9,7 +9,7 @@ object UserSession {
     var userType: UserType = UserType.REAL
 
     fun initialize(phone: String) {
-        phoneNumber = phone
+        phoneNumber = phone.toString()
         userType = if (TestUserConfig.isTestUser(phone)) UserType.TEST else UserType.REAL
     }
 

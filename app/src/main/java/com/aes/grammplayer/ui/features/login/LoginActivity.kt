@@ -10,6 +10,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.viewModels
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
@@ -19,13 +20,17 @@ import com.aes.grammplayer.MainActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.TdLibUpdateHandler
 import com.aes.grammplayer.TelegramClientManager
+import com.aes.grammplayer.db.repository.UserRepository
+import com.aes.grammplayer.db.view.SettingsViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.getValue
 
 class LoginActivity : FragmentActivity() {
 
@@ -39,6 +44,8 @@ class LoginActivity : FragmentActivity() {
 
     private var isWaitingForCode = false
     private var popupJob: Job? = null
+
+    private val viewModel: UserRepository by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,7 +107,14 @@ class LoginActivity : FragmentActivity() {
                     showPopup(true)
                     lifecycleScope.launch {
                         delay(1000)
-                        TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                        val userType = viewModel.resolveUser(fullPhoneNumber)
+
+                        if (userType == "TEST") {
+                            TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                        }else{
+                            TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                        }
+
                     }
 
                 } else {

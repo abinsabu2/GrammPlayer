@@ -18,4 +18,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     fun insert(user: User) = viewModelScope.launch { repository.insert(user) }
     fun update(user: User) = viewModelScope.launch { repository.update(user) }
     fun delete(user: User) = viewModelScope.launch { repository.delete(user) }
+
+
+    suspend fun getUserType(phone: String) = repository.resolveUser(phone)
 }
