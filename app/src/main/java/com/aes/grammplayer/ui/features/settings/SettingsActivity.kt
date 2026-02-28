@@ -1,5 +1,6 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.settings
 
+import android.R
 import android.os.Bundle
 import androidx.fragment.app.FragmentActivity
 import androidx.leanback.app.GuidedStepSupportFragment
@@ -10,17 +11,17 @@ class SettingsActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) {
             val fragment = SettingsFragment()
-            GuidedStepSupportFragment.addAsRoot(this, fragment, android.R.id.content)
+            GuidedStepSupportFragment.addAsRoot(this, fragment, R.id.content)
         }
     }
 
     override fun onEnterAnimationComplete() {
         super.onEnterAnimationComplete()
-        overridePendingTransition(R.anim.slide_up, 0)
+        overridePendingTransition(com.aes.grammplayer.R.anim.slide_up, 0)
     }
 
     override fun finish() {
         super.finish()
-        overridePendingTransition(0, R.anim.slide_down)
+        overridePendingTransition(0, com.aes.grammplayer.R.anim.slide_down)
     }
 }

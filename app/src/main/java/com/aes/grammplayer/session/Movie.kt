@@ -1,4 +1,4 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.session
 
 import java.io.Serializable
 

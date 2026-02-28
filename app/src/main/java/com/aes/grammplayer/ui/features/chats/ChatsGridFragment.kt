@@ -1,24 +1,20 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.chats
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
-import android.widget.Toast
 import androidx.leanback.app.VerticalGridSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
-import androidx.leanback.widget.BaseGridView
 import androidx.leanback.widget.VerticalGridPresenter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.core.content.ContextCompat // Added import for ContextCompat
-import androidx.fragment.app.DialogFragment
+import com.aes.grammplayer.ui.features.messages.ChatCardPresenter
+import com.aes.grammplayer.ui.features.messages.MessageGridActivity
+import com.aes.grammplayer.R
 import com.aes.grammplayer.util.TelegramClientManager
 
 /**

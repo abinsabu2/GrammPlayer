@@ -1,5 +1,5 @@
 // You can place this in a new file, e.g., DownloadHistoryItem.kt
-import com.aes.grammplayer.MediaMessage
+import com.aes.grammplayer.session.MediaMessage
 import java.util.Date
 
 data class DownloadHistoryItem(

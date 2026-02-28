@@ -1,4 +1,4 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.details
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.StatFs
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -17,10 +18,11 @@ import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.aes.grammplayer.R
+import com.aes.grammplayer.session.MediaMessage
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import com.aes.grammplayer.util.TdLibUpdateHandler
 import com.aes.grammplayer.util.TelegramClientManager
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
@@ -419,19 +421,19 @@ class MediaDetailsBottomSheetFragment : BottomSheetDialogFragment(){
     }
 
     private fun expandBottomSheet() {
-        view?.post {
+        /*view?.post {
             val dialog = dialog as? BottomSheetDialog
             val bottomSheet = dialog?.findViewById<FrameLayout>(com.google.android.material.R.id.design_bottom_sheet)
             if (bottomSheet != null) {
                 val behavior = BottomSheetBehavior.from(bottomSheet)
                 behavior.state = BottomSheetBehavior.STATE_EXPANDED
             }
-        }
+        }*/
     }
 
     private fun getAvailableInternalMemorySize(): Long {
         val path = requireContext().filesDir.absolutePath
-        val stat = android.os.StatFs(path)
+        val stat = StatFs(path)
         return stat.availableBlocksLong * stat.blockSizeLong
     }
 

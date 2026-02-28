@@ -1,5 +1,5 @@
 // HistoryManager.kt
-import com.aes.grammplayer.MediaMessage
+import com.aes.grammplayer.session.MediaMessage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.GlobalScope

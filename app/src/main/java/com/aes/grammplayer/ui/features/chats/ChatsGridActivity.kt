@@ -1,7 +1,8 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.chats
 
 import android.os.Bundle
 import androidx.fragment.app.FragmentActivity
+import com.aes.grammplayer.R
 
 /**
  * An activity that hosts the ChatsGridFragment to display Chats.

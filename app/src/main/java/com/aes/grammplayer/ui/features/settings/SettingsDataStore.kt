@@ -1,4 +1,4 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.settings
 
 import android.content.Context
 import androidx.datastore.core.DataStore

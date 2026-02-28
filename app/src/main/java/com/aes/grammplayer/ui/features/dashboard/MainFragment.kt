@@ -1,4 +1,4 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.dashboard
 
 import java.util.Timer
 import android.content.Intent
@@ -21,13 +21,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.launch
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
+import com.aes.grammplayer.R
+import com.aes.grammplayer.ui.features.settings.SettingsActivity
 import com.aes.grammplayer.util.TelegramClientManager
 import kotlinx.coroutines.launch
-import org.drinkless.tdlib.TdApi
 
 /**
  * Loads a grid of cards with movies to browse.
@@ -176,7 +177,7 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private inner class GridItemPresenter : Presenter() {
-        override fun onCreateViewHolder(parent: ViewGroup): Presenter.ViewHolder {
+        override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
             val view = TextView(parent.context)
             view.layoutParams = ViewGroup.LayoutParams(GRID_ITEM_WIDTH, GRID_ITEM_HEIGHT)
             view.isFocusable = true
@@ -184,10 +185,10 @@ class MainFragment : BrowseSupportFragment() {
             view.setBackgroundColor(ContextCompat.getColor(requireActivity(), R.color.default_background))
             view.setTextColor(Color.WHITE)
             view.gravity = Gravity.CENTER
-            return Presenter.ViewHolder(view)
+            return ViewHolder(view)
         }
 
-        override fun onBindViewHolder(viewHolder: Presenter.ViewHolder, item: Any) {
+        override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
             // Now handle both TdApi.Chat and String types
             val textView = viewHolder.view as TextView
             when (item) {
@@ -197,7 +198,7 @@ class MainFragment : BrowseSupportFragment() {
             }
         }
 
-        override fun onUnbindViewHolder(viewHolder: Presenter.ViewHolder) {}
+        override fun onUnbindViewHolder(viewHolder: ViewHolder) {}
     }
 
     companion object {

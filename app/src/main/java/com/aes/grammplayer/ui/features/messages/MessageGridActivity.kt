@@ -1,7 +1,8 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.messages
 
 import android.os.Bundle
 import androidx.fragment.app.FragmentActivity
+import com.aes.grammplayer.R
 
 /**
  * An activity that hosts the MessageGridFragment to display messages from a single chat.

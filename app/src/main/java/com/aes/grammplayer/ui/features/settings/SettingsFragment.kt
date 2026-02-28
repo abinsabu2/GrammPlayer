@@ -1,8 +1,6 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.settings
 import android.os.Bundle
 import android.view.View
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import androidx.leanback.app.GuidedStepSupportFragment
 import androidx.leanback.widget.GuidanceStylist
 import androidx.leanback.widget.GuidedAction

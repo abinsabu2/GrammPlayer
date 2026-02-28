@@ -6,7 +6,7 @@ import androidx.activity.viewModels
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.ui.features.login.LoginActivity
-import com.aes.grammplayer.MainActivity
+import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.R
 import kotlinx.coroutines.launch
 import com.aes.grammplayer.db.view.SettingsViewModel
@@ -21,7 +21,8 @@ class OnboardingActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         // Set a simple loading view initially while we check the auth state.
         setContentView(R.layout.activity_splash)
-        observeData()
+        navigateToMainApp()
+        //observeData()
 
     }
     private fun showOnboardingFragment() {

@@ -1,14 +1,10 @@
-package com.aes.grammplayer
+package com.aes.grammplayer.ui.features.messages
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.TextView
-import android.widget.Toast
 import androidx.leanback.app.VerticalGridSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
-import androidx.leanback.widget.BaseGridView
 import androidx.leanback.widget.VerticalGridPresenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,15 +14,11 @@ import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
-import androidx.core.content.ContextCompat // Added import for ContextCompat
 import androidx.fragment.app.DialogFragment
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import com.aes.grammplayer.MediaDetailsBottomSheetFragment.DownloadingFileInfo
+import com.aes.grammplayer.ui.features.details.MediaDetailsBottomSheetFragment
+import com.aes.grammplayer.session.MediaMessage
+import com.aes.grammplayer.ui.features.dashboard.CardPresenter
 import com.aes.grammplayer.util.TelegramClientManager
-import kotlinx.coroutines.Job
-import java.io.File
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -79,15 +71,16 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 if (item is MediaMessage) {
                     // --- NEW LOGIC: SHOW BOTTOM SHEET ---
                     // Dismiss any existing bottom sheet to ensure we don't stack them
-                    val existing = parentFragmentManager.findFragmentByTag(MediaDetailsBottomSheetFragment.TAG)
+                    val existing = parentFragmentManager.findFragmentByTag(
+                        MediaDetailsBottomSheetFragment.Companion.TAG)
                     if (existing != null && existing is DialogFragment) {
                         existing.dismiss()
                     }
                     // Create a new instance of the bottom sheet with the clicked media message
-                    val bottomSheet = MediaDetailsBottomSheetFragment.newInstance(item)
+                    val bottomSheet = MediaDetailsBottomSheetFragment.Companion.newInstance(item)
 
                     // Show the new bottom sheet using the fragment manager
-                    bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.TAG)
+                    bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.Companion.TAG)
                     refreshAllCards()
                 }
             }

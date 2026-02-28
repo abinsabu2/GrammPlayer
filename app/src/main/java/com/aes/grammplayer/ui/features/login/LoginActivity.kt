@@ -15,7 +15,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.aes.grammplayer.MainActivity
+import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.util.TdLibUpdateHandler
 import com.aes.grammplayer.util.TelegramClientManager
