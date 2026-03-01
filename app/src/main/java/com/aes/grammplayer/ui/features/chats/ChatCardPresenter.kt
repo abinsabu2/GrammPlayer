@@ -1,4 +1,4 @@
-package com.aes.grammplayer.ui.features.messages
+package com.aes.grammplayer.ui.features.chats
 
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -18,7 +18,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.leanback.widget.Presenter
 import com.aes.grammplayer.R
-import org.drinkless.tdlib.TdApi
+import com.aes.grammplayer.db.model.Chat
 
 /**
  * A Presenter used to generate Views and bind ChatGroup objects to them on demand.
@@ -127,15 +127,16 @@ class ChatCardPresenter : Presenter() {
 
     override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
         // Ensure the item is a ChatGroup before proceeding
-        if (item !is TdApi.Chat || viewHolder !is ChatCardViewHolder) {
+        if (item !is Chat || viewHolder !is ChatCardViewHolder) {
             return
         }
         val chatType = item.type
         val chatTypeReadable = when (chatType) {
-            is TdApi.ChatTypeSupergroup -> "Supergroup"
-            is TdApi.ChatTypePrivate -> "Private"
-            is TdApi.ChatTypeBasicGroup -> "Basic Group"
-            else -> {}
+            0 -> "Private"
+            1 -> "Basic Group"
+            2 -> "Supergroup"
+            3 -> "Secret"
+            else -> "Unknown"
         }
         val title = item.title
 
@@ -156,8 +157,6 @@ class ChatCardPresenter : Presenter() {
             setSpan(StyleSpan(Typeface.BOLD), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(AbsoluteSizeSpan(14, true), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // Adjust size for chat title
             setSpan(ForegroundColorSpan(sTitleTextColor), titleStart, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-
 
 
         }

@@ -6,16 +6,18 @@ import android.view.View
 import androidx.leanback.app.VerticalGridSupportFragment
 import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.leanback.widget.VerticalGridPresenter
-import org.drinkless.tdlib.TdApi
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.core.content.ContextCompat // Added import for ContextCompat
-import com.aes.grammplayer.ui.features.messages.ChatCardPresenter
+import androidx.lifecycle.lifecycleScope
+import com.aes.grammplayer.ui.features.chats.ChatCardPresenter
 import com.aes.grammplayer.ui.features.messages.MessageGridActivity
 import com.aes.grammplayer.R
-import com.aes.grammplayer.util.TelegramClientManager
+import com.aes.grammplayer.db.model.Chat
+import com.aes.grammplayer.provider.ChatsDataProvider
+import kotlinx.coroutines.launch
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -31,7 +33,9 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
         badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
 
         setupGrid()
-        loadMessages()
+        lifecycleScope.launch {
+            loadMessages()
+        }
         setupEventListeners()
     }
 
@@ -65,7 +69,7 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
                 rowViewHolder: RowPresenter.ViewHolder?,
                 row: Row?
             ) {
-                if (item is TdApi.Chat) {
+                if (item is Chat) {
                     val intent = Intent(activity, MessageGridActivity::class.java)
                     intent.putExtra("chat_id", item.id)
                     intent.putExtra("chat_title", item.title)
@@ -75,29 +79,16 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
         }
     }
 
-    private fun loadMessages() {
+    private suspend fun loadMessages() {
         // Use Coroutines to call the suspend function on the main thread.
-        TelegramClientManager.loadAllGroups { chat ->
-
+        ChatsDataProvider.loadAllGroups { chat ->
             val chatTitle = chat.title
             if(chatTitle == "Telegram"){
                 return@loadAllGroups
             }
-
-            val lastMessage = chat.lastMessage
-            if (lastMessage != null) {
-                val messageContent = lastMessage.content
-                when (messageContent) {
-                    is TdApi.MessageContactRegistered -> {
-                        return@loadAllGroups
-                    }
-
-                }
-            }
             gridAdapter.add(chat)
         }
-
-        }
+    }
 
     private fun refreshAllCards() {
         // Notify the adapter that the entire dataset might have changed,

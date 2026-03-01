@@ -1,4 +1,4 @@
-package com.aes.grammplayer.ui.features.dashboard
+package com.aes.grammplayer.ui.features.messages
 
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -16,15 +16,15 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.leanback.widget.Presenter
-import com.aes.grammplayer.session.MediaMessage
 import com.aes.grammplayer.R
+import com.aes.grammplayer.session.MediaMessage
 import java.io.File
 
 /**
  * A Presenter used to generate Views and bind MediaMessage objects to them on demand.
  * This version displays media details as text inside a card.
  */
-class CardPresenter : Presenter() {
+class MessageCardPresenter : Presenter() {
 
     private var sSelectedBackgroundColor: Int = 0
     private var sDefaultBackgroundColor: Int = 0

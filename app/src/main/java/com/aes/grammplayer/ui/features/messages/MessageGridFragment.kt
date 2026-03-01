@@ -16,8 +16,7 @@ import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.fragment.app.DialogFragment
 import com.aes.grammplayer.ui.features.details.MediaDetailsBottomSheetFragment
-import com.aes.grammplayer.session.MediaMessage
-import com.aes.grammplayer.ui.features.dashboard.CardPresenter
+import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.util.TelegramClientManager
 
 /**
@@ -56,7 +55,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
         setGridPresenter(gridPresenter)
 
         // The rest of your code remains the same.
-        gridAdapter = ArrayObjectAdapter(CardPresenter())
+        gridAdapter = ArrayObjectAdapter(MessageCardPresenter())
         adapter = gridAdapter
     }
 
@@ -99,7 +98,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
             try {
                 // --- THIS IS THE FIX ---
                 // We will collect all messages in this list.
-                val allMessages = mutableListOf<TdApi.Message>()
+                val allMessages = mutableListOf<MediaMessage>()
                 var fromMessageId: Long = 0 // Start from the most recent message
 
                 // We will loop until we have enough messages or there are no more to load.
