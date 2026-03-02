@@ -9,7 +9,6 @@ import androidx.leanback.widget.VerticalGridPresenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.drinkless.tdlib.TdApi
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row // Make sure this import is correct
@@ -17,7 +16,7 @@ import androidx.leanback.widget.RowPresenter
 import androidx.fragment.app.DialogFragment
 import com.aes.grammplayer.ui.features.details.MediaDetailsBottomSheetFragment
 import com.aes.grammplayer.db.model.MediaMessage
-import com.aes.grammplayer.util.TelegramClientManager
+import com.aes.grammplayer.provider.MediaMessageDataProvider
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -76,15 +75,17 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                         existing.dismiss()
                     }
                     // Create a new instance of the bottom sheet with the clicked media message
-                    val bottomSheet = MediaDetailsBottomSheetFragment.Companion.newInstance(item)
+                   // val bottomSheet = MediaDetailsBottomSheetFragment.Companion.newInstance(item)
 
                     // Show the new bottom sheet using the fragment manager
-                    bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.Companion.TAG)
+                    //bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.Companion.TAG)
                     refreshAllCards()
                 }
             }
         }
     }
+
+
 
     private fun loadMessages() {
         val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
@@ -96,49 +97,18 @@ class MessageGridFragment : VerticalGridSupportFragment() {
         // Use Coroutines to call the suspend function on the main thread.
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                // --- THIS IS THE FIX ---
-                // We will collect all messages in this list.
-                val allMessages = mutableListOf<MediaMessage>()
-                var fromMessageId: Long = 0 // Start from the most recent message
-
-                // We will loop until we have enough messages or there are no more to load.
-                while (allMessages.size < 10000) {
-                    // Call the suspend function from the manager to get a chunk of messages.
-                    val messagesChunk = TelegramClientManager.loadMessagesForChat(
-                        chatId = chatId,
-                        fromMessageId = fromMessageId, // Use the ID of the last message we received
-                        limit = 1000 // It's okay to request a large chunk
-                    )
-
-                    // If TDLib returns an empty chunk, it means we've reached the beginning of the chat history.
-                    if (messagesChunk.isEmpty()) {
-                        break // Exit the loop
-                    }
-
-                    allMessages.addAll(messagesChunk)
-
-                    // Set the 'fromMessageId' for the next loop iteration.
-                    // This tells TDLib where to continue loading from.
-                    fromMessageId = messagesChunk.last().id
+                // Call the suspend function from the provider with a callback to process each message
+                MediaMessageDataProvider.loadAllMediaMessages(
+                    chatId = chatId,
+                    limit = 10000
+                ) { mediaMessage ->
+                    gridAdapter.add(mediaMessage)
                 }
 
-                // The rest of your code stays the same.
-                val mediaMessages = allMessages.map { TelegramClientManager.parseMessageContent(it.content, chatId) }
-
-                if (mediaMessages.isEmpty()) {
-                    return@launch
-                }
-
-                mediaMessages.forEach { message ->
-                    if(message.isMedia){
-                        gridAdapter.add(message)
-                    }
-
-                }
                 refreshAllCards()
                 Log.d(
                     TAG,
-                    "Loaded ${mediaMessages.size} messages from chat $chatId"
+                    "Loaded ${gridAdapter.size()} messages from chat $chatId"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
