@@ -17,7 +17,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.leanback.widget.Presenter
 import com.aes.grammplayer.R
-import com.aes.grammplayer.session.MediaMessage
+import com.aes.grammplayer.db.model.MediaMessage
 import java.io.File
 
 /**

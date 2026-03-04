@@ -18,7 +18,7 @@ import androidx.room.PrimaryKey
     indices = [Index("userId")]
 )
 data class Chat(
-    @PrimaryKey val id: Int,
+    @PrimaryKey val id: Long,
     val type: Int,
     val title: String,
     val photoId: String,

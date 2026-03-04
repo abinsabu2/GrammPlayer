@@ -30,7 +30,7 @@ import androidx.room.PrimaryKey
     indices = [Index("user"), Index("chat"), Index("message")]
 )
 data class History(
-    @PrimaryKey val id: Int = 0,
+    @PrimaryKey val id: Long = 0,
     val user: Int,
     val chat: Int,
     val message: Int

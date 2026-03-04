@@ -19,7 +19,7 @@ import java.io.Serializable
     indices = [Index("chat")]
 )
 data class MediaMessage(
-    @PrimaryKey val id: Int,
+    @PrimaryKey val id: Long,
     val chat: Int,
     val title: String,
     val description: String,

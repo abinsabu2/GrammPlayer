@@ -17,6 +17,7 @@ import androidx.fragment.app.DialogFragment
 import com.aes.grammplayer.ui.features.details.MediaDetailsBottomSheetFragment
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.provider.MediaMessageDataProvider
+import com.aes.grammplayer.ui.features.details.MediaMessageDetailActivity
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -67,19 +68,8 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 row: Row?
             ) {
                 if (item is MediaMessage) {
-                    // --- NEW LOGIC: SHOW BOTTOM SHEET ---
-                    // Dismiss any existing bottom sheet to ensure we don't stack them
-                    val existing = parentFragmentManager.findFragmentByTag(
-                        MediaDetailsBottomSheetFragment.Companion.TAG)
-                    if (existing != null && existing is DialogFragment) {
-                        existing.dismiss()
-                    }
-                    // Create a new instance of the bottom sheet with the clicked media message
-                   // val bottomSheet = MediaDetailsBottomSheetFragment.Companion.newInstance(item)
-
-                    // Show the new bottom sheet using the fragment manager
-                    //bottomSheet.show(parentFragmentManager, MediaDetailsBottomSheetFragment.Companion.TAG)
-                    refreshAllCards()
+                    val intent = MediaMessageDetailActivity.newIntent(requireContext(), item)
+                    startActivity(intent)
                 }
             }
         }

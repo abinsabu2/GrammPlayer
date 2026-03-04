@@ -49,4 +49,49 @@
     <string name="authentication_code">Authentication Code</string>
     <string name="phone_hint">1234567890</string>
     <string name="submit">Submit</string>
+
+    <!-- Navigation -->
+    <string name="back">Back</string>
+
+    <!-- Buttons -->
+    <string name="btn_play">Play</string>
+    <string name="btn_download">Download</string>
+    <string name="btn_downloading">Downloading…</string>
+
+    <!-- Fallback values -->
+    <string name="label_untitled">Untitled</string>
+    <string name="label_unknown_studio">Unknown Studio</string>
+    <string name="label_no_description">No description available.</string>
+    <string name="label_not_available">N/A</string>
+    <string name="label_unknown">—</string>
+
+    <!-- Format strings -->
+    <string name="format_resolution">%1$d × %2$d</string>
+    <string name="format_file_id">#%1$d</string>
+
+    <!-- Field labels -->
+    <string name="label_description">Description</string>
+    <string name="label_duration">Duration</string>
+    <string name="label_resolution">Resolution</string>
+    <string name="label_size">File size</string>
+    <string name="label_mime_type">Format</string>
+    <string name="label_local_path">Local path</string>
+    <string name="label_video_url">Video URL</string>
+    <string name="label_message_id">Message ID</string>
+    <string name="label_file_id">File ID</string>
+    <string name="label_chat_id">Chat ID</string>
+    <string name="label_unique_id">Unique ID</string>
+
+    <!-- Section headers -->
+    <string name="section_media_info">Media info</string>
+    <string name="section_paths">Paths</string>
+    <string name="section_identifiers">Identifiers</string>
+
+    <!-- Chips -->
+    <string name="chip_media">Media</string>
+    <string name="chip_file">File</string>
+    <string name="chip_downloaded">Downloaded</string>
+    <string name="chip_not_downloaded">Not downloaded</string>
+    <string name="chip_downloading">Downloading…</string>
+    <string name="chip_idle">Idle</string>
 </resources>

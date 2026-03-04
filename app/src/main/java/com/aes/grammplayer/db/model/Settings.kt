@@ -18,7 +18,7 @@ import androidx.room.PrimaryKey
     indices = [Index("activeUserId")]
 )
 data class Settings(
-    @PrimaryKey val id: Int,
+    @PrimaryKey val id: Long,
     val bufferSize: Int? = null,
     val bufferPercentage: Int? = null,
     val autoplay: Boolean,
