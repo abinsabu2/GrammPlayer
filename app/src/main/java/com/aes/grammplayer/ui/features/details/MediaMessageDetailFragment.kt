@@ -34,8 +34,6 @@ class MediaMessageDetailFragment : Fragment() {
     // ── Views ────────────────────────────────────────────────────────────────
 
     private lateinit var ivBackground: ImageView
-    private lateinit var ivThumbnail: ImageView
-    private lateinit var ivCardImage: ImageView
     private lateinit var tvTitle: TextView
     private lateinit var tvStudio: TextView
     private lateinit var tvDescription: TextView
@@ -78,8 +76,6 @@ class MediaMessageDetailFragment : Fragment() {
 
     private fun bindViews(v: View) {
         ivBackground       = v.findViewById(R.id.iv_background)
-        ivThumbnail        = v.findViewById(R.id.iv_thumbnail)
-        ivCardImage        = v.findViewById(R.id.iv_card_image)
         tvTitle            = v.findViewById(R.id.tv_title)
         tvStudio           = v.findViewById(R.id.tv_studio)
         tvDescription      = v.findViewById(R.id.tv_description)
@@ -98,7 +94,6 @@ class MediaMessageDetailFragment : Fragment() {
         chipDownloadActive = v.findViewById(R.id.chip_download_active)
         btnPlay            = v.findViewById(R.id.btn_play)
         btnDownload        = v.findViewById(R.id.btn_download)
-        btnBack            = v.findViewById(R.id.btn_back)
     }
 
     private fun getMediaMessage(): MediaMessage? =
@@ -110,10 +105,6 @@ class MediaMessageDetailFragment : Fragment() {
         }
 
     private fun setupListeners(m: MediaMessage) {
-        btnBack.setOnClickListener {
-            @Suppress("DEPRECATION")
-            activity?.onBackPressed()
-        }
         btnPlay.setOnClickListener {
             // TODO: launch player using m.videoUrl or m.localPath
         }
@@ -137,18 +128,6 @@ class MediaMessageDetailFragment : Fragment() {
             .transition(DrawableTransitionOptions.withCrossFade())
             .centerCrop().placeholder(placeholder).error(placeholder)
             .into(ivBackground)
-
-        Glide.with(activity)
-            .load(m.thumbnailPath.ifBlank { m.cardImageUrl })
-            .transition(DrawableTransitionOptions.withCrossFade())
-            .centerCrop().placeholder(placeholder).error(placeholder)
-            .into(ivThumbnail)
-
-        Glide.with(activity)
-            .load(m.cardImageUrl)
-            .transition(DrawableTransitionOptions.withCrossFade())
-            .centerCrop().placeholder(placeholder).error(placeholder)
-            .into(ivCardImage)
     }
 
     private fun bindTextFields(m: MediaMessage) {
