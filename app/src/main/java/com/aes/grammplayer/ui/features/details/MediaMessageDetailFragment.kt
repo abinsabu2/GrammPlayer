@@ -184,7 +184,7 @@ class MediaMessageDetailFragment : Fragment() {
         }
     }
 
-    private fun formatDuration(totalSeconds: Int): String {
+    private fun formatDuration(totalSeconds: Long): String {
         val h = totalSeconds / 3600
         val m = (totalSeconds % 3600) / 60
         val s = totalSeconds % 60
