@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/fragment_download_progress.xml -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#1A1A1A">
+
+    <!-- Section header -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="DOWNLOAD"
+        android:textSize="11sp"
+        android:textAllCaps="true"
+        android:textColor="#4FC3F7" />
+
+    <!-- Status row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_download_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="14sp"
+            android:textColor="#FFFFFF"
+            tools:text="Downloading…" />
+
+        <TextView
+            android:id="@+id/tv_download_percent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#4FC3F7"
+            tools:text="47%" />
+    </LinearLayout>
+
+    <!-- Progress bar -->
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="8dp"
+        android:max="100"
+        android:progress="0" />
+
+    <!-- Speed / ETA row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_download_speed"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textColor="#88FFFFFF"
+            tools:text="2.4 MB/s" />
+
+        <TextView
+            android:id="@+id/tv_download_eta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#88FFFFFF"
+            tools:text="ETA: 1m 23s" />
+    </LinearLayout>
+
+    <!-- Bytes row -->
+    <TextView
+        android:id="@+id/tv_download_bytes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="12sp"
+        android:textColor="#55FFFFFF"
+        tools:text="356 MB / 748 MB" />
+
+    <!-- Action button (Cancel / Retry / Pause) -->
+    <Button
+        android:id="@+id/btn_download_action"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Cancel"
+        android:textAllCaps="false" />
+
+</LinearLayout>

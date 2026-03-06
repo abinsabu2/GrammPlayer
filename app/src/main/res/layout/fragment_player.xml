@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/fragment_player.xml -->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Native VideoView — swap this FrameLayout for LibVLC's IVLCVout later -->
+    <VideoView
+        android:id="@+id/video_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center" />
+
+    <!-- Overlay: shown when video is not yet available -->
+    <LinearLayout
+        android:id="@+id/layout_no_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#CC000000">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No local file available"
+            android:textColor="#88FFFFFF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_no_video_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#4FC3F7"
+            android:textSize="12sp"
+            android:text="Download to watch offline" />
+    </LinearLayout>
+
+    <!-- Playback controls bar (bottom) -->
+    <LinearLayout
+        android:id="@+id/layout_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:background="#CC000000"
+        android:padding="8dp"
+        android:gravity="center_vertical">
+
+        <Button
+            android:id="@+id/btn_play_pause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Play"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:background="@null"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_current_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="0:00"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/seek_bar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/tv_total_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0:00"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</FrameLayout>

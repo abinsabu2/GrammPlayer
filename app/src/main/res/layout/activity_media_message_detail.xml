@@ -1,7 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- res/layout/activity_media_message_detail.xml -->
-<FrameLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/fragment_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" />
+    android:layout_height="match_parent"
+    android:background="#111111"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- ── 1. PLAYER FRAGMENT ─────────────────────────────────── -->
+        <FrameLayout
+            android:id="@+id/container_player"
+            android:layout_width="match_parent"
+            android:layout_height="240dp" />
+
+        <!-- ── 2. PROGRESS FRAGMENT ───────────────────────────────── -->
+        <FrameLayout
+            android:id="@+id/container_progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- ── 3. DETAILS FRAGMENT ────────────────────────────────── -->
+        <FrameLayout
+            android:id="@+id/container_details"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+</ScrollView>
