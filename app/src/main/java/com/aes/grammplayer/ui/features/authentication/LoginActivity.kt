@@ -1,4 +1,4 @@
-package com.aes.grammplayer.ui.features.login
+package com.aes.grammplayer.ui.features.authentication
 
 import android.annotation.SuppressLint
 import android.content.Intent

@@ -1,62 +1,54 @@
 package com.aes.grammplayer.ui.features.onboarding
 
 import android.content.Intent
+import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
-import androidx.lifecycle.ViewModelProvider
-import androidx.leanback.app.OnboardingSupportFragment
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.R
-import com.aes.grammplayer.db.view.SettingsViewModel
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import kotlinx.coroutines.launch
 
-class OnboardingFragment : OnboardingSupportFragment() {
+class OnboardingFragment : Fragment() {
 
-    private val viewModel: SettingsViewModel by lazy {
-        ViewModelProvider(requireActivity())[SettingsViewModel::class.java]
+    private lateinit var settingsDataStore: SettingsDataStore
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        settingsDataStore = SettingsDataStore(requireActivity())
+        super.onCreate(savedInstanceState)
     }
 
-    private val pageTitles = arrayOf("Welcome To The GramPlayer", "Discover Latest Movies!", "Enjoy Your Favorites")
-    private val pageDescriptions = arrayOf(
-        "The Ultimate Movie Experience For Your TV.",
-        "Explore A Vast Library Of Movies And Curated Playlists.",
-        "Create Your Own Playlists And Watch The Movies You Love."
-    )
-    private val pageImages = intArrayOf(
-        R.drawable.ic_music_note,
-        R.drawable.ic_album,
-        R.drawable.ic_playlist
-    )
-
-    override fun getPageCount(): Int = pageTitles.size
-
-    override fun getPageTitle(pageIndex: Int): CharSequence = pageTitles[pageIndex]
-
-    override fun getPageDescription(pageIndex: Int): CharSequence = pageDescriptions[pageIndex]
-
-    override fun onCreateBackgroundView(inflater: LayoutInflater, container: ViewGroup?): View? = null
-
-    override fun onCreateContentView(inflater: LayoutInflater, container: ViewGroup?): View? {
-        val content = inflater.inflate(R.layout.onboarding_content, container, false)
-        val imageView = content.findViewById<ImageView>(R.id.onboarding_image)
-        imageView.setImageResource(pageImages[currentPageIndex])
-        return content
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.onboarding_content, container, false)
     }
 
-    override fun onCreateForegroundView(inflater: LayoutInflater, container: ViewGroup?): View? {
-        return inflater.inflate(R.layout.onboarding_custom_controls, container, false)
-    }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-    override fun onPageChanged(newPage: Int, previousPage: Int) {
-        super.onPageChanged(newPage, previousPage)
-        val imageView = view?.findViewById<ImageView>(R.id.onboarding_image)
-        imageView?.setImageResource(pageImages[newPage])
-    }
+        val imageView = view.findViewById<ImageView>(R.id.onboarding_image)
+        val getStartedButton = view.findViewById<Button>(R.id.button_get_started)
 
-    override fun onFinishFragment() {
-        super.onFinishFragment()
-        viewModel.updateOnboarding()
-        val intent = Intent(requireActivity(), TermsActivity::class.java)
-        startActivity(intent)
+        // Set the image (replace with your actual drawable)
+        imageView.setImageResource(R.drawable.app_icon_your_company)
+
+        // Handle Get Started button click
+        getStartedButton.setOnClickListener {
+
+            lifecycleScope.launch {
+                settingsDataStore.setOnboardingDone(true)
+            }
+
+            val intent = Intent(requireActivity(), TermsActivity::class.java)
+            startActivity(intent)
+            requireActivity().finish()
+        }
     }
 }

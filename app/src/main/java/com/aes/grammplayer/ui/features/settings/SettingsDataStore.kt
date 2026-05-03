@@ -24,6 +24,31 @@ class SettingsDataStore(context: Context) {
         val BUFFER_COUNTER = intPreferencesKey("buffer_counter")
         val PROGRESS_THRESHOLD = intPreferencesKey("progress_threshold")
         val BUFFER_SIZE_THRESHOLD = intPreferencesKey("buffer_size_threshold")
+
+        val IS_ONBOARDING_DONE = booleanPreferencesKey("is_onboarding_done")
+
+        val IS_TOC_ACCEPTED = booleanPreferencesKey("is_toc_accepted")
+    }
+
+    val isOnboardingDone: Flow<Boolean> = appContext.dataStore.data.map { preferences ->
+        preferences[IS_ONBOARDING_DONE] ?: false
+    }
+
+    suspend fun setOnboardingDone(isOnboardingDone: Boolean) {
+        appContext.dataStore.edit { preferences ->
+            preferences[IS_ONBOARDING_DONE] = isOnboardingDone
+        }
+    }
+
+
+    val isTocAccepted: Flow<Boolean> = appContext.dataStore.data.map { preferences ->
+        preferences[IS_TOC_ACCEPTED] ?: false
+    }
+
+    suspend fun setTocAccepted(isTocAccepted: Boolean) {
+        appContext.dataStore.edit { preferences ->
+            preferences[IS_TOC_ACCEPTED] = isTocAccepted
+        }
     }
 
     val autoPlay: Flow<Boolean> = appContext.dataStore.data.map { preferences ->

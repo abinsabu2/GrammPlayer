@@ -188,7 +188,7 @@ class MainFragment : BrowseSupportFragment() {
             return ViewHolder(view)
         }
 
-        override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
+        override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
             // Now handle both TdApi.Chat and String types
             val textView = viewHolder.view as TextView
             when (item) {

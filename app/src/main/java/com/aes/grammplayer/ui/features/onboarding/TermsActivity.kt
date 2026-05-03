@@ -15,9 +15,10 @@ import com.aes.grammplayer.db.view.SettingsViewModel
 import kotlin.getValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
-import com.aes.grammplayer.ui.features.login.LoginActivity
+import com.aes.grammplayer.ui.features.authentication.LoginActivity
 import com.aes.grammplayer.R
-import kotlinx.coroutines.flow.first
+import com.aes.grammplayer.ui.features.authentication.AuthActivity
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.launch
 
 class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
@@ -29,8 +30,12 @@ class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
 
     private val viewModel: SettingsViewModel by viewModels()
 
+    private lateinit var settingsDataStore: SettingsDataStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        settingsDataStore = SettingsDataStore(this)
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_toc)
 
@@ -68,10 +73,9 @@ class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
         // Proceed button click
         proceedButton.setOnClickListener {
             lifecycleScope.launch {
-                val current = viewModel.getSettings(1).first() ?: return@launch
-                viewModel.update(current.copy(isTocAccepted = true))
+                settingsDataStore.setTocAccepted(true)
             }
-            val intent = Intent(this, LoginActivity::class.java)
+            val intent = Intent(this, AuthActivity::class.java)
             startActivity(intent)
             finish()  // Optional: Prevent back to terms
         }

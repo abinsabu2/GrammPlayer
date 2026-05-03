@@ -125,7 +125,7 @@ class ChatCardPresenter : Presenter() {
         view.background = border
     }
 
-    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
+    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         // Ensure the item is a ChatGroup before proceeding
         if (item !is Chat || viewHolder !is ChatCardViewHolder) {
             return

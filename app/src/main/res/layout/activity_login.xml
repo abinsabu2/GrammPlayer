@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black"
-    tools:context=".ui.features.login.LoginActivity">
+    tools:context=".ui.features.authentication.LoginActivity">
 
     <!-- App Title -->
     <TextView

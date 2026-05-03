@@ -116,7 +116,7 @@ class MessageCardPresenter : Presenter() {
         view.background = border
     }
 
-    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any) {
+    override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         // Ensure the item is a MediaMessage before proceeding
         if (item !is MediaMessage || viewHolder !is CardViewHolder) {
             return
