@@ -17,8 +17,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.R
-import com.aes.grammplayer.util.TdLibUpdateHandler
-import com.aes.grammplayer.util.TelegramClientManager
+import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
+import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

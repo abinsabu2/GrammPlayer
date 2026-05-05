@@ -27,7 +27,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.ui.features.settings.SettingsActivity
-import com.aes.grammplayer.util.TelegramClientManager
+import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.launch
 
 /**

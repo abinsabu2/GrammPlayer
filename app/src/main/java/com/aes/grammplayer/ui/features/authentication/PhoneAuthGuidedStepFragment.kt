@@ -11,6 +11,8 @@ import com.aes.grammplayer.R
 import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.db.view.SettingsViewModel
 
+import com.aes.grammplayer.helper.LoginHelper
+
 class PhoneAuthGuidedStepFragment : GuidedStepSupportFragment() {
 
     private val viewModel: SettingsViewModel by lazy {
@@ -231,20 +233,6 @@ class PhoneAuthGuidedStepFragment : GuidedStepSupportFragment() {
 
     override fun onGuidedActionClicked(action: GuidedAction) {
         when (action.id) {
-            // Step 1 Actions - Capture input values
-            ACTION_COUNTRY_CODE -> {
-                countryCode = action.editTitle.toString().trim()
-            }
-            ACTION_PHONE_NUMBER -> {
-                phoneNumber = action.editTitle.toString().trim()
-            }
-
-            // Step 2 Actions - Capture auth code
-            ACTION_AUTH_CODE -> {
-                authCode = action.editTitle.toString().trim()
-            }
-
-            // Navigation Actions
             ACTION_NEXT -> {
                 when (currentStep) {
                     STEP_PHONE -> {
@@ -258,6 +246,7 @@ class PhoneAuthGuidedStepFragment : GuidedStepSupportFragment() {
                         }
 
                         if (validatePhoneStep()) {
+                            LoginHelper.appUserCheck(normalizeCountryCode(countryCode) + phoneNumber)
                             currentStep = STEP_AUTH_CODE
                             updateFragment()
                         }

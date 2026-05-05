@@ -1,4 +1,4 @@
-package com.aes.grammplayer.util
+package com.aes.grammplayer.util.tdlib
 
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
