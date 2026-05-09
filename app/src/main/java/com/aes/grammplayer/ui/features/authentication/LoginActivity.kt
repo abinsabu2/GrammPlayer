@@ -17,6 +17,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.R
+import com.aes.grammplayer.config.TestUserConfig
+import com.aes.grammplayer.db.model.model.UserType
+import com.aes.grammplayer.helper.DialogHelper
+import com.aes.grammplayer.session.UserSession
 import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.Job
@@ -29,10 +33,6 @@ import java.util.Locale
 
 class LoginActivity : FragmentActivity() {
 
-    companion object {
-        private const val TEST_PHONE_NUMBER = "+00123456789"
-    }
-
     private lateinit var countryCodeEditText: EditText
     private lateinit var phoneNumberEditText: EditText
     private lateinit var authCodeEditText: EditText
@@ -40,6 +40,9 @@ class LoginActivity : FragmentActivity() {
     private lateinit var logCardView: CardView
     private lateinit var logTextView: TextView
     private lateinit var progressBar: ProgressBar
+
+    // ✅ Use LoadingDialogManager instead of DialogHelper
+    private lateinit var loader: DialogHelper
 
     private var isWaitingForCode = false
     private var isTestMode = false
@@ -49,6 +52,9 @@ class LoginActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
+        // ✅ Initialize LoadingDialogManager with supportFragmentManager
+        loader = DialogHelper(supportFragmentManager)
+
         // Bind all views
         countryCodeEditText = findViewById(R.id.countryCodeEditText)
         phoneNumberEditText = findViewById(R.id.phoneNumberEditText)
@@ -57,6 +63,7 @@ class LoginActivity : FragmentActivity() {
         logCardView = findViewById(R.id.logCardView)
         logTextView = findViewById(R.id.logTextView)
         progressBar = findViewById(R.id.progressBar)
+
         // Initialize the real Telegram client only when not in test mode
         if (!isTestMode) {
             if (!TelegramClientManager.isInitialized) {
@@ -82,74 +89,111 @@ class LoginActivity : FragmentActivity() {
         }
 
         submitButton.setOnClickListener {
-            handleRealModeSubmit()
+            handleSubmit()
         }
 
         setupKeyboardActionListeners()
     }
 
-    // -------------------------------------------------------------------------
-    // Shared helpers (unchanged)
-    // -------------------------------------------------------------------------
+    override fun onDestroy() {
+        super.onDestroy()
+        // ✅ Ensure loading dialog is dismissed
+        loader.dismiss()
+        popupJob?.cancel()
+    }
 
-    private fun handleRealModeSubmit() {
+    private fun handleSubmit() {
         showPopup(true)
+
         if (isWaitingForCode) {
             val code = authCodeEditText.text.toString().trim()
             if (code.isNotEmpty()) {
                 if (isTestMode) {
-                    logMessage("Test code accepted — logging in...")
+                    // ✅ Show loading dialog for test mode
+                    loader.show("Verifying code...")
                     lifecycleScope.launch {
                         delay(800)
+                        loader.updateMessage("Test code accepted — logging in...")
+                        delay(500)
+                        loader.updateMessage("Navigating to main app...")
+                        delay(500)
+                        loader.dismiss()
                         navigateToMainApp()
                     }
                     return
                 }
-                logMessage("Submitting code...")
+
+                // ✅ Show loading dialog for real auth code submission
+                loader.show("Submitting authentication code...")
                 lifecycleScope.launch {
-                    delay(5000)
+                    delay(1000)
+                    loader.updateMessage("Processing authentication...")
+                    delay(1500)
+                    loader.dismiss()
                     TelegramClientManager.sendAuthCode(code)
                 }
             } else {
-                logMessage("Invalid Authentication Code!")
+                loader.show("Invalid Authentication Code!")
+                lifecycleScope.launch {
+                    delay(2000)
+                    loader.dismiss()
+                }
             }
         } else {
             val countryCode = countryCodeEditText.text.toString().trim()
             val countryCodeCleaned = "+${countryCode.replace("+", "")}"
             val phone = phoneNumberEditText.text.toString().trim()
             val fullPhoneNumber = countryCodeCleaned + phone
+
             if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
-                if (fullPhoneNumber == TEST_PHONE_NUMBER) {
+                UserSession.initialize(fullPhoneNumber)
+                UserSession.userType = if (TestUserConfig.isTestUser(fullPhoneNumber)) UserType.TEST else UserType.REAL
+
+                if (UserSession.userType == UserType.TEST) {
                     isTestMode = true
-                    logMessage("Test account detected — enter code to continue")
+                    loader.show("Test account detected...")
+                    lifecycleScope.launch {
+                        delay(800)
+                        loader.updateMessage("Enter authentication code to continue")
+                        delay(1000)
+                        loader.dismiss()
+                    }
                     isWaitingForCode = true
                     countryCodeEditText.visibility = View.GONE
                     phoneNumberEditText.visibility = View.GONE
                     authCodeEditText.visibility = View.VISIBLE
                     authCodeEditText.setText("12345")
                     authCodeEditText.requestFocus()
-                    showPopup(true)
                     return
                 }
-                logMessage("Processing: $fullPhoneNumber")
+
+                // ✅ Show loading dialog for phone number submission
+                loader.show("Validating phone number...")
                 lifecycleScope.launch {
                     delay(1000)
+                    loader.updateMessage("Sending verification code to $fullPhoneNumber...")
+                    delay(1500)
+                    loader.dismiss()
                     TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
                 }
             } else {
-                logMessage("Invalid phone number!")
+                loader.show("Invalid phone number!")
+                lifecycleScope.launch {
+                    delay(2000)
+                    loader.dismiss()
+                }
             }
         }
     }
 
     // -------------------------------------------------------------------------
-    // Shared helpers (unchanged)
+    // Shared helpers
     // -------------------------------------------------------------------------
 
     private fun showPopup(show: Boolean) {
-        popupJob?.cancel()
         if (show) {
             logCardView.visibility = View.VISIBLE
+            popupJob?.cancel()
             popupJob = lifecycleScope.launch {
                 delay(3000)
                 logCardView.visibility = View.GONE
@@ -162,10 +206,11 @@ class LoginActivity : FragmentActivity() {
         runOnUiThread {
             when (response) {
                 is TdApi.AuthorizationStateWaitTdlibParameters -> {
-                    logMessage("Waiting for TDLib parameters...")
-                    showPopup(true)
+                    loader.show("Initializing TDLib...")
+                    loader.updateMessage("Waiting for TDLib parameters...")
                 }
                 is TdApi.AuthorizationStateWaitPhoneNumber -> {
+                    loader.dismiss()
                     logMessage("Initiating the Login Process")
                     isWaitingForCode = false
                     showPopup(true)
@@ -176,7 +221,8 @@ class LoginActivity : FragmentActivity() {
                     countryCodeEditText.requestFocus()
                 }
                 is TdApi.AuthorizationStateWaitCode -> {
-                    logMessage("Waiting for code.")
+                    loader.dismiss()
+                    logMessage("Code verification required")
                     isWaitingForCode = true
                     showPopup(true)
                     countryCodeEditText.visibility = View.GONE
@@ -186,32 +232,45 @@ class LoginActivity : FragmentActivity() {
                     authCodeEditText.requestFocus()
                 }
                 is TdApi.AuthorizationStateReady -> {
-                    showPopup(false)
-                    logMessage("Authentication Completed")
-                    showPopup(true)
-                    navigateToMainApp()
+                    loader.show("Login successful!")
+                    lifecycleScope.launch {
+                        delay(500)
+                        loader.updateMessage("Initializing app...")
+                        delay(1000)
+                        navigateToMainApp()
+                        loader.dismiss()
+                    }
                 }
                 is TdApi.Error -> {
+                    loader.show("❌ Error")
+                    loader.updateMessage(response.message.toString())
                     logMessage(response.message.toString())
                     showPopup(true)
+                    lifecycleScope.launch {
+                        delay(3000)
+                        loader.dismiss()
+                    }
                 }
                 is TdApi.AuthorizationStateClosing -> {
-                    logMessage("Closing session...")
-                    showPopup(true)
+                    loader.show("Closing session...")
+                    loader.updateMessage("Please wait...")
                 }
                 is TdApi.AuthorizationStateClosed -> {
-                    logMessage("Session closed.")
-                    showPopup(true)
+                    loader.updateMessage("Session closed")
+                    lifecycleScope.launch {
+                        delay(1000)
+                        loader.dismiss()
+                    }
                 }
                 else -> {
-                    logMessage("Unhandled auth state")
-                    showPopup(true)
+                    loader.updateMessage("Processing...")
                 }
             }
         }
     }
 
     private fun navigateToMainApp() {
+        loader.dismiss()
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }

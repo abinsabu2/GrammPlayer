@@ -7,11 +7,14 @@ import androidx.leanback.widget.GuidanceStylist.Guidance
 import androidx.leanback.widget.GuidedAction
 
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.R
 import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.db.view.SettingsViewModel
 
 import com.aes.grammplayer.helper.LoginHelper
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class PhoneAuthGuidedStepFragment : GuidedStepSupportFragment() {
 
@@ -246,7 +249,10 @@ class PhoneAuthGuidedStepFragment : GuidedStepSupportFragment() {
                         }
 
                         if (validatePhoneStep()) {
-                            LoginHelper.appUserCheck(normalizeCountryCode(countryCode) + phoneNumber)
+                            lifecycleScope.launch {
+                                delay(1000)
+                                LoginHelper.sendPhoneNumber(normalizeCountryCode(countryCode) + phoneNumber)
+                            }
                             currentStep = STEP_AUTH_CODE
                             updateFragment()
                         }

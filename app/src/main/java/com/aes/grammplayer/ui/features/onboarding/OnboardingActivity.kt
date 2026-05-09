@@ -9,7 +9,6 @@ import com.aes.grammplayer.ui.features.authentication.LoginActivity
 import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.view.SettingsViewModel
-import com.aes.grammplayer.ui.features.authentication.AuthActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -42,7 +41,7 @@ class OnboardingActivity : FragmentActivity() {
     }
 
     private fun navigateToLogin() {
-        val intent = Intent(this, AuthActivity::class.java).apply {
+        val intent = Intent(this, LoginActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         startActivity(intent)

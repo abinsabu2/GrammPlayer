@@ -1,25 +1,26 @@
 package com.aes.grammplayer.helper
 
+import com.aes.grammplayer.db.model.model.UserType
 import com.aes.grammplayer.session.UserSession
-
+import com.aes.grammplayer.util.tdlib.TelegramClientManager
 
 object LoginHelper {
     fun appUserCheck(phoneNumber: String): Unit {
         UserSession.initialize(phoneNumber)
-        UserSession.isTestUser()
     }
 
-    fun dataHandleSelector(phoneNumber: String){
+    fun sendPhoneNumber(phoneNumber: String) {
+        appUserCheck(phoneNumber)
+        when (UserSession.userType) {
+            UserType.TEST -> {
 
-        this.appUserCheck(phoneNumber)
-
-
+            }
+            UserType.REAL -> {
+                TelegramClientManager.sendPhoneNumber(phoneNumber)
+            }
+        }
 
     }
-
-
-
-
 
 
 }

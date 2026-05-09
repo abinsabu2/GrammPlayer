@@ -26,9 +26,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
 import com.aes.grammplayer.R
+import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.ui.features.settings.SettingsActivity
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * Loads a grid of cards with movies to browse.
@@ -37,14 +39,20 @@ class MainFragment : BrowseSupportFragment() {
 
     private var mBackgroundTimer: Timer? = null
 
+    private lateinit var loadingDialog: DialogHelper
+
+
     // In your Activity or Fragment\'s onCreate/onCreateView method
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         Log.i(TAG, "onCreate")
         super.onActivityCreated(savedInstanceState)
+
+        loadingDialog = DialogHelper(childFragmentManager)  // ← One line!
 
         // Setup UI elements directly here
         title = getString(R.string.app_name)
@@ -54,7 +62,6 @@ class MainFragment : BrowseSupportFragment() {
         
         // Set the brand logo using badgeDrawable, which typically aligns to the top-right in RTL contexts
         badgeDrawable = ContextCompat.getDrawable(requireActivity(), R.drawable.gp_logo_bk_bg)
-
         loadRows()
         setupEventListeners()
     }
@@ -66,6 +73,7 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private fun loadRows() {
+
         // This presenter is for the items *inside* each row.
         val mGridPresenter = GridItemPresenter()
         // This adapter holds all the rows.
@@ -89,7 +97,7 @@ class MainFragment : BrowseSupportFragment() {
             }
         }
         // Todo History Module
-        //rowsAdapter.add(ListRow(historyHeader, historyRowAdapter))
+        rowsAdapter.add(ListRow(historyHeader, historyRowAdapter))
 
         // --- 2. ADD A NEW SETTINGS ROW (new logic) ---
         val settingsHeader = HeaderItem("Preferences")
@@ -99,7 +107,8 @@ class MainFragment : BrowseSupportFragment() {
         // Add items to your settings row. We\'ll use simple strings.
         settingsRowAdapter.add("Clear Cache")
         settingsRowAdapter.add("Settings")
-        settingsRowAdapter.add("Close")
+        settingsRowAdapter.add("Refresh Data")
+        settingsRowAdapter.add("Logout")
 
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
 
@@ -122,11 +131,19 @@ class MainFragment : BrowseSupportFragment() {
                 is String -> {
                     when (item) {
                         "Clear Cache" -> {
-                            val deletedCount = TelegramClientManager.clearDownloadedFiles()
-                            //val appDirectorySize = TelegramClientManager.getDirectorySize()
-                            val cacheClearText = "Cleared $deletedCount downloaded files from cache"
-                            //val sizeClearText = "$appDirectorySize MB of app directory size saved"
-                            Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT).show()
+                            loadingDialog.show("Clearing cache")
+                            lifecycleScope.launch {
+                                try {
+                                    val deletedCount = TelegramClientManager.clearDownloadedFiles()
+                                    val cacheClearText = "Cleared $deletedCount downloaded files from cache"
+                                    delay(1500)  // Show dialog for 1.5 seconds
+                                    loadingDialog.updateMessage(cacheClearText)
+                                    delay(1500)  // Show dialog for 1.5 seconds
+                                    loadingDialog.dismiss()
+                                } catch (e: Exception) {
+                                    loadingDialog.dismiss()
+                                }
+                            }
                         }
                         "Settings" -> {
                             val intent = Intent(activity, SettingsActivity::class.java)

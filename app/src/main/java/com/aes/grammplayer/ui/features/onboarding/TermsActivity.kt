@@ -17,7 +17,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.ui.features.authentication.LoginActivity
 import com.aes.grammplayer.R
-import com.aes.grammplayer.ui.features.authentication.AuthActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.launch
 
@@ -75,7 +74,7 @@ class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
             lifecycleScope.launch {
                 settingsDataStore.setTocAccepted(true)
             }
-            val intent = Intent(this, AuthActivity::class.java)
+            val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
             finish()  // Optional: Prevent back to terms
         }

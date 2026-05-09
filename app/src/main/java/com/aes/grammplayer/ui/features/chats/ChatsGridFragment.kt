@@ -17,6 +17,7 @@ import com.aes.grammplayer.ui.features.messages.MessageGridActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.provider.ChatsDataProvider
+import com.aes.grammplayer.ui.common.widgets.ModernLoadingDialogFragment
 import kotlinx.coroutines.launch
 
 /**
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 class ChatsGridFragment : VerticalGridSupportFragment() {
 
     private lateinit var gridAdapter: ArrayObjectAdapter
+    private var loadingDialog: ModernLoadingDialogFragment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
