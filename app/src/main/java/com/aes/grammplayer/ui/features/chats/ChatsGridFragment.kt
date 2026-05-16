@@ -18,7 +18,10 @@ import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.provider.ChatsDataProvider
 import com.aes.grammplayer.ui.common.widgets.ModernLoadingDialogFragment
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.drinkless.tdlib.TdApi
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -28,15 +31,22 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
     private lateinit var gridAdapter: ArrayObjectAdapter
     private var loadingDialog: ModernLoadingDialogFragment? = null
 
+    private lateinit var settingsDataStore: SettingsDataStore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        settingsDataStore = SettingsDataStore(requireActivity())
+
+        // ✅ Initialize LoadingDialogManager with supportFragmentManager
+        loadingDialog = ModernLoadingDialogFragment.newInstance()
         //title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
         // Set the brand logo using badgeDrawable
         badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
 
         setupGrid()
         lifecycleScope.launch {
-            loadMessages()
+            loadChats()
         }
         setupEventListeners()
     }
@@ -81,13 +91,11 @@ class ChatsGridFragment : VerticalGridSupportFragment() {
         }
     }
 
-    private suspend fun loadMessages() {
+    private suspend fun loadChats() {
         // Use Coroutines to call the suspend function on the main thread.
-        ChatsDataProvider.loadAllGroups { chat ->
-            val chatTitle = chat.title
-            if(chatTitle == "Telegram"){
-                return@loadAllGroups
-            }
+        // Exclude "Telegram"
+        val userMode = settingsDataStore.isTestMode.first()
+        ChatsDataProvider.loadAllGroups(userMode, filter = { it.title != "Telegram" }) { chat ->
             gridAdapter.add(chat)
         }
     }

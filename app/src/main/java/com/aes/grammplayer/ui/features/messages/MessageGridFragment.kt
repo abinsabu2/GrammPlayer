@@ -14,10 +14,13 @@ import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.ui.features.details.MediaDetailsBottomSheetFragment
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.provider.MediaMessageDataProvider
 import com.aes.grammplayer.ui.features.details.MediaMessageDetailActivity
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import kotlinx.coroutines.flow.first
 
 /**
  * A fragment to display messages of a specific chat in a grid.
@@ -25,15 +28,19 @@ import com.aes.grammplayer.ui.features.details.MediaMessageDetailActivity
 class MessageGridFragment : VerticalGridSupportFragment() {
 
     private lateinit var gridAdapter: ArrayObjectAdapter
+    private lateinit var settingsDataStore: SettingsDataStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        settingsDataStore = SettingsDataStore(requireActivity())
         title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
         // Set the brand logo using badgeDrawable
         //badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
 
         setupGrid()
-        loadMessages()
+        lifecycleScope.launch {
+            loadMessages()
+        }
         setupEventListeners()
     }
 
@@ -77,18 +84,19 @@ class MessageGridFragment : VerticalGridSupportFragment() {
 
 
 
-    private fun loadMessages() {
+    private suspend fun loadMessages() {
         val chatId = arguments?.getLong(ARG_CHAT_ID) ?: 0L
         if (chatId == 0L) {
             Log.e(TAG, "No Chat ID provided, cannot load messages.")
             return
         }
-
+        val userMode = settingsDataStore.isTestMode.first()
         // Use Coroutines to call the suspend function on the main thread.
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 // Call the suspend function from the provider with a callback to process each message
                 MediaMessageDataProvider.loadAllMediaMessages(
+                    mode = userMode,
                     chatId = chatId,
                     limit = 10000
                 ) { mediaMessage ->

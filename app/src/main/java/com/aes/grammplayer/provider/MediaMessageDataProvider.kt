@@ -7,12 +7,14 @@ import com.aes.grammplayer.db.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.aes.grammplayer.db.model.MediaMessage
+import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.flow.first
 
 object MediaMessageDataProvider {
 
     @SuppressLint("LongLogTag")
     suspend fun loadAllMediaMessages(
+        mode: Boolean = true,   // true = local, false = remote
         chatId: Long,
         limit: Int = 100000,
         onMediaLoaded: (MediaMessage) -> Unit,
@@ -22,13 +24,24 @@ object MediaMessageDataProvider {
 
         withContext(Dispatchers.IO) {
             try {
-                database.mediaMessageDao().getByChatId(chatId.toInt()).first().take(limit).forEach { mediaMessage ->
-                    onMediaLoaded(mediaMessage)
+                val mediaMessages = if (mode) {
+                    database.mediaMessageDao().getByChatId(chatId.toInt()).first()
+                } else {
+                    TelegramClientManager.loadMessagesForChat(
+                        chatId = chatId,
+                        limit = 100
+                    )
                 }
+
+                mediaMessages.forEach { mediaMessage -> onMediaLoaded(mediaMessage as MediaMessage) }
+
             } catch (e: Exception) {
-                Log.e("MediaMessageDataProvider", "Error loading media messages for chat $chatId: ${e.message}", e)
+                Log.e(
+                    "MediaMessageDataProvider",
+                    "Error loading media messages for chat $chatId: ${e.message}",
+                    e
+                )
             }
         }
     }
-
 }

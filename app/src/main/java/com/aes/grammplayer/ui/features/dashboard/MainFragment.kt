@@ -27,6 +27,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.helper.DialogHelper
+import com.aes.grammplayer.ui.features.authentication.LoginActivity
 import com.aes.grammplayer.ui.features.settings.SettingsActivity
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.launch
@@ -152,7 +153,6 @@ class MainFragment : BrowseSupportFragment() {
                         }
                         "Close" -> {
                             TelegramClientManager.clearDownloadedFiles()
-                            //TelegramClientManager.logOut();
                             requireActivity().finish()
                         }
 
@@ -161,6 +161,26 @@ class MainFragment : BrowseSupportFragment() {
                             intent.putExtra("chat_id", 1000)
                             intent.putExtra("chat_title", "Chats")
                             startActivity(intent)
+                        }
+
+                        "Logout" -> {
+                            loadingDialog.show("Logging out")
+                            lifecycleScope.launch {
+                                try {
+                                    val deletedCount = TelegramClientManager.logOut()
+                                    delay(1500)  // Show dialog for 1.5 seconds
+                                    loadingDialog.updateMessage("Logged out")
+                                    delay(1500)  // Show dialog for 1.5 seconds
+                                    loadingDialog.dismiss()
+
+                                    val intent = Intent(activity, LoginActivity::class.java).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    }
+                                    startActivity(intent)
+                                } catch (e: Exception) {
+                                    loadingDialog.dismiss()
+                                }
+                            }
                         }
 
                         else -> {

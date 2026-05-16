@@ -28,6 +28,19 @@ class SettingsDataStore(context: Context) {
         val IS_ONBOARDING_DONE = booleanPreferencesKey("is_onboarding_done")
 
         val IS_TOC_ACCEPTED = booleanPreferencesKey("is_toc_accepted")
+
+        val IS_TEST_MODE = booleanPreferencesKey("is_test_mode")
+    }
+
+
+    val isTestMode: Flow<Boolean> = appContext.dataStore.data.map { preferences ->
+        preferences[IS_TEST_MODE] ?: false
+    }
+
+    suspend fun setTestMode(isTestMode: Boolean) {
+        appContext.dataStore.edit { preferences ->
+            preferences[IS_TEST_MODE] = isTestMode
+        }
     }
 
     val isOnboardingDone: Flow<Boolean> = appContext.dataStore.data.map { preferences ->

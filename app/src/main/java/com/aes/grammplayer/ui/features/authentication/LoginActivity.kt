@@ -21,6 +21,7 @@ import com.aes.grammplayer.config.TestUserConfig
 import com.aes.grammplayer.db.model.model.UserType
 import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.session.UserSession
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.Job
@@ -48,29 +49,11 @@ class LoginActivity : FragmentActivity() {
     private var isTestMode = false
     private var popupJob: Job? = null
 
+    private lateinit var settingsDataStore: SettingsDataStore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
-
-        // ✅ Initialize LoadingDialogManager with supportFragmentManager
-        loader = DialogHelper(supportFragmentManager)
-
-        // Bind all views
-        countryCodeEditText = findViewById(R.id.countryCodeEditText)
-        phoneNumberEditText = findViewById(R.id.phoneNumberEditText)
-        authCodeEditText = findViewById(R.id.authCodeEditText)
-        submitButton = findViewById(R.id.submitButton)
-        logCardView = findViewById(R.id.logCardView)
-        logTextView = findViewById(R.id.logTextView)
-        progressBar = findViewById(R.id.progressBar)
-
-        // Initialize the real Telegram client only when not in test mode
-        if (!isTestMode) {
-            if (!TelegramClientManager.isInitialized) {
-                TelegramClientManager.initialize()
-            }
-        }
-
+        settingsDataStore = SettingsDataStore(this)
         // Observe real auth states
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -87,12 +70,32 @@ class LoginActivity : FragmentActivity() {
                 }
             }
         }
+        // ✅ Initialize LoadingDialogManager with supportFragmentManager
+        loader = DialogHelper(supportFragmentManager)
+        setContentView(R.layout.activity_login)
+        // Bind all views
+        countryCodeEditText = findViewById(R.id.countryCodeEditText)
+        phoneNumberEditText = findViewById(R.id.phoneNumberEditText)
+        authCodeEditText = findViewById(R.id.authCodeEditText)
+        submitButton = findViewById(R.id.submitButton)
+        logCardView = findViewById(R.id.logCardView)
+        logTextView = findViewById(R.id.logTextView)
+        progressBar = findViewById(R.id.progressBar)
 
-        submitButton.setOnClickListener {
-            handleSubmit()
+        // Initialize the real Telegram client only when not in test mode
+        if (!isTestMode) {
+            if (!TelegramClientManager.isInitialized) {
+                TelegramClientManager.initialize()
+            }
         }
 
+        submitButton.setOnClickListener {
+            lifecycleScope.launch {
+                handleSubmit()
+            }
+        }
         setupKeyboardActionListeners()
+
     }
 
     override fun onDestroy() {
@@ -102,13 +105,14 @@ class LoginActivity : FragmentActivity() {
         popupJob?.cancel()
     }
 
-    private fun handleSubmit() {
+    private suspend fun handleSubmit() {
         showPopup(true)
 
         if (isWaitingForCode) {
             val code = authCodeEditText.text.toString().trim()
             if (code.isNotEmpty()) {
                 if (isTestMode) {
+                    settingsDataStore.setTestMode(true)
                     // ✅ Show loading dialog for test mode
                     loader.show("Verifying code...")
                     lifecycleScope.launch {
@@ -148,7 +152,7 @@ class LoginActivity : FragmentActivity() {
             if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
                 UserSession.initialize(fullPhoneNumber)
                 UserSession.userType = if (TestUserConfig.isTestUser(fullPhoneNumber)) UserType.TEST else UserType.REAL
-
+                settingsDataStore.setTestMode(false)
                 if (UserSession.userType == UserType.TEST) {
                     isTestMode = true
                     loader.show("Test account detected...")
@@ -211,20 +215,29 @@ class LoginActivity : FragmentActivity() {
                 }
                 is TdApi.AuthorizationStateWaitPhoneNumber -> {
                     loader.dismiss()
-                    logMessage("Initiating the Login Process")
+                    lifecycleScope.launch {
+                        delay(500)
+                        loader.updateMessage("Loading Login Screen")
+                        delay(1000)
+                        loader.dismiss()
+                    }
                     isWaitingForCode = false
-                    showPopup(true)
                     countryCodeEditText.visibility = View.VISIBLE
                     phoneNumberEditText.visibility = View.VISIBLE
                     authCodeEditText.visibility = View.GONE
                     submitButton.text = "Submit"
                     countryCodeEditText.requestFocus()
+                    loader.dismiss()
                 }
                 is TdApi.AuthorizationStateWaitCode -> {
                     loader.dismiss()
-                    logMessage("Code verification required")
+                    lifecycleScope.launch {
+                        delay(500)
+                        loader.updateMessage("Loading Login Screen")
+                        delay(1000)
+                        loader.dismiss()
+                    }
                     isWaitingForCode = true
-                    showPopup(true)
                     countryCodeEditText.visibility = View.GONE
                     phoneNumberEditText.visibility = View.GONE
                     authCodeEditText.visibility = View.VISIBLE
@@ -232,6 +245,7 @@ class LoginActivity : FragmentActivity() {
                     authCodeEditText.requestFocus()
                 }
                 is TdApi.AuthorizationStateReady -> {
+                    loader.dismiss()
                     loader.show("Login successful!")
                     lifecycleScope.launch {
                         delay(500)
@@ -242,10 +256,6 @@ class LoginActivity : FragmentActivity() {
                     }
                 }
                 is TdApi.Error -> {
-                    loader.show("❌ Error")
-                    loader.updateMessage(response.message.toString())
-                    logMessage(response.message.toString())
-                    showPopup(true)
                     lifecycleScope.launch {
                         delay(3000)
                         loader.dismiss()
