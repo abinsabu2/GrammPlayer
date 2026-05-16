@@ -17,9 +17,11 @@ import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.ui.features.details.MediaDetailsBottomSheetFragment
 import com.aes.grammplayer.db.model.MediaMessage
+import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.provider.MediaMessageDataProvider
 import com.aes.grammplayer.ui.features.details.MediaMessageDetailActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 /**
@@ -29,17 +31,25 @@ class MessageGridFragment : VerticalGridSupportFragment() {
 
     private lateinit var gridAdapter: ArrayObjectAdapter
     private lateinit var settingsDataStore: SettingsDataStore
+    // ✅ Use LoadingDialogManager instead of DialogHelper
+    private lateinit var loader: DialogHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsDataStore = SettingsDataStore(requireActivity())
+        // ✅ Initialize LoadingDialogManager with supportFragmentManager
+        loader = DialogHelper(childFragmentManager)
         title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
         // Set the brand logo using badgeDrawable
         //badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
 
         setupGrid()
         lifecycleScope.launch {
+            loader.show("Loading messages...")
+            delay(500)
             loadMessages()
+            delay(500)
+            loader.dismiss()
         }
         setupEventListeners()
     }
@@ -102,12 +112,9 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 ) { mediaMessage ->
                     gridAdapter.add(mediaMessage)
                 }
-
+                loader.updateMessage("Loaded ${gridAdapter.size()} messages from chat")
+                delay(1000)
                 refreshAllCards()
-                Log.d(
-                    TAG,
-                    "Loaded ${gridAdapter.size()} messages from chat $chatId"
-                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
                 // You could display an error to the user here.

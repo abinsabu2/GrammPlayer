@@ -60,12 +60,6 @@ class MediaMessageDetailActivity : Activity(), OnPlayerEvent {
     private fun addAllFragments(msg: MediaMessage) {
         val fm = fragmentManager
         fm.beginTransaction()
-            // 1. Player
-            .add(
-                R.id.container_player,
-                PlayerFragment.newInstance(msg),
-                PlayerFragment.TAG
-            )
             // 2. Download progress (hides itself when not active)
             .add(
                 R.id.container_progress,
