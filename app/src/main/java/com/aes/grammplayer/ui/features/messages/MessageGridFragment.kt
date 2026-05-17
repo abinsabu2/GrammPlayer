@@ -40,8 +40,6 @@ class MessageGridFragment : VerticalGridSupportFragment() {
         // ✅ Initialize LoadingDialogManager with supportFragmentManager
         loader = DialogHelper(childFragmentManager)
         title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
-        // Set the brand logo using badgeDrawable
-        //badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
 
         setupGrid()
         lifecycleScope.launch {

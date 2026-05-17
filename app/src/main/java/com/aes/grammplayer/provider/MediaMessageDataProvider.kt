@@ -33,7 +33,7 @@ object MediaMessageDataProvider {
                     )
                 }
 
-                mediaMessages.forEach { mediaMessage -> onMediaLoaded(mediaMessage as MediaMessage) }
+                mediaMessages.forEach { mediaMessage -> onMediaLoaded(mediaMessage) }
 
             } catch (e: Exception) {
                 Log.e(
