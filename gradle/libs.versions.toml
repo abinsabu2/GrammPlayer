@@ -1,6 +1,6 @@
 [versions]
 agp = "9.0.1"
-kotlin = "2.1.0"  # More stable, still very recent
+kotlin = "2.2.10"  # More stable, still very recent
 coreKtx = "1.10.1"
 leanback = "1.2.0"  # Change from 1.2.0-alpha02 to stable
 glide = "4.11.0"

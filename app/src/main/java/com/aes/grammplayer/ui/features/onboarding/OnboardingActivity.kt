@@ -80,10 +80,12 @@ class OnboardingActivity : FragmentActivity() {
     }
 
     private fun observeData() {
+
         lifecycleScope.launch {
+            loader.updateMessage("Waiting for Parameters...")
             val isOnboardingDone = settingsDataStore.isOnboardingDone.first()
             val isTocAccepted = settingsDataStore.isTocAccepted.first()
-
+            loader.dismiss()
             when {
                 !isOnboardingDone -> showOnboardingFragment()
                 !isTocAccepted -> navigateToToc()
@@ -97,7 +99,6 @@ class OnboardingActivity : FragmentActivity() {
             when (response) {
                 is TdApi.AuthorizationStateWaitTdlibParameters -> {
                     loader.show("Initializing The App")
-
                     loader.updateMessage("Waiting for Parameters...")
                 }
                 is TdApi.AuthorizationStateWaitPhoneNumber -> {
