@@ -88,7 +88,8 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.features.details.MediaMessageDetailActivity"
+            android:name=".ui.features.details.MediaDetailsActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
             android:exported="true">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -1,0 +1,16 @@
+<resources>
+    <!--
+      Add this style inside the <resources> block of your existing
+      res/values/styles.xml (don't overwrite the file — just merge it in).
+      Used by the rotated sidebar tab labels in activity_media_details.xml.
+    -->
+    <style name="DetailsSidebarTab">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:rotation">270</item>
+        <item name="android:textColor">#8A8A8E</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:singleLine">true</item>
+    </style>
+</resources>

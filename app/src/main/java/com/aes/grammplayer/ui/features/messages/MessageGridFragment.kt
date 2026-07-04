@@ -15,11 +15,10 @@ import androidx.leanback.widget.Row // Make sure this import is correct
 import androidx.leanback.widget.RowPresenter
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
-import com.aes.grammplayer.ui.features.details.MediaDetailsBottomSheetFragment
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.provider.MediaMessageDataProvider
-import com.aes.grammplayer.ui.features.details.MediaMessageDetailActivity
+import com.aes.grammplayer.ui.features.details.MediaDetailsActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -83,7 +82,7 @@ class MessageGridFragment : VerticalGridSupportFragment() {
                 row: Row?
             ) {
                 if (item is MediaMessage) {
-                    val intent = MediaMessageDetailActivity.newIntent(requireContext(), item)
+                    val intent = MediaDetailsActivity.newIntent(requireContext(), item)
                     startActivity(intent)
                 }
             }
