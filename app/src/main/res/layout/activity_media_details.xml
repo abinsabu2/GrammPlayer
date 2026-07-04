@@ -144,6 +144,33 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Download progress — hidden until a download is active -->
+        <LinearLayout
+            android:id="@+id/download_progress_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:id="@+id/download_status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="13sp"
+                android:layout_marginBottom="6dp"
+                tools:text="Downloading: 42% (12.30/29.10 MB)" />
+
+            <ProgressBar
+                android:id="@+id/download_progress_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:progressTint="@color/accent_teal"
+                android:max="100" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -156,8 +183,8 @@
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="28dp"
-            android:scrollbars="none">
+            android:scrollbars="none"
+            android:layout_marginBottom="28dp">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/settings_row"
@@ -186,5 +213,19 @@
                 android:layout_height="wrap_content"
                 tools:listitem="@layout/item_setting_card" />
         </HorizontalScrollView>
+
+        <!-- On-screen debug log — useful on a TV device with no adb attached.
+             Hidden until the first log line is appended. -->
+        <TextView
+            android:id="@+id/log_text_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:maxLines="6"
+            android:scrollbars="vertical"
+            android:textColor="#8A8A8E"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:text="[12:04:01] [INFO] Download command sent for file ID: 42" />
     </LinearLayout>
 </FrameLayout>

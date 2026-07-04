@@ -3,13 +3,21 @@ package com.aes.grammplayer.ui.features.details
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.StatFs
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -28,10 +36,12 @@ import java.util.concurrent.TimeUnit
 class MediaDetailsActivity : AppCompatActivity() {
 
     private lateinit var message: MediaMessage
+    private lateinit var settingsDataStore: SettingsDataStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_media_details)
+        settingsDataStore = SettingsDataStore(this)
 
         message = intent.getSerializableExtra(EXTRA_MEDIA_MESSAGE) as? MediaMessage
             ?: run {
@@ -43,9 +53,9 @@ class MediaDetailsActivity : AppCompatActivity() {
             }
 
         bindHeader()
+        setupMetadataRow()
         setupActionButtons()
         setupSettingsRow()
-        setupMetadataRow()
     }
 
     private fun bindHeader() {
@@ -54,32 +64,19 @@ class MediaDetailsActivity : AppCompatActivity() {
             text = message.description
             visibility = if (message.description.isBlank()) View.GONE else View.VISIBLE
         }
-        // TODO: Glide.with(this).load(message.backgroundImageUrl.ifBlank { message.thumbnailPath })
-        //   .into(findViewById(R.id.backdrop))
+
+        // Prefer the background image, fall back to the thumbnail, and if
+        Glide.with(this)
+            .load(R.drawable.detail_back_drop)
+            .placeholder(R.drawable.card_background) // shown while loading
+            .error(R.drawable.card_background)        // shown if the load fails
+            .into(findViewById(R.id.backdrop))
     }
 
     private fun setupActionButtons() {
         val play = findViewById<View>(R.id.action_play)
         val download = findViewById<View>(R.id.action_download)
         val cancel = findViewById<View>(R.id.action_cancel)
-
-        when {
-            message.isDownloadActive -> {
-                play.visibility = View.GONE
-                download.visibility = View.GONE
-                cancel.visibility = View.VISIBLE
-            }
-            message.isDownloaded -> {
-                play.visibility = View.VISIBLE
-                download.visibility = View.GONE
-                cancel.visibility = View.GONE
-            }
-            else -> {
-                play.visibility = View.GONE
-                download.visibility = View.VISIBLE
-                cancel.visibility = View.GONE
-            }
-        }
 
         play.setOnClickListener {
             // TODO: start playback using message.localPath / message.fileId.
@@ -96,32 +93,59 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun setupSettingsRow() {
-        // Static app-config style settings (not derived from MediaMessage —
-        // these are placeholders for real player/app settings once wired up).
-        val settings = listOf(
-            SettingItem(value = "ON", caption = "AUTOPLAY"),
-            SettingItem(value = "1.5 GB", caption = "BUFFER SIZE"),
-            SettingItem(value = "85%", caption = "START DOWNLOAD AT"),
-            SettingItem(value = "English", caption = "DEFAULT AUDIO")
-        )
-        findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.settings_row).apply {
+        val recyclerView = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.settings_row).apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
-            adapter = SettingCardAdapter(settings)
             setHasFixedSize(true)
         }
+
+        // combine() re-emits whenever any one of these preferences changes,
+        // so the row stays live rather than being a one-shot snapshot.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                    settingsDataStore.autoPlay,
+                    settingsDataStore.bufferSizeThreshold,
+                    settingsDataStore.progressThreshold
+                ) { autoPlay, bufferSizeMb, progressPercent ->
+                    buildList {
+                        add(SettingItem(value = if (autoPlay) "ON" else "OFF", caption = "AUTOPLAY"))
+                        if (autoPlay) {
+                            add(SettingItem(value = formatBufferSize(bufferSizeMb), caption = "BUFFER SIZE"))
+                            add(SettingItem(value = "$progressPercent%", caption = "START DOWNLOAD AT"))
+                        }
+                        add(SettingItem(value = formatAvailableStorage(), caption = "AVAILABLE SYSTEM STORAGE"))
+                    }
+                }.collect { items ->
+                    recyclerView.adapter = SettingCardAdapter(items)
+                }
+            }
+        }
+    }
+
+    /**
+     * bufferSizeThreshold is stored as a plain Int in SettingsDataStore with
+     * no documented unit — this assumes megabytes to match the "1.5 GB"
+     * style value it's replacing. Adjust the unit here if the DataStore
+     * actually stores it differently (e.g. seconds of buffered playback).
+     */
+    private fun formatBufferSize(sizeMb: Int): String {
+        return if (sizeMb >= 1024) String.format("%.1f GB", sizeMb / 1024.0) else "$sizeMb MB"
+    }
+
+    /**
+     * Available space isn't tracked in SettingsDataStore — it's read live
+     * from the filesystem each time this row rebinds.
+     */
+    private fun formatAvailableStorage(): String {
+        val stat = StatFs(filesDir.path)
+        val availableGb = stat.availableBytes / 1024.0 / 1024.0 / 1024.0
+        return String.format("%.1f GB", availableGb)
     }
 
     private fun setupMetadataRow() {
         val items = mutableListOf(
-            SettingItem(value = formatDuration(message.duration), caption = "DURATION"),
             SettingItem(value = formatSize(message.size), caption = "SIZE")
         )
-        if (message.studio.isNotBlank()) {
-            items += SettingItem(value = message.studio, caption = "STUDIO")
-        }
-        if (message.width > 0 && message.height > 0) {
-            items += SettingItem(value = "${message.width}×${message.height}", caption = "RESOLUTION")
-        }
         if (message.mimeType.isNotBlank()) {
             items += SettingItem(value = formatMimeType(message.mimeType), caption = "FORMAT")
         }

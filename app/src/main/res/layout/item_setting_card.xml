@@ -6,7 +6,7 @@
     android:layout_marginEnd="16dp"
     android:orientation="vertical"
     android:gravity="center"
-    android:background="@drawable/card_background_focused"
+    android:background="@drawable/card_background_selector"
     android:defaultFocusHighlightEnabled="false"
     android:focusable="true"
     android:focusableInTouchMode="true">
@@ -15,7 +15,7 @@
         android:id="@+id/value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#0D1210"
+        android:textColor="#FFFF"
         android:textSize="26sp"
         android:textStyle="bold"
         tools:text="1.5 GB" />
@@ -25,8 +25,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:textColor="#4A4A4A"
-        android:textSize="12sp"
+        android:textColor="#FFF"
+        android:textSize="7sp"
         android:letterSpacing="0.05"
         tools:text="BUFFER SIZE" />
 </LinearLayout>
