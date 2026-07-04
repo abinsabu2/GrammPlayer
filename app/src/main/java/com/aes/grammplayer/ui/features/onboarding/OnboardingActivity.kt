@@ -85,10 +85,12 @@ class OnboardingActivity : FragmentActivity() {
             loader.updateMessage("Waiting for Parameters...")
             val isOnboardingDone = settingsDataStore.isOnboardingDone.first()
             val isTocAccepted = settingsDataStore.isTocAccepted.first()
+            val isTestLogin= settingsDataStore.isTestMode.first()
             loader.dismiss()
             when {
                 !isOnboardingDone -> showOnboardingFragment()
                 !isTocAccepted -> navigateToToc()
+                isTestLogin -> navigateToMainApp()
                 else -> navigateToLogin()
             }
         }
