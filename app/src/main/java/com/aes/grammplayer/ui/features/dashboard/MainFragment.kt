@@ -35,6 +35,7 @@ import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Loads a grid of cards with movies to browse.
@@ -209,10 +210,9 @@ class MainFragment : BrowseSupportFragment() {
                             loadingDialog.show("Logging out")
                             lifecycleScope.launch {
                                 try {
-                                    val deletedCount = TelegramClientManager.logOut()
-                                    delay(1500)
+                                    TelegramClientManager.logOut() // now suspends until AuthorizationStateClosed
                                     loadingDialog.updateMessage("Logged out")
-                                    delay(1500)
+                                    delay(500.milliseconds) // purely cosmetic pause so the message is readable, not a functional wait
                                     loadingDialog.dismiss()
 
                                     val intent = Intent(activity, LoginActivity::class.java).apply {
@@ -221,6 +221,7 @@ class MainFragment : BrowseSupportFragment() {
                                     settingsDataStore.setTestMode(false)
                                     startActivity(intent)
                                 } catch (e: Exception) {
+                                    Log.e(TAG, "Logout failed: ${e.message}", e)
                                     loadingDialog.dismiss()
                                 }
                             }

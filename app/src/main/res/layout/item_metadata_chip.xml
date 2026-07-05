@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="36dp"
+    android:layout_marginEnd="10dp"
+    android:orientation="horizontal"
+    android:gravity="center"
+    android:background="@drawable/metadata_chip_background"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp">
+
+    <ImageView android:id="@+id/icon"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:layout_marginEnd="7dp"
+        app:tint="@android:color/white"
+        tools:ignore="ContentDescription"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <TextView
+        android:id="@+id/label_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@android:color/white"
+        android:textSize="13sp"
+        tools:text="Adventure"
+        xmlns:tools="http://schemas.android.com/tools" />
+</LinearLayout>

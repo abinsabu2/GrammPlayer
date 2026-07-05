@@ -3,6 +3,7 @@ package com.aes.grammplayer.ui.features.authentication
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -31,6 +32,7 @@ import org.drinkless.tdlib.TdApi
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 class LoginActivity : FragmentActivity() {
 
@@ -42,38 +44,52 @@ class LoginActivity : FragmentActivity() {
     private lateinit var logTextView: TextView
     private lateinit var progressBar: ProgressBar
 
-    // ✅ Use LoadingDialogManager instead of DialogHelper
     private lateinit var loader: DialogHelper
 
     private var isWaitingForCode = false
     private var isTestMode = false
     private var popupJob: Job? = null
 
+    // Tracks the in-flight delayed loader-message sequence so a new auth state
+    // can cancel a stale one instead of racing it (fixes overlapping updateMessage/dismiss calls).
+    private var loaderSequenceJob: Job? = null
+
     private lateinit var settingsDataStore: SettingsDataStore
+
+    companion object {
+        private const val TAG = "LoginActivity"
+        private const val DELAY_SHORT = 500L
+        private const val DELAY_MEDIUM = 1000L
+        private const val DELAY_LONG = 1500L
+        private const val DELAY_ERROR_DISPLAY = 3000L
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsDataStore = SettingsDataStore(this)
-        // Observe real auth states
+
+        // Observe real auth state transitions (WaitPhoneNumber, WaitCode, Ready, etc.)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                TdLibUpdateHandler.authError.collect { response ->
-                    if (!isTestMode) handleAuthorizationState(response)
+                TdLibUpdateHandler.authorizationState.collect { state ->
+                    if (!isTestMode) state?.let { handleAuthorizationState(it) }
                 }
             }
         }
 
+        // Observe TDLib errors separately — these are a different type (TdApi.Error),
+        // not an AuthorizationState, so they need their own handler.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                TdLibUpdateHandler.authorizationState.collect { response ->
-                    if (!isTestMode) handleAuthorizationState(response)
+                TdLibUpdateHandler.authError.collect { error ->
+                    if (!isTestMode) handleAuthError(error)
                 }
             }
         }
-        // ✅ Initialize LoadingDialogManager with supportFragmentManager
+
         loader = DialogHelper(supportFragmentManager)
         setContentView(R.layout.activity_login)
-        // Bind all views
+
         countryCodeEditText = findViewById(R.id.countryCodeEditText)
         phoneNumberEditText = findViewById(R.id.phoneNumberEditText)
         authCodeEditText = findViewById(R.id.authCodeEditText)
@@ -82,7 +98,6 @@ class LoginActivity : FragmentActivity() {
         logTextView = findViewById(R.id.logTextView)
         progressBar = findViewById(R.id.progressBar)
 
-        // Initialize the real Telegram client only when not in test mode
         if (!isTestMode) {
             if (!TelegramClientManager.isInitialized) {
                 TelegramClientManager.initialize()
@@ -95,14 +110,13 @@ class LoginActivity : FragmentActivity() {
             }
         }
         setupKeyboardActionListeners()
-
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // ✅ Ensure loading dialog is dismissed
         loader.dismiss()
         popupJob?.cancel()
+        loaderSequenceJob?.cancel()
     }
 
     private suspend fun handleSubmit() {
@@ -113,33 +127,31 @@ class LoginActivity : FragmentActivity() {
             if (code.isNotEmpty()) {
                 if (isTestMode) {
                     settingsDataStore.setTestMode(true)
-                    // ✅ Show loading dialog for test mode
                     loader.show("Verifying code...")
                     lifecycleScope.launch {
-                        delay(800)
+                        delay(DELAY_LONG.milliseconds)
                         loader.updateMessage("Test code accepted — logging in...")
-                        delay(500)
+                        delay(DELAY_LONG.milliseconds)
                         loader.updateMessage("Navigating to main app...")
-                        delay(500)
+                        delay(DELAY_LONG.milliseconds)
                         loader.dismiss()
                         navigateToMainApp()
                     }
                     return
                 }
 
-                // ✅ Show loading dialog for real auth code submission
                 loader.show("Submitting authentication code...")
                 lifecycleScope.launch {
-                    delay(1000)
+                    delay(DELAY_LONG.milliseconds)
                     loader.updateMessage("Processing authentication...")
-                    delay(1500)
+                    delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
                     TelegramClientManager.sendAuthCode(code)
                 }
             } else {
                 loader.show("Invalid Authentication Code!")
                 lifecycleScope.launch {
-                    delay(2000)
+                    delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
                 }
             }
@@ -157,9 +169,9 @@ class LoginActivity : FragmentActivity() {
                     isTestMode = true
                     loader.show("Test account detected...")
                     lifecycleScope.launch {
-                        delay(800)
+                        delay(DELAY_LONG.milliseconds)
                         loader.updateMessage("Enter authentication code to continue")
-                        delay(1000)
+                        delay(DELAY_LONG.milliseconds)
                         loader.dismiss()
                     }
                     isWaitingForCode = true
@@ -171,19 +183,18 @@ class LoginActivity : FragmentActivity() {
                     return
                 }
 
-                // ✅ Show loading dialog for phone number submission
                 loader.show("Validating phone number...")
                 lifecycleScope.launch {
-                    delay(1000)
+                    delay(DELAY_LONG.milliseconds)
                     loader.updateMessage("Sending verification code to $fullPhoneNumber...")
-                    delay(1500)
+                    delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
                     TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
                 }
             } else {
                 loader.show("Invalid phone number!")
                 lifecycleScope.launch {
-                    delay(2000)
+                    delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
                 }
             }
@@ -199,83 +210,120 @@ class LoginActivity : FragmentActivity() {
             logCardView.visibility = View.VISIBLE
             popupJob?.cancel()
             popupJob = lifecycleScope.launch {
-                delay(3000)
+                delay(DELAY_LONG.milliseconds)
                 logCardView.visibility = View.GONE
             }
         }
     }
 
+    /**
+     * Handles AuthorizationState transitions only. TdApi.Error is handled separately
+     * in handleAuthError, since it's not part of the AuthorizationState hierarchy.
+     *
+     * Note: runOnUiThread was removed — lifecycleScope.launch already dispatches on
+     * Dispatchers.Main, so this was already running on the UI thread; the extra
+     * wrapper was a redundant nested dispatch.
+     */
     @SuppressLint("SetTextI18n")
-    private fun handleAuthorizationState(response: TdApi.Object?) {
-        runOnUiThread {
-            when (response) {
-                is TdApi.AuthorizationStateWaitTdlibParameters -> {
-                    loader.show("Initializing TDLib...")
-                    loader.updateMessage("Waiting for TDLib parameters...")
-                }
-                is TdApi.AuthorizationStateWaitPhoneNumber -> {
-                    loader.dismiss()
-                    lifecycleScope.launch {
-                        delay(500)
-                        loader.updateMessage("Loading Login Screen")
-                        delay(1000)
-                        loader.dismiss()
-                    }
-                    isWaitingForCode = false
-                    countryCodeEditText.visibility = View.VISIBLE
-                    phoneNumberEditText.visibility = View.VISIBLE
-                    authCodeEditText.visibility = View.GONE
-                    submitButton.text = "Submit"
-                    countryCodeEditText.requestFocus()
+    private fun handleAuthorizationState(state: TdApi.AuthorizationState) {
+        // Cancel any pending delayed loader updates from a previous state before reacting to the new one,
+        // so fast-firing transitions (e.g. WaitPhoneNumber -> WaitCode on session resume) don't race each other.
+        loaderSequenceJob?.cancel()
+
+        when (state) {
+            is TdApi.AuthorizationStateWaitTdlibParameters -> {
+                loader.show("Initializing TDLib...")
+                loader.updateMessage("Waiting for TDLib parameters...")
+            }
+
+            is TdApi.AuthorizationStateWaitPhoneNumber -> {
+                loader.dismiss()
+                loaderSequenceJob = lifecycleScope.launch {
+                    delay(DELAY_SHORT.milliseconds)
+                    loader.updateMessage("Loading Login Screen")
+                    delay(DELAY_MEDIUM.milliseconds)
                     loader.dismiss()
                 }
-                is TdApi.AuthorizationStateWaitCode -> {
+                isWaitingForCode = false
+                countryCodeEditText.visibility = View.VISIBLE
+                phoneNumberEditText.visibility = View.VISIBLE
+                authCodeEditText.visibility = View.GONE
+                submitButton.text = "Submit"
+                countryCodeEditText.requestFocus()
+            }
+
+            is TdApi.AuthorizationStateWaitCode -> {
+                loader.dismiss()
+                loaderSequenceJob = lifecycleScope.launch {
+                    loader.updateMessage("Loading Login Screen")
                     loader.dismiss()
-                    lifecycleScope.launch {
-                        delay(500)
-                        loader.updateMessage("Loading Login Screen")
-                        delay(1000)
-                        loader.dismiss()
-                    }
-                    isWaitingForCode = true
-                    countryCodeEditText.visibility = View.GONE
-                    phoneNumberEditText.visibility = View.GONE
-                    authCodeEditText.visibility = View.VISIBLE
-                    submitButton.text = "Submit"
-                    authCodeEditText.requestFocus()
                 }
-                is TdApi.AuthorizationStateReady -> {
+                isWaitingForCode = true
+                countryCodeEditText.visibility = View.GONE
+                phoneNumberEditText.visibility = View.GONE
+                authCodeEditText.visibility = View.VISIBLE
+                submitButton.text = "Submit"
+                authCodeEditText.requestFocus()
+            }
+
+            is TdApi.AuthorizationStateWaitPassword -> {
+                // Two-step verification (2FA). Without this branch, 2FA users previously
+                // fell into `else` and got stuck on a "Processing..." message forever.
+                // NOTE: there's no password input view in activity_login.xml yet — this
+                // just unblocks the state machine and logs it. You'll want a real password
+                // EditText + submit path wired to TelegramClientManager.sendAuthPassword(...)
+                // (or whatever your manager's equivalent call is named) before this is usable.
+                loader.dismiss()
+                Log.w(TAG, "2FA required (AuthorizationStateWaitPassword) — no password UI wired up yet")
+            }
+
+            is TdApi.AuthorizationStateReady -> {
+                loader.dismiss()
+                loader.show("Login successful!")
+                loaderSequenceJob = lifecycleScope.launch {
+                    delay(DELAY_SHORT.milliseconds)
+                    loader.updateMessage("Initializing app...")
+                    delay(DELAY_MEDIUM.milliseconds)
+                    navigateToMainApp()
                     loader.dismiss()
-                    loader.show("Login successful!")
-                    lifecycleScope.launch {
-                        delay(500)
-                        loader.updateMessage("Initializing app...")
-                        delay(1000)
-                        navigateToMainApp()
-                        loader.dismiss()
-                    }
-                }
-                is TdApi.Error -> {
-                    lifecycleScope.launch {
-                        delay(3000)
-                        loader.dismiss()
-                    }
-                }
-                is TdApi.AuthorizationStateClosing -> {
-                    loader.show("Closing session...")
-                    loader.updateMessage("Please wait...")
-                }
-                is TdApi.AuthorizationStateClosed -> {
-                    loader.updateMessage("Session closed")
-                    lifecycleScope.launch {
-                        delay(1000)
-                        loader.dismiss()
-                    }
-                }
-                else -> {
-                    loader.updateMessage("Processing...")
                 }
             }
+
+            is TdApi.AuthorizationStateClosing -> {
+                loader.show("Closing session...")
+                loader.updateMessage("Please wait...")
+            }
+
+            is TdApi.AuthorizationStateClosed -> {
+                loader.updateMessage("Session closed")
+                loaderSequenceJob = lifecycleScope.launch {
+                    delay(DELAY_MEDIUM.milliseconds)
+                    loader.dismiss()
+                }
+            }
+
+            else -> {
+                // Logged instead of silently showing "Processing..." so any future/unhandled
+                // AuthorizationState subtype (e.g. WaitEmailAddress, WaitEmailCode,
+                // WaitOtherDeviceConfirmation) is noticeable during testing rather than
+                // leaving the user on a vague spinner.
+                Log.w(TAG, "Unhandled authorization state: ${state.javaClass.simpleName}")
+                loader.updateMessage("Processing...")
+            }
+        }
+    }
+
+    /**
+     * Handles TdApi.Error emissions (e.g. invalid phone number, flood wait, invalid code).
+     * Previously this silently dismissed the loader after 3s with no message shown to the user.
+     */
+    private fun handleAuthError(error: TdApi.Error) {
+        Log.e(TAG, "TDLib error ${error.code}: ${error.message}")
+        loaderSequenceJob?.cancel()
+        loader.show(error.message ?: "Something went wrong. Please try again.")
+        loaderSequenceJob = lifecycleScope.launch {
+            delay(DELAY_ERROR_DISPLAY.milliseconds)
+            loader.dismiss()
         }
     }
 

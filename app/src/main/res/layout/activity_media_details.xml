@@ -1,231 +1,324 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0D0D0F"
+    android:fillViewport="true"
     tools:context=".ui.features.details.MediaDetailsActivity">
 
-    <!-- Backdrop art. Swap the src for the real loaded backdrop once wired
-         to actual media artwork. -->
-    <ImageView
-        android:id="@+id/backdrop"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        tools:ignore="ContentDescription"
-        tools:src="@drawable/card_background" />
-
-    <!-- Dark-to-transparent scrim (left to right) so text stays legible over the art -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/scrim_gradient_left" />
-
-    <!-- Main content column -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:orientation="vertical"
-        android:paddingStart="56dp"
-        android:paddingEnd="32dp"
-        android:paddingBottom="32dp">
+        android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
-            android:textSize="34sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.02"
-            android:layout_marginBottom="10dp"
-            tools:text="GALACTIC ODYSSEY" />
-
-        <TextView
-            android:id="@+id/description"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="#C9C9C9"
-            android:textSize="15sp"
-            android:maxLines="3"
-            android:ellipsize="end"
-            android:layout_marginBottom="20dp"
-            tools:text="A crew ventures beyond the edge of known space in search of a new home for humanity." />
-
-        <!-- Action buttons -->
+        <!-- App bar: logo/app name + promo banner -->
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:background="#0A0A0C">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/app_icon_your_company"
+                tools:ignore="ContentDescription" />
+
+            <!-- TODO: replace with real app name from strings.xml / branding -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1" />
+
+            <!-- Promo banner — TODO: bind to a real promo/announcement source
+                 instead of this static placeholder -->
+            <FrameLayout
+                android:id="@+id/promo_banner"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginStart="24dp"
+                android:maxWidth="420dp"
+                android:background="@drawable/promo_banner_background">
+
+                <TextView
+                    android:id="@+id/promo_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    tools:text="NEW EPISODES: The Great Barrier Reef — Exclusively This Month!" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Poster + details row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="28dp">
+            android:padding="24dp">
+
+            <ImageView
+                android:id="@+id/poster_image"
+                android:layout_width="220dp"
+                android:layout_height="300dp"
+                android:background="@drawable/card_background"
+                android:scaleType="centerCrop"
+                tools:ignore="ContentDescription" />
 
             <LinearLayout
-                android:id="@+id/action_play"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:background="@drawable/button_primary_background"
-                android:defaultFocusHighlightEnabled="false"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:paddingStart="20dp"
-                android:paddingEnd="24dp">
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginEnd="10dp"
-                    android:src="@drawable/ic_play"
-                    tools:ignore="ContentDescription" />
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="24dp"
+                android:orientation="vertical">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/title"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="PLAY"
-                    android:textColor="#0D1210"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/action_download"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginStart="14dp"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:background="@drawable/button_outline_background"
-                android:defaultFocusHighlightEnabled="false"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:paddingStart="20dp"
-                android:paddingEnd="24dp">
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginEnd="10dp"
-                    android:src="@drawable/ic_download"
-                    tools:ignore="ContentDescription" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="DOWNLOAD"
                     android:textColor="@android:color/white"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/action_cancel"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginStart="14dp"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:background="@drawable/button_outline_background"
-                android:defaultFocusHighlightEnabled="false"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:paddingStart="24dp"
-                android:paddingEnd="24dp">
+                    android:textSize="26sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.02"
+                    android:layout_marginBottom="6dp"
+                    tools:text="THE ABYSSAL DEEPS" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="CANCEL"
-                    android:textColor="@android:color/white"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:text="DESCRIPTION"
+                    android:textColor="#7A7A7E"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#C9C9C9"
+                    android:textSize="14sp"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:layout_marginBottom="16dp"
+                    tools:text="Journey to the crushing depths of the deep ocean, where only light can find you." />
+
+                <!-- Metadata tag chips: genre/audio/duration etc.
+                     TODO: these fields don't exist on MediaMessage yet —
+                     wire up real tags/audio/duration once the model has them. -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginBottom="18dp">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/metadata_chip_row"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:listitem="@layout/item_metadata_chip" />
+                </HorizontalScrollView>
+
+                <!-- Download progress — hidden until a download is active -->
+                <LinearLayout
+                    android:id="@+id/download_progress_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="18dp">
+
+                    <TextView
+                        android:id="@+id/download_status_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp"
+                        android:layout_marginBottom="6dp"
+                        tools:text="Downloading — 512 MB / 8.41 GB" />
+
+                    <ProgressBar
+                        android:id="@+id/download_progress_bar"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="4dp"
+                        android:progressTint="@color/accent_teal"
+                        android:max="100" />
+                </LinearLayout>
+
+                <!-- Settings row: autoplay / buffer / quality / storage / connection -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginBottom="20dp">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/settings_row"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        tools:listitem="@layout/item_setting_card" />
+                </HorizontalScrollView>
+
+                <!-- Action buttons -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:id="@+id/action_download"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:background="@drawable/button_outline_background"
+                        android:defaultFocusHighlightEnabled="false"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="24dp">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginEnd="10dp"
+                            android:src="@drawable/ic_download"
+                            tools:ignore="ContentDescription" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="DOWNLOAD"
+                            android:textColor="@android:color/white"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/action_play"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="14dp"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:background="@drawable/button_primary_background"
+                        android:defaultFocusHighlightEnabled="false"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="24dp">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginEnd="10dp"
+                            android:src="@drawable/ic_play"
+                            tools:ignore="ContentDescription" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="PLAY"
+                            android:textColor="#0D1210"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/action_cancel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="14dp"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:background="@drawable/button_outline_background"
+                        android:defaultFocusHighlightEnabled="false"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="24dp">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginEnd="10dp"
+                            android:src="@drawable/ic_cancel"
+                            tools:ignore="ContentDescription" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="CANCEL"
+                            android:textColor="@android:color/white"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Download progress — hidden until a download is active -->
+        <!-- Activity log panel -->
         <LinearLayout
-            android:id="@+id/download_progress_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:minHeight="140dp"
             android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="20dp">
+            android:background="#141416"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ACTIVITY LOG"
+                    android:textColor="#B0B0B0"
+                    android:textSize="13sp"
+                    android:letterSpacing="0.05" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_app_logo"
+                    tools:ignore="ContentDescription" />
+            </LinearLayout>
 
             <TextView
-                android:id="@+id/download_status_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:textSize="13sp"
-                android:layout_marginBottom="6dp"
-                tools:text="Downloading: 42% (12.30/29.10 MB)" />
-
-            <ProgressBar
-                android:id="@+id/download_progress_bar"
-                style="?android:attr/progressBarStyleHorizontal"
+                android:id="@+id/log_text_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:progressTint="@color/accent_teal"
-                android:max="100" />
+                android:fontFamily="monospace"
+                android:maxLines="6"
+                android:scrollbars="vertical"
+                android:textColor="#8A8A8E"
+                android:textSize="12sp"
+                tools:text="[09:30:20] Submersible checks complete... Success.\n[09:30:25] Depth sensor calibrated. Status: Active." />
         </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SETTINGS"
-            android:textColor="#B0B0B0"
-            android:textSize="13sp"
-            android:letterSpacing="0.05"
-            android:layout_marginBottom="12dp" />
-
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:scrollbars="none"
-            android:layout_marginBottom="28dp">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/settings_row"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:listitem="@layout/item_setting_card" />
-        </HorizontalScrollView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DETAILS"
-            android:textColor="#B0B0B0"
-            android:textSize="13sp"
-            android:letterSpacing="0.05"
-            android:layout_marginBottom="12dp" />
-
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:scrollbars="none">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/metadata_row"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:listitem="@layout/item_setting_card" />
-        </HorizontalScrollView>
-
-        <!-- On-screen debug log — useful on a TV device with no adb attached.
-             Hidden until the first log line is appended. -->
-        <TextView
-            android:id="@+id/log_text_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:maxLines="6"
-            android:scrollbars="vertical"
-            android:textColor="#8A8A8E"
-            android:textSize="11sp"
-            android:visibility="gone"
-            tools:text="[12:04:01] [INFO] Download command sent for file ID: 42" />
     </LinearLayout>
-</FrameLayout>
+</androidx.core.widget.NestedScrollView>

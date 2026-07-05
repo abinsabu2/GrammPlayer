@@ -9,14 +9,18 @@ import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.db.model.MediaMessage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.drinkless.tdlib.Client
 import org.drinkless.tdlib.TdApi
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
+import kotlin.time.Duration.Companion.milliseconds
 
 object TelegramClientManager {
 
@@ -26,6 +30,14 @@ object TelegramClientManager {
 
     private var activeStoragePath: String = ""
     private var activeFileDirectory: String = ""
+
+    // Guards against re-entrant/concurrent logOut()/close() calls, and lets other
+    // parts of the app (e.g. TdLibUpdateHandler's error filter) know teardown is in progress.
+    @Volatile
+    var isLoggingOut: Boolean = false
+        private set
+
+    private const val LOGOUT_TIMEOUT_MS = 10_000L
 
     /**
      * Initializes the TDLib client, automatically selecting the best storage location.
@@ -389,15 +401,68 @@ object TelegramClientManager {
         }
     }
 
-    fun close() {
-        client?.send(TdApi.Close(), TdLibUpdateHandler)
-        client = null
+    /**
+     * Closes the TDLib client WITHOUT logging out (session persists server-side).
+     * Waits for AuthorizationStateClosed before nulling the client reference, so a
+     * subsequent initialize() can't race a still-finalizing native Client instance.
+     * Falls back to nulling after a timeout if TDLib never reports Closed (shouldn't
+     * normally happen, but avoids hanging forever if something goes wrong).
+     */
+    suspend fun close() {
+        if (client == null) return
+        isLoggingOut = true
+        try {
+            client?.send(TdApi.Close(), TdLibUpdateHandler)
+
+            val closed = withTimeoutOrNull(LOGOUT_TIMEOUT_MS.milliseconds) {
+                TdLibUpdateHandler.authorizationState
+                    .filterIsInstance<TdApi.AuthorizationStateClosed>()
+                    .first()
+            }
+
+            if (closed == null) {
+                Log.w("TelegramClientManager", "Timed out waiting for AuthorizationStateClosed during close()")
+            }
+        } finally {
+            client = null
+            isLoggingOut = false
+        }
     }
 
     /**
-     * Logs the user out by closing the session and deleting all local data.
+     * Logs the user out: terminates the server-side session and wipes TDLib's local
+     * data. Waits for TDLib to confirm AuthorizationStateClosed before nulling the
+     * client, then clears our own downloaded-file cache on top of that.
+     *
+     * IMPORTANT: this does NOT cancel any in-flight sync work (TelegramSyncWorker /
+     * TelegramSyncListener collectors) — callers must stop that themselves before
+     * invoking logOut(), otherwise pending TDLib requests made during teardown will
+     * resolve with a "Request aborted" TdApi.Error. That error is expected TDLib
+     * behavior during shutdown; filter it out in your error handler rather than
+     * treating it as a real failure.
+     *
+     * @return number of locally cached files deleted after logout completed.
      */
-    fun logOut() {
-        client?.send(TdApi.LogOut(), TdLibUpdateHandler)
+    suspend fun logOut(): Int {
+        if (client == null) return 0
+        isLoggingOut = true
+        try {
+            client?.send(TdApi.LogOut(), TdLibUpdateHandler)
+
+            val closed = withTimeoutOrNull(LOGOUT_TIMEOUT_MS.milliseconds) {
+                TdLibUpdateHandler.authorizationState
+                    .filterIsInstance<TdApi.AuthorizationStateClosed>()
+                    .first()
+            }
+
+            if (closed == null) {
+                Log.w("TelegramClientManager", "Timed out waiting for AuthorizationStateClosed during logOut()")
+            }
+
+            return clearDownloadedFiles()
+        } finally {
+            client = null
+            isLoggingOut = false
+        }
     }
 }

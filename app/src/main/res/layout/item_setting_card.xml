@@ -1,32 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="170dp"
-    android:layout_height="120dp"
-    android:layout_marginEnd="16dp"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="12dp"
     android:orientation="vertical"
-    android:gravity="center"
-    android:background="@drawable/card_background_selector"
-    android:defaultFocusHighlightEnabled="false"
+    android:gravity="center_horizontal"
     android:focusable="true"
     android:focusableInTouchMode="true">
 
-    <TextView
-        android:id="@+id/value"
+    <LinearLayout
+        android:id="@+id/card_container"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#FFFF"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        tools:text="1.5 GB" />
+        android:layout_height="52dp"
+        android:minWidth="108dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/setting_card_background"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <ImageView
+            android:id="@+id/icon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="8dp"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/value_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="512 MB" />
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/caption"
+        android:id="@+id/caption_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:textColor="#FFF"
-        android:textSize="7sp"
-        android:letterSpacing="0.05"
+        android:textColor="#9A9A9E"
+        android:textSize="11sp"
+        android:letterSpacing="0.03"
         tools:text="BUFFER SIZE" />
+
+    <TextView
+        android:id="@+id/subcaption_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:textSize="10sp"
+        android:visibility="gone"
+        tools:text="Current: 4K UHD"
+        tools:visibility="visible" />
 </LinearLayout>
