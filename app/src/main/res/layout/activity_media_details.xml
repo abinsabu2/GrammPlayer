@@ -221,7 +221,7 @@
                         android:layout_marginStart="14dp"
                         android:orientation="horizontal"
                         android:gravity="center"
-                        android:background="@drawable/button_primary_background"
+                        android:background="@drawable/button_outline_background"
                         android:defaultFocusHighlightEnabled="false"
                         android:focusable="true"
                         android:focusableInTouchMode="true"
@@ -232,14 +232,14 @@
                             android:layout_width="16dp"
                             android:layout_height="16dp"
                             android:layout_marginEnd="10dp"
-                            android:src="@drawable/ic_play"
+                            android:src="@drawable/ic_play_arrow"
                             tools:ignore="ContentDescription" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="PLAY"
-                            android:textColor="#0D1210"
+                            android:textColor="@android:color/white"
                             android:textSize="15sp"
                             android:textStyle="bold" />
                     </LinearLayout>

@@ -45,7 +45,10 @@ object MediaDownloadDataProvider {
                 val updatedMessage = if (mode) {
                     downloadVideoFromTestServer(mediaMessage, context, onProgress)
                 } else {
-                    TelegramClientManager.startFileDownload(fileId = mediaMessage.fileId)
+                    // Real Telegram download
+                    TelegramClientManager.startFileDownload(mediaMessage.fileId)
+                    Log.d("MediaDownloadDataProvider", "Telegram download started for fileId: ${mediaMessage.fileId}")
+                    mediaMessage  // return the original message
                 }
                 updatedMessage
 
@@ -131,5 +134,9 @@ object MediaDownloadDataProvider {
 
     private suspend fun downloadLocally(mediaMessage: MediaMessage): MediaMessage {
         return mediaMessage.copy(isDownloaded = true)
+    }
+
+    fun cancelDownload(fileId: Int) {
+        TelegramClientManager.cancelDownloadAndDelete(mutableSetOf(fileId))
     }
 }

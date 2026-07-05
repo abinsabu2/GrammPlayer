@@ -9,7 +9,6 @@ import android.os.StatFs
 import android.util.Log
 import android.view.View
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -46,6 +45,10 @@ class MediaDetailsActivity : AppCompatActivity() {
     private var fileUpdateJob: Job? = null
     private var hasAutoPlayed = false
     private var isDownloading = false
+
+    // Reused from BottomSheet
+    private var currentDownload: DownloadingFileInfo? = null
+    val activeDownloads = mutableSetOf<Int>()
 
     // Settings
     private var isAutoPlayEnabled = false
@@ -108,6 +111,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun startDownload() {
         downloadButton.isEnabled = false
         isDownloading = true
+        activeDownloads.add(message.fileId)
         appendLog("Download started for fileId: ${message.fileId}")
 
         lifecycleScope.launch {
@@ -149,8 +153,10 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun resetDownloadUI() {
         isDownloading = false
+        activeDownloads.clear()
         downloadButton.isEnabled = true
         downloadButton.visibility = View.VISIBLE
+        currentDownload = null
     }
 
     private fun startListeningToUpdates() {
@@ -175,6 +181,14 @@ class MediaDetailsActivity : AppCompatActivity() {
         runOnUiThread {
             updateDownloadProgress(progress, downloadedBytes, totalBytes)
 
+            currentDownload = DownloadingFileInfo(
+                fileId = file.id,
+                downloadedSize = downloadedMB.toFloat(),
+                totalSize = totalBytes.toFloat() / (1024 * 1024),
+                progress = progress,
+                localPath = file.local.path.takeIf { it.isNotEmpty() }
+            )
+
             val shouldAutoPlay = isAutoPlayEnabled && !hasAutoPlayed &&
                     (progress >= progressThreshold || downloadedMB >= bufferSizeThresholdMB)
 
@@ -190,6 +204,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 appendLog("Download completed - File saved")
                 checkLocalFileAndUpdateUI()
                 isDownloading = false
+                activeDownloads.clear()
             }
         }
     }
@@ -290,10 +305,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun cancelCurrentDownload() {
         appendLog("User cancelled download")
 
-        // Cancel Telegram download
-        TelegramClientManager.cancelDownloadAndDelete(mutableSetOf(message.fileId))
+        TelegramClientManager.cancelDownloadAndDelete(activeDownloads)
 
-        // Clean up local test file if exists
         message.localPath?.let { path ->
             val file = File(path)
             if (file.exists() && file.delete()) {
@@ -301,9 +314,11 @@ class MediaDetailsActivity : AppCompatActivity() {
             }
         }
 
-        // Reset UI
         isDownloading = false
         hasAutoPlayed = false
+        activeDownloads.clear()
+        currentDownload = null
+
         downloadButton.isEnabled = true
         downloadButton.visibility = View.VISIBLE
         findViewById<View>(R.id.download_progress_container).visibility = View.GONE
@@ -410,4 +425,13 @@ class MediaDetailsActivity : AppCompatActivity() {
         fileUpdateJob?.cancel()
         super.onDestroy()
     }
+
+    // ==================== Reused from BottomSheet ====================
+    data class DownloadingFileInfo(
+        val fileId: Int,
+        val downloadedSize: Float,
+        val totalSize: Float,
+        val progress: Int,
+        var localPath: String? = null
+    )
 }

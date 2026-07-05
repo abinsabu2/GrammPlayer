@@ -152,7 +152,7 @@ object TelegramClientManager {
     /**
      * Starts a file download. Progress updates will be sent to the global handler.
      */
-    fun startFileDownload(fileId: Int?) {
+    fun startFileDownload(fileId: Int) {
         client?.send(TdApi.DownloadFile(fileId ?: 0, 1, 0, 0, false)) {
             Log.d("TDLib", "Download command sent for fileId=$fileId")
         }
