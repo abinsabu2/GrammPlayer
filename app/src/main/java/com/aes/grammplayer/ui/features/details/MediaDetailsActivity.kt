@@ -1,9 +1,12 @@
 package com.aes.grammplayer.ui.features.details
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.StatFs
+import android.util.Log
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
@@ -16,30 +19,38 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
+import com.aes.grammplayer.provider.MediaDownloadDataProvider
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import com.aes.grammplayer.util.tdlib.TelegramClientManager
+import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
+import org.drinkless.tdlib.TdApi
+import java.io.File
+import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * Full-screen media details view: app bar (logo + promo banner), poster,
- * title/description, metadata tag chips, download progress, settings chips
- * (autoplay/buffer/quality/storage/connection), Play/Download/Cancel
- * actions, and an activity log panel.
- *
- * fileId and uniqueId are internal identifiers used to drive playback/
- * download, not shown directly in the UI.
- *
- * TODO items below mark fields the wireframe shows that MediaMessage /
- * SettingsDataStore don't have yet (genre tags, audio format, duration,
- * connection type, video quality, promo banner content). They're stubbed
- * with placeholder data so the screen is fully wired — swap in real
- * sources as those fields land.
- */
 class MediaDetailsActivity : AppCompatActivity() {
 
     private lateinit var message: MediaMessage
     private lateinit var settingsDataStore: SettingsDataStore
+
+    private lateinit var playButton: View
+    private lateinit var downloadButton: View
+    private lateinit var logTextView: TextView
+
+    private var fileUpdateJob: Job? = null
+    private var hasAutoPlayed = false
+    private var isDownloading = false
+
+    // Settings
+    private var isAutoPlayEnabled = false
+    private var progressThreshold = 30
+    private var bufferSizeThresholdMB = 300
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,27 +59,264 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         message = intent.getSerializableExtra(EXTRA_MEDIA_MESSAGE) as? MediaMessage
             ?: run {
-                Toast.makeText(this, "No media details available", Toast.LENGTH_SHORT).show()
                 finish()
                 return
             }
 
+        playButton = findViewById(R.id.action_play)
+        downloadButton = findViewById(R.id.action_download)
+        logTextView = findViewById(R.id.log_text_view)
+
+        loadSettings()
         bindHeader()
         setupMetadataChipRow()
         setupActionButtons()
         setupSettingsRow()
+
+        checkLocalFileAndUpdateUI()
+        startListeningToUpdates()
+
+        appendLog("Activity opened for: ${message.title}")
+    }
+
+    private fun loadSettings() {
+        lifecycleScope.launch {
+            isAutoPlayEnabled = settingsDataStore.autoPlay.first()
+            progressThreshold = settingsDataStore.progressThreshold.first()
+            bufferSizeThresholdMB = settingsDataStore.bufferSizeThreshold.first()
+            appendLog("Settings loaded: AutoPlay=$isAutoPlayEnabled, Threshold=$progressThreshold%, Buffer=$bufferSizeThresholdMB MB")
+        }
+    }
+
+    private fun checkLocalFileAndUpdateUI() {
+        val localFile = message.localPath?.let { File(it) }
+        val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
+
+        if (hasLocalFile) {
+            playButton.isEnabled = true
+            playButton.setOnClickListener { playWithVLC() }
+            downloadButton.visibility = View.GONE
+            appendLog("Local file found → Play button enabled")
+        } else {
+            playButton.isEnabled = false
+            downloadButton.visibility = View.VISIBLE
+            downloadButton.setOnClickListener { startDownload() }
+            appendLog("No local file → Download available")
+        }
+    }
+
+    private fun startDownload() {
+        downloadButton.isEnabled = false
+        isDownloading = true
+        appendLog("Download started for fileId: ${message.fileId}")
+
+        lifecycleScope.launch {
+            try {
+                val isTestMode = settingsDataStore.isTestMode.first()
+                appendLog("Mode: ${if (isTestMode) "Test Server" else "Telegram"}")
+
+                MediaDownloadDataProvider.downloadMedia(
+                    mode = isTestMode,
+                    mediaMessage = message,
+                    onProgress = { progress ->
+                        runOnUiThread { updateDownloadProgress(progress) }
+                    }
+                )?.let { updatedMessage ->
+                    runOnUiThread {
+                        message = updatedMessage
+                        appendLog("Download completed successfully")
+                        checkLocalFileAndUpdateUI()
+                        if (!hasAutoPlayed && isAutoPlayEnabled) {
+                            hasAutoPlayed = true
+                            playWithVLC()
+                        }
+                    }
+                } ?: run {
+                    runOnUiThread {
+                        appendLog("Download failed")
+                        resetDownloadUI()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MediaDetailsActivity", "Download error", e)
+                runOnUiThread {
+                    appendLog("Error: ${e.message}")
+                    resetDownloadUI()
+                }
+            }
+        }
+    }
+
+    private fun resetDownloadUI() {
+        isDownloading = false
+        downloadButton.isEnabled = true
+        downloadButton.visibility = View.VISIBLE
+    }
+
+    private fun startListeningToUpdates() {
+        fileUpdateJob?.cancel()
+        fileUpdateJob = lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TdLibUpdateHandler.fileUpdate.collect { update ->
+                    if (update.file.id == message.fileId) {
+                        handleFileUpdate(update.file)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleFileUpdate(file: TdApi.File) {
+        val downloadedBytes = file.local.downloadedSize
+        val totalBytes = file.expectedSize
+        val progress = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt() else 0
+        val downloadedMB = downloadedBytes / (1024.0 * 1024.0)
+
+        runOnUiThread {
+            updateDownloadProgress(progress, downloadedBytes, totalBytes)
+
+            val shouldAutoPlay = isAutoPlayEnabled && !hasAutoPlayed &&
+                    (progress >= progressThreshold || downloadedMB >= bufferSizeThresholdMB)
+
+            if (shouldAutoPlay) {
+                hasAutoPlayed = true
+                appendLog("Auto-play triggered at $progress%")
+                playWithVLC()
+            }
+
+            if (file.local.isDownloadingCompleted) {
+                message.localPath = file.local.path
+                message.isDownloaded = true
+                appendLog("Download completed - File saved")
+                checkLocalFileAndUpdateUI()
+                isDownloading = false
+            }
+        }
+    }
+
+    private fun updateDownloadProgress(progress: Int, downloadedBytes: Long = 0, totalBytes: Long = 0) {
+        val container = findViewById<View>(R.id.download_progress_container)
+        val statusText = findViewById<TextView>(R.id.download_status_text)
+        val progressBar = findViewById<android.widget.ProgressBar>(R.id.download_progress_bar)
+
+        container.visibility = View.VISIBLE
+        progressBar.progress = progress
+
+        val df = DecimalFormat("0.0")
+        val downloadedMB = downloadedBytes / (1024.0 * 1024.0)
+        val totalMB = totalBytes / (1024.0 * 1024.0)
+
+        val status = if (totalBytes > 0) {
+            "Downloading : $progress% (${df.format(downloadedMB)} MB / ${df.format(totalMB)} MB)"
+        } else {
+            "$progress%"
+        }
+
+        statusText.text = status
+    }
+
+    private fun playWithVLC() {
+        val localFile = File(message.localPath.orEmpty())
+        if (!localFile.exists()) {
+            appendLog("Play failed: File not found")
+            return
+        }
+
+        appendLog("Opening file in VLC Player")
+
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.provider",
+                localFile
+            )
+
+            val mimeType = message.mimeType.ifBlank { "video/*" }
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setPackage("org.videolan.vlc")
+                setDataAndType(uri, mimeType)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("MediaDetailsActivity", "Error opening video", e)
+            appendLog("VLC launch failed: ${e.message}")
+        }
+    }
+
+    private fun showVLCInstallPrompt() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("VLC Player Recommended")
+            .setMessage("VLC Player is recommended for best playback.\n\nInstall it now?")
+            .setPositiveButton("Install VLC") { _, _ ->
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=org.videolan.vlc")))
+                } catch (e: Exception) {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.videolan.vlc")))
+                }
+            }
+            .setNegativeButton("Use Default") { _, _ -> playWithDefaultPlayer() }
+            .show()
+    }
+
+    private fun playWithDefaultPlayer() {
+        val localFile = File(message.localPath.orEmpty())
+        if (!localFile.exists()) return
+
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.provider",
+                localFile
+            )
+            startActivity(Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, message.mimeType.ifBlank { "video/*" })
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            })
+            appendLog("Opened with default player")
+        } catch (e: Exception) {
+            Log.e("MediaDetailsActivity", "No player found", e)
+            appendLog("No player found")
+        }
+    }
+
+    private fun setupActionButtons() {
+        findViewById<View>(R.id.action_cancel).setOnClickListener {
+            cancelCurrentDownload()
+        }
+    }
+
+    private fun cancelCurrentDownload() {
+        appendLog("User cancelled download")
+
+        // Cancel Telegram download
+        TelegramClientManager.cancelDownloadAndDelete(mutableSetOf(message.fileId))
+
+        // Clean up local test file if exists
+        message.localPath?.let { path ->
+            val file = File(path)
+            if (file.exists() && file.delete()) {
+                appendLog("Temporary file deleted")
+            }
+        }
+
+        // Reset UI
+        isDownloading = false
+        hasAutoPlayed = false
+        downloadButton.isEnabled = true
+        downloadButton.visibility = View.VISIBLE
+        findViewById<View>(R.id.download_progress_container).visibility = View.GONE
+
+        appendLog("Download cancelled and cleaned up")
     }
 
     private fun bindHeader() {
         findViewById<TextView>(R.id.title).text = message.title
         findViewById<TextView>(R.id.description).text = message.description
 
-        // TODO: bind promo_banner/promo_text to a real announcement source.
-        // Static placeholder for now — safe to leave the view GONE instead
-        // if there's nothing to promote.
-
         Glide.with(this)
-            .load(R.drawable.card_background) // TODO: swap for message.thumbnailPath
+            .load(R.drawable.card_background)
             .transform(RoundedCorners(12))
             .placeholder(R.drawable.card_background)
             .error(R.drawable.card_background)
@@ -76,43 +324,18 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun setupMetadataChipRow() {
-        // TODO: "genre"/"audio format"/"duration" tags aren't on MediaMessage
-        // yet. Format/size chips use real data; the rest are placeholders
-        // until those fields exist.
         val chips = buildList {
+            add(MetadataChipItem(R.drawable.ic_gear, message.fileId.toString()))
             if (message.mimeType.isNotBlank()) {
                 add(MetadataChipItem(R.drawable.ic_check, formatMimeType(message.mimeType)))
             }
             add(MetadataChipItem(R.drawable.ic_check, formatSize(message.size)))
-            // Placeholders — replace once genre/audio/duration exist:
-            add(MetadataChipItem(R.drawable.ic_mic, "Audio"))
-            add(MetadataChipItem(R.drawable.ic_flask, "Category"))
-            add(MetadataChipItem(R.drawable.ic_clock, "--:--"))
         }
 
         findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.metadata_chip_row).apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
             adapter = MetadataChipAdapter(chips)
             setHasFixedSize(true)
-        }
-    }
-
-    private fun setupActionButtons() {
-        val play = findViewById<View>(R.id.action_play)
-        val download = findViewById<View>(R.id.action_download)
-        val cancel = findViewById<View>(R.id.action_cancel)
-
-        play.setOnClickListener {
-            // TODO: start playback using message.localPath / message.fileId.
-            Toast.makeText(this, "Play: ${message.title}", Toast.LENGTH_SHORT).show()
-        }
-        download.setOnClickListener {
-            // TODO: kick off download using message.fileId.
-            Toast.makeText(this, "Download: ${message.title}", Toast.LENGTH_SHORT).show()
-        }
-        cancel.setOnClickListener {
-            // TODO: cancel in-progress download using message.fileId.
-            Toast.makeText(this, "Cancel: ${message.title}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -130,49 +353,12 @@ class MediaDetailsActivity : AppCompatActivity() {
                     settingsDataStore.progressThreshold
                 ) { autoPlay, bufferSizeMb, progressPercent ->
                     buildList {
-                        add(
-                            SettingItem(
-                                iconRes = R.drawable.ic_power,
-                                value = if (autoPlay) "ON" else "OFF",
-                                caption = "AUTO PLAY"
-                            )
-                        )
+                        add(SettingItem(R.drawable.ic_power, if (autoPlay) "ON" else "OFF", "AUTO PLAY"))
                         if (autoPlay) {
-                            add(
-                                SettingItem(
-                                    iconRes = R.drawable.ic_layers,
-                                    value = formatBufferSize(bufferSizeMb),
-                                    caption = "BUFFER SIZE"
-                                )
-                            )
+                            add(SettingItem(R.drawable.ic_layers, formatBufferSize(bufferSizeMb), "BUFFER SIZE"))
+                            add(SettingItem(R.drawable.ic_play, "$progressPercent%", "AUTO PLAY AT"))
                         }
-                        // TODO: video quality isn't in SettingsDataStore yet —
-                        // add a field there once quality selection exists.
-                        add(
-                            SettingItem(
-                                iconRes = R.drawable.ic_gear,
-                                value = "AUTO",
-                                caption = "QUALITY",
-                                subCaption = "Current: HD",
-                                selected = true
-                            )
-                        )
-                        add(
-                            SettingItem(
-                                iconRes = R.drawable.ic_storage,
-                                value = formatAvailableStorage(),
-                                caption = "AVAILABLE STORAGE"
-                            )
-                        )
-                        // TODO: connection type isn't tracked anywhere yet —
-                        // wire to actual network-type detection.
-                        add(
-                            SettingItem(
-                                iconRes = R.drawable.ic_wifi,
-                                value = "WIFI",
-                                caption = "CONNECTION"
-                            )
-                        )
+                        add(SettingItem(R.drawable.ic_storage, formatAvailableStorage(), "AVAILABLE STORAGE"))
                     }
                 }.collect { items ->
                     recyclerView.adapter = SettingCardAdapter(items)
@@ -181,49 +367,26 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun formatBufferSize(sizeMb: Int): String {
-        return if (sizeMb >= 1024) String.format("%.1f GB", sizeMb / 1024.0) else "$sizeMb MB"
+    private fun appendLog(message: String) {
+        runOnUiThread {
+            val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val current = logTextView.text.toString()
+            val newLog = if (current.isEmpty()) {
+                "[$timestamp] $message"
+            } else {
+                "[$timestamp] $message\n$current"
+            }
+            logTextView.text = newLog
+        }
     }
+
+    private fun formatBufferSize(sizeMb: Int): String =
+        if (sizeMb >= 1024) String.format("%.1f GB", sizeMb / 1024.0) else "$sizeMb MB"
 
     private fun formatAvailableStorage(): String {
         val stat = StatFs(filesDir.path)
         val availableGb = stat.availableBytes / 1024.0 / 1024.0 / 1024.0
         return String.format("%.1f GB", availableGb)
-    }
-
-    /**
-     * Call from wherever download progress updates land (WorkManager
-     * observer, TelegramClientManager callback, etc.).
-     */
-    fun updateDownloadProgress(downloadedBytes: Long, totalBytes: Long) {
-        val container = findViewById<View>(R.id.download_progress_container)
-        val statusText = findViewById<TextView>(R.id.download_status_text)
-        val progressBar = findViewById<android.widget.ProgressBar>(R.id.download_progress_bar)
-
-        if (totalBytes <= 0) {
-            container.visibility = View.GONE
-            return
-        }
-
-        container.visibility = View.VISIBLE
-        statusText.text = "Downloading — ${formatSize(downloadedBytes)} / ${formatSize(totalBytes)}"
-        progressBar.progress = ((downloadedBytes * 100) / totalBytes).toInt()
-    }
-
-    /** Appends a line to the on-screen activity log (useful with no adb attached). */
-    fun appendLog(line: String) {
-        val logView = findViewById<TextView>(R.id.log_text_view)
-        val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-        logView.append("\n[$timestamp] $line")
-    }
-
-    private fun formatDuration(durationMs: Long): String {
-        val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(durationMs)
-        val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
-        val seconds = totalSeconds % 60
-        return if (hours > 0) String.format("%d:%02d:%02d", hours, minutes, seconds)
-        else String.format("%d:%02d", minutes, seconds)
     }
 
     private fun formatSize(sizeBytes: Long): String {
@@ -237,10 +400,14 @@ class MediaDetailsActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_MEDIA_MESSAGE = "extra_media_message"
 
-        fun newIntent(context: Context, message: MediaMessage): Intent {
-            return Intent(context, MediaDetailsActivity::class.java).apply {
+        fun newIntent(context: Context, message: MediaMessage): Intent =
+            Intent(context, MediaDetailsActivity::class.java).apply {
                 putExtra(EXTRA_MEDIA_MESSAGE, message)
             }
-        }
+    }
+
+    override fun onDestroy() {
+        fileUpdateJob?.cancel()
+        super.onDestroy()
     }
 }

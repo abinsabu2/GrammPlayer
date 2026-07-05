@@ -97,4 +97,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
+    // ✅ Added OkHttp for test server downloads
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)  // Useful for debugging
 }

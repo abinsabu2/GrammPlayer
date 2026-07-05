@@ -29,14 +29,14 @@ data class MediaMessage(
     val duration: Long,
     val size: Long,
     val isMedia: Boolean,
-    val localPath: String,
+    var localPath: String,
     val fileId: Int,
     val mimeType: String,
     val videoUrl: String,
     val thumbnailPath: String,
     val cardImageUrl: String,
     val backgroundImageUrl: String,
-    val isDownloaded: Boolean,
+    var isDownloaded: Boolean,
     val isDownloadActive: Boolean,
     val uniqueId: String
 ) : Serializable {

@@ -1,8 +1,8 @@
 [versions]
-agp = "9.0.1"
-kotlin = "2.2.10"  # More stable, still very recent
+agp = "9.2.1"
+kotlin = "2.2.10"
 coreKtx = "1.10.1"
-leanback = "1.2.0"  # Change from 1.2.0-alpha02 to stable
+leanback = "1.2.0"
 glide = "4.11.0"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
@@ -12,8 +12,11 @@ material = "1.10.0"
 activity = "1.8.0"
 constraintlayout = "2.1.4"
 datastore = "1.1.1"
-room = "2.7.0"  # ← Updated from 2.6.1
+room = "2.7.0"
 
+# NEW: Add these lines
+okhttp = "4.12.0"          # Latest stable OkHttp
+loggingInterceptor = "4.12.0"  # Optional: for debugging
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,6 +41,9 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
+# NEW: Add these libraries
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "loggingInterceptor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
