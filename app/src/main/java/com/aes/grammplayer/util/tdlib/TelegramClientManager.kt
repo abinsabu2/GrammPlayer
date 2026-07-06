@@ -294,8 +294,7 @@ object TelegramClientManager {
             is TdApi.MessageVideo -> {
                 val video = content.video
                 val file = video.video
-                val thumbnail = video.thumbnail
-
+                val thumbnail = getThumbnailPath(file, video.fileName.ifEmpty { "Video" })
                 MediaMessage(
                     id = file.id.toLong(),
                     chat = chatId.toInt(),
@@ -311,8 +310,8 @@ object TelegramClientManager {
                     height = video.height,
                     duration = video.duration.toLong(),
                     size = file.size,
-                    thumbnailPath = thumbnail?.file?.local?.path ?: "",
-                    cardImageUrl = thumbnail?.file?.local?.path ?: "",
+                    thumbnailPath = thumbnail,
+                    cardImageUrl = thumbnail,
                     backgroundImageUrl = "",
                     isDownloaded = file.local.isDownloadingCompleted,
                     isDownloadActive = file.local.isDownloadingActive,
@@ -323,7 +322,7 @@ object TelegramClientManager {
             is TdApi.MessageDocument -> {
                 val document = content.document
                 val file = document.document
-                val thumbnail = document.thumbnail
+                val thumbnail = getThumbnailPath(file, document.fileName.ifEmpty { "Document" })
 
                 MediaMessage(
                     id = file.id.toLong(),
@@ -340,8 +339,8 @@ object TelegramClientManager {
                     height = 0,
                     duration = 0L,
                     size = file.size,
-                    thumbnailPath = thumbnail?.file?.local?.path ?: "",
-                    cardImageUrl = thumbnail?.file?.local?.path ?: "",
+                    thumbnailPath = thumbnail,
+                    cardImageUrl = thumbnail,
                     backgroundImageUrl = "",
                     isDownloaded = file.local.isDownloadingCompleted,
                     isDownloadActive = file.local.isDownloadingActive,
@@ -463,6 +462,31 @@ object TelegramClientManager {
         } finally {
             client = null
             isLoggingOut = false
+        }
+    }
+
+    /**
+     * Returns the path to a thumbnail for [file]. Currently this always produces a
+     * generated abstract image (unique per file, no text/glyph). The image is cached
+     * per file (keyed on the TDLib unique id) so it stays visually stable across
+     * syncs instead of being regenerated each time.
+     */
+    private fun getThumbnailPath(
+        file: TdApi.File,
+        fallbackName: String
+    ): String {
+        return try {
+            val cacheKey = file.remote.uniqueId.ifEmpty { file.id.toString() }
+
+            // Reuse an already-generated image if we have one.
+            ThumbnailGenerator.existingThumbnail(cacheKey)?.let { return it }
+
+            val bitmap = ThumbnailGenerator.generatePlaceholder(seed = cacheKey)
+
+            ThumbnailGenerator.saveBitmap(bitmap, cacheKey) ?: ""
+        } catch (e: Exception) {
+            Log.e("Thumbnail", "Failed to generate placeholder thumbnail", e)
+            ""
         }
     }
 }

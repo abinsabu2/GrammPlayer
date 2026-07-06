@@ -79,20 +79,6 @@ class MainFragment : BrowseSupportFragment() {
         setHeaderPresenterSelector(
             ClassPresenterSelector().addClassPresenter(ListRow::class.java, DashboardHeaderPresenter())
         )
-
-        // Fixed logo overlay lives in activity_main.xml, on top of this fragment.
-        // Fade it out in sync whenever the sidebar itself collapses (headers
-        // hidden), so it doesn't hang around and overlap the content cards.
-        productLogo = requireActivity().findViewById(R.id.product_logo)
-        setBrowseTransitionListener(object : BrowseTransitionListener() {
-            override fun onHeadersTransitionStart(withHeaders: Boolean) {
-                productLogo.animate()
-                    .alpha(if (withHeaders) 1f else 0f)
-                    .setDuration(200)
-                    .start()
-            }
-        })
-
         loadRows()
         setupEventListeners()
     }

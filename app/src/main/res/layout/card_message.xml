@@ -24,8 +24,8 @@
 
         <ImageView
             android:id="@+id/thumbnail"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_media_placeholder"
             app:tint="@color/accent_teal"
