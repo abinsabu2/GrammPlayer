@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
+import com.aes.grammplayer.util.tdlib.TelegramClientManager.activeStoragePath
+import com.aes.grammplayer.util.tdlib.TelegramClientManager.getBestAvailableStoragePath
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -68,11 +70,12 @@ object MediaDownloadDataProvider {
         context: android.content.Context,
         onProgress: (Int) -> Unit
     ): MediaMessage {
-        val cacheDir = File(context.cacheDir, "media_videos")
-        if (!cacheDir.exists()) cacheDir.mkdirs()
+        activeStoragePath = getBestAvailableStoragePath()
+        val activeStoragePath = File(activeStoragePath, "test_videos")
+        if (!activeStoragePath.exists()) activeStoragePath.mkdirs()
 
         val fileName = "test_video_${System.currentTimeMillis()}.mp4"
-        val destinationFile = File(cacheDir, fileName)
+        val destinationFile = File(activeStoragePath, fileName)
 
         var lastException: Exception? = null
 

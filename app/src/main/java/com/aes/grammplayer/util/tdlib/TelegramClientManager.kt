@@ -28,7 +28,7 @@ object TelegramClientManager {
     val isInitialized: Boolean
         get() = client != null
 
-    private var activeStoragePath: String = ""
+    var activeStoragePath: String = ""
     private var activeFileDirectory: String = ""
 
     // Guards against re-entrant/concurrent logOut()/close() calls, and lets other
@@ -69,7 +69,7 @@ object TelegramClientManager {
     /**
      * Determines the best storage path (internal or external) based on availability.
      */
-    private fun getBestAvailableStoragePath(): String {
+    fun getBestAvailableStoragePath(): String {
         val internalPath = GPlayerApplication.Companion.AppContext.filesDir.absolutePath + "/tdlib"
         val externalPath = getExternalStoragePath()
 

@@ -1,6 +1,5 @@
 package com.aes.grammplayer.ui.features.details
 
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -8,14 +7,14 @@ import android.os.Bundle
 import android.os.StatFs
 import android.util.Log
 import android.view.View
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.provider.MediaDownloadDataProvider
@@ -38,9 +37,24 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var message: MediaMessage
     private lateinit var settingsDataStore: SettingsDataStore
 
+    // ==================== All UI Elements Collected Here ====================
+    private lateinit var titleTextView: TextView
+    private lateinit var descriptionTextView: TextView
+    private lateinit var posterImageView: View
+
     private lateinit var playButton: View
     private lateinit var downloadButton: View
+    private lateinit var cancelButton: View
     private lateinit var logTextView: TextView
+
+    // Download progress views
+    private lateinit var downloadProgressContainer: View
+    private lateinit var downloadStatusText: TextView
+    private lateinit var downloadProgressBar: ProgressBar
+
+    // RecyclerViews
+    private lateinit var metadataChipRecycler: androidx.recyclerview.widget.RecyclerView
+    private lateinit var settingsRowRecycler: androidx.recyclerview.widget.RecyclerView
 
     private var fileUpdateJob: Job? = null
     private var hasAutoPlayed = false
@@ -58,6 +72,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_media_details)
+
         settingsDataStore = SettingsDataStore(this)
 
         message = intent.getSerializableExtra(EXTRA_MEDIA_MESSAGE) as? MediaMessage
@@ -66,14 +81,12 @@ class MediaDetailsActivity : AppCompatActivity() {
                 return
             }
 
-        playButton = findViewById(R.id.action_play)
-        downloadButton = findViewById(R.id.action_download)
-        logTextView = findViewById(R.id.log_text_view)
+        initializeViews()
+        setupListeners()           // ← All listeners now in one place
 
         loadSettings()
         bindHeader()
         setupMetadataChipRow()
-        setupActionButtons()
         setupSettingsRow()
 
         checkLocalFileAndUpdateUI()
@@ -82,28 +95,74 @@ class MediaDetailsActivity : AppCompatActivity() {
         appendLog("Activity opened for: ${message.title}")
     }
 
+    /**
+     * Collects and initializes ALL UI elements in a single function.
+     */
+    private fun initializeViews() {
+        titleTextView = findViewById(R.id.title)
+        descriptionTextView = findViewById(R.id.description)
+        posterImageView = findViewById(R.id.poster_image)
+
+        playButton = findViewById(R.id.action_play)
+        downloadButton = findViewById(R.id.action_download)
+        cancelButton = findViewById(R.id.action_cancel)
+        logTextView = findViewById(R.id.log_text_view)
+
+        // Download progress
+        downloadProgressContainer = findViewById(R.id.download_progress_container)
+        downloadStatusText = findViewById(R.id.download_status_text)
+        downloadProgressBar = findViewById(R.id.download_progress_bar)
+
+        // Recyclers
+        metadataChipRecycler = findViewById(R.id.metadata_chip_row)
+        settingsRowRecycler = findViewById(R.id.settings_row)
+    }
+
+    /**
+     * Collects ALL listeners in a single function.
+     */
+    private fun setupListeners() {
+        // Play button listener (enabled/disabled dynamically)
+        playButton.setOnClickListener {
+            if (isDownloading) {
+                appendLog("Cannot play while downloading")
+                return@setOnClickListener
+            }
+        }
+
+        // Download button listener
+        downloadButton.setOnClickListener { startDownload() }
+
+        // Cancel button listener
+        cancelButton.setOnClickListener { cancelCurrentDownload() }
+    }
+
     private fun loadSettings() {
         lifecycleScope.launch {
             isAutoPlayEnabled = settingsDataStore.autoPlay.first()
-            progressThreshold = settingsDataStore.progressThreshold.first()
-            bufferSizeThresholdMB = settingsDataStore.bufferSizeThreshold.first()
+            progressThreshold = 2
+            bufferSizeThresholdMB = 10
             appendLog("Settings loaded: AutoPlay=$isAutoPlayEnabled, Threshold=$progressThreshold%, Buffer=$bufferSizeThresholdMB MB")
         }
     }
 
     private fun checkLocalFileAndUpdateUI() {
+
+        // Initial check for play button based on *actual* local file
         val localFile = message.localPath?.let { File(it) }
+        val downloadedSizeMb = localFile?.length()?.toFloat()?.div(1024 * 1024) ?: 0f
+        val totalSizeMb = message.size.toFloat() / (1024 * 1024)
+        val progress = if (totalSizeMb > 0) ((downloadedSizeMb / totalSizeMb) * 100).toInt() else 0
+        val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
         val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
 
-        if (hasLocalFile) {
+        if (hasLocalFile && localFileExistsAndIsPlayable) {
             playButton.isEnabled = true
-            playButton.setOnClickListener { playWithVLC() }
             downloadButton.visibility = View.GONE
             appendLog("Local file found → Play button enabled")
         } else {
             playButton.isEnabled = false
             downloadButton.visibility = View.VISIBLE
-            downloadButton.setOnClickListener { startDownload() }
             appendLog("No local file → Download available")
         }
     }
@@ -118,7 +177,6 @@ class MediaDetailsActivity : AppCompatActivity() {
             try {
                 val isTestMode = settingsDataStore.isTestMode.first()
                 appendLog("Mode: ${if (isTestMode) "Test Server" else "Telegram"}")
-
                 MediaDownloadDataProvider.downloadMedia(
                     mode = isTestMode,
                     mediaMessage = message,
@@ -127,20 +185,30 @@ class MediaDetailsActivity : AppCompatActivity() {
                     }
                 )?.let { updatedMessage ->
                     runOnUiThread {
-                        message = updatedMessage
-                        appendLog("Download completed successfully")
-                        checkLocalFileAndUpdateUI()
-                        if (!hasAutoPlayed && isAutoPlayEnabled) {
-                            hasAutoPlayed = true
-                            playWithVLC()
+                        if(isTestMode){
+                            message = updatedMessage
+                            appendLog("Download completed successfully")
+                            checkLocalFileAndUpdateUI()
+                                hasAutoPlayed = false
+                                currentDownload = DownloadingFileInfo(
+                                    fileId = message.fileId,
+                                    downloadedSize = 100.toFloat(),
+                                    totalSize = 100.toFloat() / (1024 * 1024),
+                                    progress = 100,
+                                    localPath = message.localPath.takeIf { it.isNotEmpty() }
+                                )
+                                val shouldAutoPlay = isAutoPlayEnabled && !hasAutoPlayed
+                                val localFile = message.localPath?.let { File(it) }
+                                val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
+                                val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
+
+                                if (shouldAutoPlay && hasLocalFile && localFileExistsAndIsPlayable) {
+                                    hasAutoPlayed = true
+                                    playWithVLC(currentDownload)
+                                }
+                            }
                         }
                     }
-                } ?: run {
-                    runOnUiThread {
-                        appendLog("Download failed")
-                        resetDownloadUI()
-                    }
-                }
             } catch (e: Exception) {
                 Log.e("MediaDetailsActivity", "Download error", e)
                 runOnUiThread {
@@ -192,10 +260,15 @@ class MediaDetailsActivity : AppCompatActivity() {
             val shouldAutoPlay = isAutoPlayEnabled && !hasAutoPlayed &&
                     (progress >= progressThreshold || downloadedMB >= bufferSizeThresholdMB)
 
-            if (shouldAutoPlay) {
+            val localFile = file.local.path?.let { File(it) }
+            val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
+            val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
+
+
+            if (shouldAutoPlay && hasLocalFile && localFileExistsAndIsPlayable) {
                 hasAutoPlayed = true
                 appendLog("Auto-play triggered at $progress%")
-                playWithVLC()
+                playWithVLC(currentDownload)
             }
 
             if (file.local.isDownloadingCompleted) {
@@ -209,13 +282,41 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateDownloadProgress(progress: Int, downloadedBytes: Long = 0, totalBytes: Long = 0) {
-        val container = findViewById<View>(R.id.download_progress_container)
-        val statusText = findViewById<TextView>(R.id.download_status_text)
-        val progressBar = findViewById<android.widget.ProgressBar>(R.id.download_progress_bar)
+    /**
+     * Helper function to launch the internal player.
+     */
+    fun playWithVLC(currentDownload: DownloadingFileInfo?) {
+        val context = this@MediaDetailsActivity
 
-        container.visibility = View.VISIBLE
-        progressBar.progress = progress
+        val fileId = currentDownload?.fileId ?: 0
+        val file = currentDownload?.localPath?.let { File(it) }
+        val localPath = currentDownload?.localPath ?: "N/A"
+        if (file == null || !file.exists() || fileId == 0) {
+            appendLog("Cannot play: File path invalid, does not exist, or too small: $localPath")
+            playButton.isEnabled = false
+            return
+        }
+        try {
+            val contentUri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",  // Must match manifest
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, "video/*")
+                setPackage("org.videolan.vlc") // Force open with VLC only
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            appendLog("Started VLC playback for file ID: $fileId, path: $localPath")
+        } catch (e: Exception) {
+            appendLog("Error while launching VLC Media Player for $localPath: ${e.message}")
+        }
+    }
+    private fun updateDownloadProgress(progress: Int, downloadedBytes: Long = 0, totalBytes: Long = 0) {
+        downloadProgressContainer.visibility = View.VISIBLE
+        downloadProgressBar.progress = progress
 
         val df = DecimalFormat("0.0")
         val downloadedMB = downloadedBytes / (1024.0 * 1024.0)
@@ -227,80 +328,10 @@ class MediaDetailsActivity : AppCompatActivity() {
             "$progress%"
         }
 
-        statusText.text = status
+        downloadStatusText.text = status
     }
 
-    private fun playWithVLC() {
-        val localFile = File(message.localPath.orEmpty())
-        if (!localFile.exists()) {
-            appendLog("Play failed: File not found")
-            return
-        }
 
-        appendLog("Opening file in VLC Player")
-
-        try {
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                this,
-                "${applicationContext.packageName}.provider",
-                localFile
-            )
-
-            val mimeType = message.mimeType.ifBlank { "video/*" }
-
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setPackage("org.videolan.vlc")
-                setDataAndType(uri, mimeType)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("MediaDetailsActivity", "Error opening video", e)
-            appendLog("VLC launch failed: ${e.message}")
-        }
-    }
-
-    private fun showVLCInstallPrompt() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("VLC Player Recommended")
-            .setMessage("VLC Player is recommended for best playback.\n\nInstall it now?")
-            .setPositiveButton("Install VLC") { _, _ ->
-                try {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=org.videolan.vlc")))
-                } catch (e: Exception) {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.videolan.vlc")))
-                }
-            }
-            .setNegativeButton("Use Default") { _, _ -> playWithDefaultPlayer() }
-            .show()
-    }
-
-    private fun playWithDefaultPlayer() {
-        val localFile = File(message.localPath.orEmpty())
-        if (!localFile.exists()) return
-
-        try {
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                this,
-                "${applicationContext.packageName}.provider",
-                localFile
-            )
-            startActivity(Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, message.mimeType.ifBlank { "video/*" })
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            })
-            appendLog("Opened with default player")
-        } catch (e: Exception) {
-            Log.e("MediaDetailsActivity", "No player found", e)
-            appendLog("No player found")
-        }
-    }
-
-    private fun setupActionButtons() {
-        findViewById<View>(R.id.action_cancel).setOnClickListener {
-            cancelCurrentDownload()
-        }
-    }
 
     private fun cancelCurrentDownload() {
         appendLog("User cancelled download")
@@ -321,21 +352,21 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         downloadButton.isEnabled = true
         downloadButton.visibility = View.VISIBLE
-        findViewById<View>(R.id.download_progress_container).visibility = View.GONE
+        downloadProgressContainer.visibility = View.GONE
 
         appendLog("Download cancelled and cleaned up")
     }
 
     private fun bindHeader() {
-        findViewById<TextView>(R.id.title).text = message.title
-        findViewById<TextView>(R.id.description).text = message.description
+        titleTextView.text = message.title
+        descriptionTextView.text = message.description
 
-        Glide.with(this)
+        /* Glide.with(this)
             .load(R.drawable.card_background)
             .transform(RoundedCorners(12))
             .placeholder(R.drawable.card_background)
             .error(R.drawable.card_background)
-            .into(findViewById(R.id.poster_image))
+            .into(posterImageView) */
     }
 
     private fun setupMetadataChipRow() {
@@ -347,7 +378,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             add(MetadataChipItem(R.drawable.ic_check, formatSize(message.size)))
         }
 
-        findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.metadata_chip_row).apply {
+        metadataChipRecycler.apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
             adapter = MetadataChipAdapter(chips)
             setHasFixedSize(true)
@@ -355,7 +386,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun setupSettingsRow() {
-        val recyclerView = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.settings_row).apply {
+        settingsRowRecycler.apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
             setHasFixedSize(true)
         }
@@ -376,7 +407,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                         add(SettingItem(R.drawable.ic_storage, formatAvailableStorage(), "AVAILABLE STORAGE"))
                     }
                 }.collect { items ->
-                    recyclerView.adapter = SettingCardAdapter(items)
+                    settingsRowRecycler.adapter = SettingCardAdapter(items)
                 }
             }
         }
@@ -426,12 +457,4 @@ class MediaDetailsActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    // ==================== Reused from BottomSheet ====================
-    data class DownloadingFileInfo(
-        val fileId: Int,
-        val downloadedSize: Float,
-        val totalSize: Float,
-        val progress: Int,
-        var localPath: String? = null
-    )
 }
