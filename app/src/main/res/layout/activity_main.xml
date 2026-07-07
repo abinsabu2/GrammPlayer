@@ -21,16 +21,4 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:ignore="MergeRootFrame" />
-
-    <ImageView
-        android:id="@+id/product_logo"
-        android:layout_width="@dimen/lb_browse_headers_width"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|start"
-        android:layout_marginTop="100dp"
-        android:paddingStart="10dp"
-        android:paddingEnd="16dp"
-        android:scaleType="fitStart"
-        android:src="@drawable/app_icon_your_company"
-        android:contentDescription="@string/app_name" />
 </FrameLayout>

@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.StatFs
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -15,6 +16,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.provider.MediaDownloadDataProvider
@@ -45,6 +47,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var playButton: View
     private lateinit var downloadButton: View
     private lateinit var cancelButton: View
+    private lateinit var closeButton: View
     private lateinit var logTextView: TextView
 
     // Download progress views
@@ -53,8 +56,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var downloadProgressBar: ProgressBar
 
     // RecyclerViews
-    private lateinit var metadataChipRecycler: androidx.recyclerview.widget.RecyclerView
-    private lateinit var settingsRowRecycler: androidx.recyclerview.widget.RecyclerView
+    private lateinit var metadataChipRecycler: RecyclerView
+    private lateinit var settingsRowRecycler: RecyclerView
 
     private var fileUpdateJob: Job? = null
     private var hasAutoPlayed = false
@@ -81,18 +84,17 @@ class MediaDetailsActivity : AppCompatActivity() {
                 return
             }
 
+        //stopVLCPlayback()
         initializeViews()
         setupListeners()           // ← All listeners now in one place
-
         loadSettings()
         bindHeader()
         setupMetadataChipRow()
         setupSettingsRow()
-
+        focusFirstUsableButton()
         checkLocalFileAndUpdateUI()
         startListeningToUpdates()
-
-        appendLog("Activity opened for: ${message.title}")
+        restrictFocusToActionButtons()   // ← D-pad movement limited to action buttons + close
     }
 
     /**
@@ -106,6 +108,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         playButton = findViewById(R.id.action_play)
         downloadButton = findViewById(R.id.action_download)
         cancelButton = findViewById(R.id.action_cancel)
+        closeButton = findViewById(R.id.action_close)
         logTextView = findViewById(R.id.log_text_view)
 
         // Download progress
@@ -116,6 +119,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         // Recyclers
         metadataChipRecycler = findViewById(R.id.metadata_chip_row)
         settingsRowRecycler = findViewById(R.id.settings_row)
+
+        cancelButton.isEnabled = false
     }
 
     /**
@@ -124,10 +129,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun setupListeners() {
         // Play button listener (enabled/disabled dynamically)
         playButton.setOnClickListener {
-            if (isDownloading) {
-                appendLog("Cannot play while downloading")
-                return@setOnClickListener
-            }
+            checkAndPlayFile()
         }
 
         // Download button listener
@@ -135,6 +137,89 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         // Cancel button listener
         cancelButton.setOnClickListener { cancelCurrentDownload() }
+
+        // Close button → stop playback and go back to the previous view
+        closeButton.setOnClickListener {
+            stopVLCPlayback()
+            onBackPressedDispatcher.onBackPressed()
+        }
+    }
+
+    // ==================== Focus / D-pad Movement ====================
+
+    /**
+     * Restricts D-pad / remote "movement" to the action buttons plus the
+     * close (✕) button. Close is always enabled and reachable via Up.
+     */
+    private fun restrictFocusToActionButtons() {
+
+        // 1. Make every other interactive element unreachable by the focus engine.
+        val nonFocusable = listOf(
+            titleTextView, descriptionTextView, posterImageView,
+            logTextView, downloadProgressContainer, downloadStatusText,
+            downloadProgressBar, metadataChipRecycler, settingsRowRecycler
+        )
+        nonFocusable.forEach {
+            it.isFocusable = false
+            it.isFocusableInTouchMode = false
+            // RecyclerViews also try to grab focus for their children:
+            (it as? RecyclerView)?.apply {
+                descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+                isFocusable = false
+            }
+        }
+
+        // 2. Make the action buttons + close button the only focus targets.
+        listOf(playButton, downloadButton, cancelButton, closeButton).forEach {
+            it.isFocusable = true
+            it.isFocusableInTouchMode = true
+        }
+
+        // Close is always usable.
+        closeButton.isEnabled = true
+
+        // 3. Horizontal loop across the three action buttons.
+        playButton.nextFocusRightId = R.id.action_download
+        playButton.nextFocusLeftId  = R.id.action_cancel
+
+        downloadButton.nextFocusRightId = R.id.action_cancel
+        downloadButton.nextFocusLeftId  = R.id.action_play
+
+        cancelButton.nextFocusRightId = R.id.action_play
+        cancelButton.nextFocusLeftId  = R.id.action_download
+
+        // 4. Up from any action button jumps to the close (✕) button.
+        playButton.nextFocusUpId     = R.id.action_close
+        downloadButton.nextFocusUpId = R.id.action_close
+        cancelButton.nextFocusUpId   = R.id.action_close
+
+        // 5. Down from close returns to the action buttons (Play is first).
+        closeButton.nextFocusDownId  = R.id.action_play
+        closeButton.nextFocusLeftId  = R.id.action_close
+        closeButton.nextFocusRightId = R.id.action_close
+    }
+
+    /**
+     * Requests focus on the first button that is both visible and enabled,
+     * in order: Play → Download → Cancel. Posted so it runs after layout.
+     */
+    private fun focusFirstUsableButton() {
+        val root = findViewById<View>(android.R.id.content)
+        root.post {
+            listOf(playButton, downloadButton, cancelButton)
+                .firstOrNull { it.visibility == View.VISIBLE && it.isEnabled }
+                ?.requestFocus()
+        }
+    }
+
+    private fun checkAndPlayFile() {
+
+        val localFile = message.localPath?.let { File(it) }
+        val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
+        val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
+        if (localFileExistsAndIsPlayable && hasLocalFile) {
+            playWithVLC(currentDownload)
+        }
     }
 
     private fun loadSettings() {
@@ -158,21 +243,36 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         if (hasLocalFile && localFileExistsAndIsPlayable) {
             playButton.isEnabled = true
-            downloadButton.visibility = View.GONE
+            downloadButton.isEnabled = false
             appendLog("Local file found → Play button enabled")
         } else {
             playButton.isEnabled = false
-            downloadButton.visibility = View.VISIBLE
+            downloadButton.isEnabled = true
             appendLog("No local file → Download available")
         }
+
+        cancelButton.isEnabled = isDownloading
+
+        // Keep focus on a usable button as states change.
+        focusFirstUsableButton()
     }
 
     private fun startDownload() {
         downloadButton.isEnabled = false
         isDownloading = true
+        cancelButton.isEnabled = true
         activeDownloads.add(message.fileId)
         appendLog("Download started for fileId: ${message.fileId}")
-
+        val localFile = message.localPath?.let { File(it) }
+        val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
+        val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
+        if (localFileExistsAndIsPlayable && hasLocalFile) {
+            appendLog("Local file exists and is playable, starting playback")
+            downloadButton.isEnabled = false
+            playButton.isEnabled = true
+            focusFirstUsableButton()
+            return
+        }
         lifecycleScope.launch {
             try {
                 val isTestMode = settingsDataStore.isTestMode.first()
@@ -185,30 +285,30 @@ class MediaDetailsActivity : AppCompatActivity() {
                     }
                 )?.let { updatedMessage ->
                     runOnUiThread {
-                        if(isTestMode){
+                        if (isTestMode) {
                             message = updatedMessage
                             appendLog("Download completed successfully")
                             checkLocalFileAndUpdateUI()
-                                hasAutoPlayed = false
-                                currentDownload = DownloadingFileInfo(
-                                    fileId = message.fileId,
-                                    downloadedSize = 100.toFloat(),
-                                    totalSize = 100.toFloat() / (1024 * 1024),
-                                    progress = 100,
-                                    localPath = message.localPath.takeIf { it.isNotEmpty() }
-                                )
-                                val shouldAutoPlay = isAutoPlayEnabled && !hasAutoPlayed
-                                val localFile = message.localPath?.let { File(it) }
-                                val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
-                                val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
+                            hasAutoPlayed = false
+                            currentDownload = DownloadingFileInfo(
+                                fileId = message.fileId,
+                                downloadedSize = 100.toFloat(),
+                                totalSize = 100.toFloat() / (1024 * 1024),
+                                progress = 100,
+                                localPath = message.localPath.takeIf { it.isNotEmpty() }
+                            )
+                            val shouldAutoPlay = isAutoPlayEnabled && !hasAutoPlayed
+                            val localFile = message.localPath?.let { File(it) }
+                            val localFileExistsAndIsPlayable = localFile != null && localFile.exists()
+                            val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
 
-                                if (shouldAutoPlay && hasLocalFile && localFileExistsAndIsPlayable) {
-                                    hasAutoPlayed = true
-                                    playWithVLC(currentDownload)
-                                }
+                            if (shouldAutoPlay && hasLocalFile && localFileExistsAndIsPlayable) {
+                                hasAutoPlayed = true
+                                playWithVLC(currentDownload)
                             }
                         }
                     }
+                }
             } catch (e: Exception) {
                 Log.e("MediaDetailsActivity", "Download error", e)
                 runOnUiThread {
@@ -223,8 +323,9 @@ class MediaDetailsActivity : AppCompatActivity() {
         isDownloading = false
         activeDownloads.clear()
         downloadButton.isEnabled = true
-        downloadButton.visibility = View.VISIBLE
+        cancelButton.isEnabled = false
         currentDownload = null
+        focusFirstUsableButton()
     }
 
     private fun startListeningToUpdates() {
@@ -241,6 +342,15 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun handleFileUpdate(file: TdApi.File) {
+
+        downloadButton.isEnabled = false
+        isDownloading = true
+        cancelButton.isEnabled = true
+
+        if (!activeDownloads.contains(message.fileId)) {
+            activeDownloads.add(message.fileId)
+        }
+
         val downloadedBytes = file.local.downloadedSize
         val totalBytes = file.expectedSize
         val progress = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt() else 0
@@ -265,10 +375,11 @@ class MediaDetailsActivity : AppCompatActivity() {
             val hasLocalFile = localFile?.exists() == true && localFile.length() > 0
 
 
-            if (shouldAutoPlay && hasLocalFile && localFileExistsAndIsPlayable) {
+            if (shouldAutoPlay && hasLocalFile && localFileExistsAndIsPlayable && !hasAutoPlayed) {
                 hasAutoPlayed = true
                 appendLog("Auto-play triggered at $progress%")
                 playWithVLC(currentDownload)
+                playButton.isEnabled = true
             }
 
             if (file.local.isDownloadingCompleted) {
@@ -278,6 +389,8 @@ class MediaDetailsActivity : AppCompatActivity() {
                 checkLocalFileAndUpdateUI()
                 isDownloading = false
                 activeDownloads.clear()
+                playButton.isEnabled = true
+                focusFirstUsableButton()
             }
         }
     }
@@ -286,6 +399,9 @@ class MediaDetailsActivity : AppCompatActivity() {
      * Helper function to launch the internal player.
      */
     fun playWithVLC(currentDownload: DownloadingFileInfo?) {
+
+        stopVLCPlayback()
+
         val context = this@MediaDetailsActivity
 
         val fileId = currentDownload?.fileId ?: 0
@@ -314,6 +430,20 @@ class MediaDetailsActivity : AppCompatActivity() {
             appendLog("Error while launching VLC Media Player for $localPath: ${e.message}")
         }
     }
+
+    fun stopVLCPlayback() {
+        val context = this@MediaDetailsActivity
+        val stopIntent = Intent("org.videolan.vlc.remote.StopPlayback")
+        stopIntent.setPackage("org.videolan.vlc")
+        try {
+            context.sendBroadcast(stopIntent)
+            appendLog("Player Playback Stoped!")
+        } catch (e: Exception) {
+            appendLog("Error while stopping VLC Playback: ${e.message}")
+        }
+        this.hasAutoPlayed = false
+    }
+
     private fun updateDownloadProgress(progress: Int, downloadedBytes: Long = 0, totalBytes: Long = 0) {
         downloadProgressContainer.visibility = View.VISIBLE
         downloadProgressBar.progress = progress
@@ -331,28 +461,28 @@ class MediaDetailsActivity : AppCompatActivity() {
         downloadStatusText.text = status
     }
 
-
-
     private fun cancelCurrentDownload() {
+
+        stopVLCPlayback()
         appendLog("User cancelled download")
-
         TelegramClientManager.cancelDownloadAndDelete(activeDownloads)
-
         message.localPath?.let { path ->
             val file = File(path)
             if (file.exists() && file.delete()) {
                 appendLog("Temporary file deleted")
             }
         }
-
         isDownloading = false
         hasAutoPlayed = false
         activeDownloads.clear()
         currentDownload = null
 
         downloadButton.isEnabled = true
-        downloadButton.visibility = View.VISIBLE
         downloadProgressContainer.visibility = View.GONE
+        playButton.isEnabled = false
+        cancelButton.isEnabled = false
+
+        focusFirstUsableButton()
 
         appendLog("Download cancelled and cleaned up")
     }
@@ -408,6 +538,8 @@ class MediaDetailsActivity : AppCompatActivity() {
                     }
                 }.collect { items ->
                     settingsRowRecycler.adapter = SettingCardAdapter(items)
+                    // Adapter change can steal focus; keep it on the buttons.
+                    focusFirstUsableButton()
                 }
             }
         }
@@ -456,5 +588,4 @@ class MediaDetailsActivity : AppCompatActivity() {
         fileUpdateJob?.cancel()
         super.onDestroy()
     }
-
 }

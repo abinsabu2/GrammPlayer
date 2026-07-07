@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- App bar: logo/app name + promo banner -->
+        <!-- App bar: logo/app name + promo banner + close -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="64dp"
@@ -51,8 +51,7 @@
                 android:layout_height="36dp"
                 android:layout_weight="1"
                 android:layout_marginStart="24dp"
-                android:maxWidth="420dp"
-                android:background="@drawable/promo_banner_background">
+                android:maxWidth="420dp">
 
                 <TextView
                     android:id="@+id/promo_text"
@@ -67,6 +66,19 @@
                     android:ellipsize="end"
                     tools:text="NEW EPISODES: The Great Barrier Reef — Exclusively This Month!" />
             </FrameLayout>
+
+            <!-- Close button — returns to the previous screen -->
+            <ImageView
+                android:id="@+id/action_close"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="16dp"
+                android:padding="8dp"
+                android:src="@drawable/ic_cancel"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Close" />
         </LinearLayout>
 
         <!-- Poster + details row -->
@@ -80,7 +92,7 @@
                 android:id="@+id/poster_image"
                 android:layout_width="220dp"
                 android:layout_height="300dp"
-                android:background="@drawable/card_background"
+                android:background="@color/detail_backdrop_background"
                 android:scaleType="centerCrop"
                 tools:ignore="ContentDescription" />
 
