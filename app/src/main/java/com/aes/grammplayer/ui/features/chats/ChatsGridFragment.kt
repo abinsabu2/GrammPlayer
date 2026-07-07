@@ -2,126 +2,87 @@ package com.aes.grammplayer.ui.features.chats
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
-import androidx.leanback.app.VerticalGridSupportFragment
-import androidx.leanback.widget.ArrayObjectAdapter
-import androidx.leanback.widget.VerticalGridPresenter
+import androidx.core.content.ContextCompat
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
-import androidx.leanback.widget.Row // Make sure this import is correct
+import androidx.leanback.widget.Row
 import androidx.leanback.widget.RowPresenter
-import androidx.core.content.ContextCompat // Added import for ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.aes.grammplayer.ui.features.chats.ChatCardPresenter
-import com.aes.grammplayer.ui.features.messages.MessageGridActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.Chat
+import com.aes.grammplayer.helper.DialogHelper
+import com.aes.grammplayer.helper.NavigationExtras
 import com.aes.grammplayer.provider.ChatsDataProvider
-import com.aes.grammplayer.ui.common.widgets.ModernLoadingDialogFragment
+import com.aes.grammplayer.ui.common.BaseGridFragment
+import com.aes.grammplayer.ui.features.messages.MessageGridActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import org.drinkless.tdlib.TdApi
 
-/**
- * A fragment to display messages of a specific chat in a grid.
- */
-class ChatsGridFragment : VerticalGridSupportFragment() {
-
-    private lateinit var gridAdapter: ArrayObjectAdapter
-    private var loadingDialog: ModernLoadingDialogFragment? = null
+class ChatsGridFragment : BaseGridFragment() {
 
     private lateinit var settingsDataStore: SettingsDataStore
+    private lateinit var loader: DialogHelper
+
+    override fun createItemPresenter(): Presenter = ChatCardPresenter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         settingsDataStore = SettingsDataStore(requireActivity())
-
-        // ✅ Initialize LoadingDialogManager with supportFragmentManager
-        loadingDialog = ModernLoadingDialogFragment.newInstance()
-        //title = arguments?.getString(ARG_CHAT_TITLE) ?: "Messages"
-        // Set the brand logo using badgeDrawable
+        loader = DialogHelper(requireActivity().supportFragmentManager)
         badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
-
         setupGrid()
-        lifecycleScope.launch {
-            loadChats()
-        }
         setupEventListeners()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::loader.isInitialized) {
+            loader.dismiss()
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // Refresh all cards to ensure latest CardPresenter styling is applied
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                loader.runWithLoading("Loading chats...") {
+                    loadChats()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading chats", e)
+            }
+        }
         refreshAllCards()
     }
 
-    private fun setupGrid() {
-        // We need a custom presenter to access the grid view.
-        val gridPresenter = object : VerticalGridPresenter() {
-            override fun initializeGridViewHolder(vh: ViewHolder) {
-                super.initializeGridViewHolder(vh)
-            }
-        }
-
-        gridPresenter.numberOfColumns = 3 // You can adjust the number of columns here
-        setGridPresenter(gridPresenter)
-
-        // The rest of your code remains the same.
-        gridAdapter = ArrayObjectAdapter(ChatCardPresenter())
-        adapter = gridAdapter
-    }
-
     private fun setupEventListeners() {
-        onItemViewClickedListener = object : OnItemViewClickedListener {
-            override fun onItemClicked(
-                itemViewHolder: Presenter.ViewHolder?,
-                item: Any?,
-                rowViewHolder: RowPresenter.ViewHolder?,
-                row: Row?
-            ) {
-                if (item is Chat) {
-                    val intent = Intent(activity, MessageGridActivity::class.java)
-                    intent.putExtra("chat_id", item.id)
-                    intent.putExtra("chat_title", item.title)
-                    startActivity(intent)
+        onItemViewClickedListener = OnItemViewClickedListener { _, item, _, _ ->
+            if (item is Chat) {
+                val intent = Intent(requireActivity(), MessageGridActivity::class.java).apply {
+                    putExtra(NavigationExtras.CHAT_ID, item.id)
+                    putExtra(NavigationExtras.CHAT_TITLE, item.title)
                 }
+                startActivity(intent)
             }
         }
     }
 
     private suspend fun loadChats() {
-        // Use Coroutines to call the suspend function on the main thread.
-        // Exclude "Telegram"
         val userMode = settingsDataStore.isTestMode.first()
         ChatsDataProvider.loadAllGroups(userMode, filter = { it.title != "Telegram" }) { chat ->
             gridAdapter.add(chat)
         }
     }
 
-    private fun refreshAllCards() {
-        // Notify the adapter that the entire dataset might have changed,
-        // forcing all visible items to be re-bound and re-rendered.
-        gridAdapter.notifyItemRangeChanged(0, gridAdapter.size())
-    }
-
     companion object {
-        private const val TAG = "MessageGridFragment"
-        const val ARG_CHAT_ID = "chat_id"
-        private const val ARG_CHAT_TITLE = "chat_title"
+        private const val TAG = "ChatsGridFragment"
 
-        /**
-         * Factory method to create a new instance of this fragment with the required arguments.
-         */
-        fun newInstance(chatId: Long, chatTitle: String): ChatsGridFragment {
-            val fragment = ChatsGridFragment()
-            val args = Bundle()
-            args.putLong(ARG_CHAT_ID, chatId)
-            args.putString(ARG_CHAT_TITLE, chatTitle)
-            fragment.arguments = args
-            return fragment
-        }
+        fun newInstance(chatId: Long, chatTitle: String): ChatsGridFragment =
+            ChatsGridFragment().apply {
+                arguments = buildChatArgs(chatId, chatTitle)
+            }
     }
-
 }

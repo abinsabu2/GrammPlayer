@@ -2,6 +2,7 @@ package com.aes.grammplayer.db.dao
 
 import androidx.room.*
 import com.aes.grammplayer.db.model.History
+import com.aes.grammplayer.db.model.MediaMessage
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,4 +27,20 @@ interface HistoryDao {
 
     @Query("SELECT COUNT(*) FROM History")
     suspend fun count(): Int
+
+    @Query("DELETE FROM History WHERE user = :userId AND message = :messageId")
+    suspend fun deleteByUserAndMessage(userId: Int, messageId: Long)
+
+    @Query("SELECT * FROM History WHERE user = :userId AND message = :messageId LIMIT 1")
+    suspend fun getByUserAndMessage(userId: Int, messageId: Long): History?
+
+    @Query(
+        """
+        SELECT m.* FROM MediaMessage m
+        INNER JOIN History h ON m.id = h.message
+        WHERE h.user = :userId
+        ORDER BY h.id DESC
+        """
+    )
+    fun getMediaMessagesForUser(userId: Int): Flow<List<MediaMessage>>
 }

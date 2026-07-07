@@ -17,6 +17,7 @@ room = "2.7.0"
 # NEW: Add these lines
 okhttp = "4.12.0"          # Latest stable OkHttp
 loggingInterceptor = "4.12.0"  # Optional: for debugging
+libvlc = "3.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +45,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 # NEW: Add these libraries
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "loggingInterceptor" }
+libvlc-all = { group = "org.videolan.android", name = "libvlc-all", version.ref = "libvlc" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

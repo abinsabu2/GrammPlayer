@@ -1,35 +1,27 @@
 package com.aes.grammplayer.ui.features.messages
 
-import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.Fragment
 import com.aes.grammplayer.R
+import com.aes.grammplayer.helper.NavigationExtras
+import com.aes.grammplayer.ui.common.BaseHostActivity
 
 /**
  * An activity that hosts the MessageGridFragment to display messages from a single chat.
  */
-class MessageGridActivity : FragmentActivity() {
+class MessageGridActivity : BaseHostActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_message_grid) // A simple layout to host the fragment
+    override val layoutId = R.layout.activity_message_grid
+    override val containerId = R.id.message_grid_fragment_container
 
-        if (savedInstanceState == null) {
-            val chatId = intent.getLongExtra(EXTRA_CHAT_ID, 0L)
-            val chatTitle = intent.getStringExtra(EXTRA_CHAT_TITLE) ?: "Messages"
-
-            if (chatId != 0L) {
-                // Create a new MessageGridFragment and pass the chat info to it.
-                val fragment = MessageGridFragment.newInstance(chatId, chatTitle)
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.message_grid_fragment_container, fragment)
-                    .commitNow()
-            }
-
-        }
+    override fun createFragment(): Fragment? {
+        val chatId = intent.getLongExtra(NavigationExtras.CHAT_ID, 0L)
+        if (chatId == 0L) return null
+        val chatTitle = intent.getStringExtra(NavigationExtras.CHAT_TITLE) ?: "Messages"
+        return MessageGridFragment.newInstance(chatId, chatTitle)
     }
 
     companion object {
-        const val EXTRA_CHAT_ID = "chat_id"
-        const val EXTRA_CHAT_TITLE = "chat_title"
+        const val EXTRA_CHAT_ID = NavigationExtras.CHAT_ID
+        const val EXTRA_CHAT_TITLE = NavigationExtras.CHAT_TITLE
     }
 }

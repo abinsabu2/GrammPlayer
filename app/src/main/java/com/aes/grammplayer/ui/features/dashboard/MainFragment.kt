@@ -1,6 +1,7 @@
 package com.aes.grammplayer.ui.features.dashboard
 
 import java.util.Timer
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -27,14 +28,20 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
+import com.aes.grammplayer.ui.features.history.HistoryGridActivity
 import com.aes.grammplayer.R
+import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.helper.DialogHelper
+import com.aes.grammplayer.helper.HistoryHelper
+import com.aes.grammplayer.helper.NavigationExtras
 import com.aes.grammplayer.ui.features.authentication.LoginActivity
 import com.aes.grammplayer.ui.features.settings.SettingsActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -64,7 +71,7 @@ class MainFragment : BrowseSupportFragment() {
         Log.i(TAG, "onCreate")
         super.onActivityCreated(savedInstanceState)
 
-        loadingDialog = DialogHelper(childFragmentManager)
+        loadingDialog = DialogHelper(requireActivity().supportFragmentManager)
 
         // Browse chrome — title, sidebar, brand badge.
         headersState = HEADERS_ENABLED
@@ -133,6 +140,7 @@ class MainFragment : BrowseSupportFragment() {
         val settingsHeader = DashboardHeaderItem(2, "Preferences", R.drawable.ic_settings)
         val settingsRowAdapter = ArrayObjectAdapter(IconCardPresenter())
         settingsRowAdapter.add(DashboardItem("clear_cache", R.drawable.ic_clear_cache, "Clear Cache"))
+        settingsRowAdapter.add(DashboardItem("clear_history", R.drawable.ic_history, "Clear History"))
         settingsRowAdapter.add(DashboardItem("settings", R.drawable.ic_settings, "Settings"))
         settingsRowAdapter.add(DashboardItem("refresh_data", R.drawable.ic_refresh, "Refresh Data"))
         settingsRowAdapter.add(DashboardItem("close", R.drawable.ic_refresh, "Close"))
@@ -147,6 +155,36 @@ class MainFragment : BrowseSupportFragment() {
         onItemViewSelectedListener = ItemViewSelectedListener()
     }
 
+    private fun confirmClearHistory() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.clear_history)
+            .setMessage(R.string.clear_history_confirm)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        loadingDialog.runWithLoading("Clearing history...") {
+                            HistoryHelper.clear(requireContext())
+                        }
+                        if (isAdded) {
+                            Toast.makeText(requireContext(), R.string.clear_history_done, Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Clear history failed", e)
+                        if (isAdded) {
+                            Toast.makeText(
+                                requireContext(),
+                                "Failed to clear history",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private inner class ItemViewClickedListener : OnItemViewClickedListener {
         override fun onItemClicked(
             itemViewHolder: Presenter.ViewHolder,
@@ -158,20 +196,31 @@ class MainFragment : BrowseSupportFragment() {
                 is DashboardItem -> {
                     when (item.id) {
                         "clear_cache" -> {
-                            loadingDialog.show("Clearing cache")
-                            lifecycleScope.launch {
+                            viewLifecycleOwner.lifecycleScope.launch {
                                 try {
-                                    val deletedCount = TelegramClientManager.clearDownloadedFiles()
-                                    val cacheClearText = "Cleared $deletedCount downloaded files from cache"
-                                    delay(1500)
-                                    loadingDialog.updateMessage(cacheClearText)
-                                    delay(1500)
-                                    loadingDialog.dismiss()
+                                    val deletedCount = loadingDialog.runWithLoading("Clearing cache...") {
+                                        withContext(Dispatchers.IO) {
+                                            TelegramClientManager.clearDownloadCache(requireContext())
+                                        }
+                                    }
+                                    if (!isAdded) return@launch
+                                    val cacheClearText =
+                                        "Cleared $deletedCount downloaded files from cache"
+                                    Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT)
+                                        .show()
                                 } catch (e: Exception) {
-                                    loadingDialog.dismiss()
+                                    Log.e(TAG, "Clear cache failed", e)
+                                    if (isAdded) {
+                                        Toast.makeText(
+                                            requireContext(),
+                                            "Failed to clear cache",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                             }
                         }
+                        "clear_history" -> confirmClearHistory()
                         "settings" -> {
                             val intent = Intent(activity, SettingsActivity::class.java)
                             startActivity(intent)
@@ -181,26 +230,23 @@ class MainFragment : BrowseSupportFragment() {
                             requireActivity().finish()
                         }
                         "chats" -> {
-                            val intent = Intent(activity, ChatsGridActivity::class.java)
-                            intent.putExtra("chat_id", 1000)
-                            intent.putExtra("chat_title", "Chats")
+                            val intent = Intent(activity, ChatsGridActivity::class.java).apply {
+                                putExtra(NavigationExtras.CHAT_ID, 1000L)
+                                putExtra(NavigationExtras.CHAT_TITLE, "Chats")
+                            }
                             startActivity(intent)
                         }
                         "history" -> {
-                            // TODO: wire to a HistoryActivity once it exists.
-                            // Left as a placeholder so the hero card is clickable
-                            // rather than silently falling through to "else".
-                            Toast.makeText(requireContext(), "Open History — not wired up yet", Toast.LENGTH_SHORT).show()
+                            startActivity(Intent(activity, HistoryGridActivity::class.java))
                         }
                         "logout" -> {
-                            loadingDialog.show("Logging out")
                             lifecycleScope.launch {
                                 try {
-                                    TelegramClientManager.logOut() // now suspends until AuthorizationStateClosed
-                                    loadingDialog.updateMessage("Logged out")
-                                    delay(500.milliseconds) // purely cosmetic pause so the message is readable, not a functional wait
-                                    loadingDialog.dismiss()
-
+                                    loadingDialog.runWithLoading("Logging out") { update ->
+                                        TelegramClientManager.logOut()
+                                        update("Logged out")
+                                        delay(500.milliseconds)
+                                    }
                                     val intent = Intent(activity, LoginActivity::class.java).apply {
                                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     }
@@ -208,7 +254,6 @@ class MainFragment : BrowseSupportFragment() {
                                     startActivity(intent)
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Logout failed: ${e.message}", e)
-                                    loadingDialog.dismiss()
                                 }
                             }
                         }
@@ -247,8 +292,7 @@ class MainFragment : BrowseSupportFragment() {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.card_hero, parent, false)
             // Must be focusable, or the card can never take D-pad focus and
             // onItemClicked/onItemSelected will never fire for it.
-            view.isFocusable = true
-            view.isFocusableInTouchMode = true
+            view.makeFocusableForTv()
             return ViewHolder(view)
         }
 
@@ -272,8 +316,7 @@ class MainFragment : BrowseSupportFragment() {
     private inner class IconCardPresenter : Presenter() {
         override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.card_icon, parent, false)
-            view.isFocusable = true
-            view.isFocusableInTouchMode = true
+            view.makeFocusableForTv()
             return ViewHolder(view)
         }
 

@@ -19,7 +19,7 @@ interface MediaMessageDao {
     fun getAll(): Flow<List<MediaMessage>>
 
     @Query("SELECT * FROM MediaMessage WHERE id = :id")
-    fun getById(id: Int): Flow<MediaMessage?>
+    fun getById(id: Long): Flow<MediaMessage?>
 
     @Query("SELECT * FROM MediaMessage WHERE chat = :chatId ORDER BY id DESC")
     fun getByChatId(chatId: Int): Flow<List<MediaMessage>>
@@ -29,4 +29,7 @@ interface MediaMessageDao {
 
     @Query("SELECT COUNT(*) FROM MediaMessage")
     suspend fun count(): Int
+
+    @Query("UPDATE MediaMessage SET localPath = '', isDownloaded = 0, isDownloadActive = 0")
+    suspend fun clearAllDownloadState()
 }

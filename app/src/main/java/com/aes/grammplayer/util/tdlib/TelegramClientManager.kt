@@ -1,10 +1,10 @@
 package com.aes.grammplayer.util.tdlib
 
-import android.os.Environment
+import android.content.Context
 import android.util.Log
-import androidx.core.content.ContextCompat
 import com.aes.grammplayer.BuildConfig
-import com.aes.grammplayer.GPlayerApplication
+import com.aes.grammplayer.db.AppDatabase
+import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.db.model.MediaMessage
 import kotlinx.coroutines.CompletableDeferred
@@ -16,7 +16,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.drinkless.tdlib.Client
 import org.drinkless.tdlib.TdApi
-import java.io.File
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
@@ -45,12 +44,12 @@ object TelegramClientManager {
     fun initialize() {
         if (isInitialized) return
 
-        activeStoragePath = getBestAvailableStoragePath()
+        activeStoragePath = ApplicationHelper.getBestAvailableStoragePath()
         Log.i("StorageManager", "Using storage path: $activeStoragePath")
 
         client = Client.create(TdLibUpdateHandler, null, null)
         Client.execute(TdApi.SetLogVerbosityLevel(1))
-        activeFileDirectory = "$activeStoragePath/files"
+        activeFileDirectory = ApplicationHelper.getFilesDirectory(activeStoragePath)
         val parameters = TdApi.SetTdlibParameters().apply {
             apiId = BuildConfig.API_ID
             apiHash = BuildConfig.API_HASH
@@ -66,77 +65,48 @@ object TelegramClientManager {
         client?.send(parameters, TdLibUpdateHandler)
     }
 
-    /**
-     * Determines the best storage path (internal or external) based on availability.
-     */
-    fun getBestAvailableStoragePath(): String {
-        val internalPath = GPlayerApplication.Companion.AppContext.filesDir.absolutePath + "/tdlib"
-        val externalPath = getExternalStoragePath()
+    fun getBestAvailableStoragePath(): String = ApplicationHelper.getBestAvailableStoragePath()
 
-        if (externalPath != null) {
-            val externalDir = File(externalPath)
-            if (externalDir.exists() || externalDir.mkdirs()) {
-                if (externalDir.canWrite()) {
-                    return externalPath
+    /**
+     * Clears downloaded media cache safely: asks TDLib to drop completed downloads,
+     * deletes local files off the main thread, and resets download flags in Room.
+     */
+    suspend fun clearDownloadCache(context: Context): Int = withContext(Dispatchers.IO) {
+        requestTdLibRemoveCompletedDownloads()
+        val deletedFilesCount = clearDownloadedFiles()
+        AppDatabase.getDatabase(context).mediaMessageDao().clearAllDownloadState()
+        deletedFilesCount
+    }
+
+    /**
+     * Deletes files from TDLib's pinned files directory.
+     * Prefer [clearDownloadCache] from the UI — it also syncs TDLib and the database.
+     */
+    fun clearDownloadedFiles(): Int =
+        ApplicationHelper.clearDownloadedFiles(activeFileDirectory)
+
+    private suspend fun requestTdLibRemoveCompletedDownloads() {
+        val tdClient = client ?: return
+        suspendCancellableCoroutine { continuation ->
+            tdClient.send(
+                TdApi.RemoveAllFilesFromDownloads(
+                    /* onlyActive = */ false,
+                    /* onlyCompleted = */ true,
+                    /* deleteFromCache = */ true
+                )
+            ) { result ->
+                if (result is TdApi.Error) {
+                    Log.w(
+                        "TelegramClientManager",
+                        "RemoveAllFilesFromDownloads failed: ${result.message}"
+                    )
                 }
+                continuation.resume(Unit)
             }
         }
-
-        return internalPath
     }
 
-    /**
-     * Finds a writable external storage path (USB, SD card, etc.).
-     */
-    private fun getExternalStoragePath(): String? {
-        val context = GPlayerApplication.Companion.AppContext
-        val externalStorageVolumes: Array<out File> = ContextCompat.getExternalFilesDirs(context, null)
-
-        val externalStorage = externalStorageVolumes.firstOrNull {
-            Environment.isExternalStorageRemovable(it) && Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED
-        }
-
-        return externalStorage?.let { it.absolutePath + "/tdlib" }
-    }
-
-    /**
-     * Deletes files from the currently active storage path.
-     */
-    fun clearDownloadedFiles(): Int {
-        var deletedFilesCount = 0
-        val subdirectoriesToClear = listOf("documents", "temp", "videos")
-
-        subdirectoriesToClear.forEach { subdir ->
-            val directory = File(activeFileDirectory, subdir)
-            if (directory.exists() && directory.isDirectory) {
-                directory.walkTopDown().forEach { file ->
-                    if (file.isFile && file.delete()) {
-                        deletedFilesCount++
-                    }
-                }
-            }
-        }
-        return deletedFilesCount
-    }
-
-    /**
-     * Calculates the size of the activeFileDirectory and its contents.
-     * @return The total size in MB, or 0.0 if the directory does not exist.
-     */
-    fun getDirectorySize(): Double {
-        val directory = File(activeFileDirectory)
-        if (!directory.exists() || !directory.isDirectory) {
-            return 0.0
-        }
-
-        var totalSize = 0L
-        directory.walkTopDown().forEach { file ->
-            if (file.isFile) {
-                totalSize += file.length()
-            }
-        }
-        return totalSize / (1024.0 * 1024.0)
-    }
+    fun getDirectorySize(): Double = ApplicationHelper.getDirectorySize(activeFileDirectory)
 
     fun sendPhoneNumber(phone: String) {
         client?.send(TdApi.SetAuthenticationPhoneNumber(phone, null), TdLibUpdateHandler)
@@ -285,8 +255,10 @@ object TelegramClientManager {
             client?.send(TdApi.CancelDownloadFile(fileId, false)) {
                 Log.d("TDLib", "Sent cancel command for fileId=$fileId")
             }
+            client?.send(TdApi.RemoveFileFromDownloads(fileId, true)) {
+                Log.d("TDLib", "Removed fileId=$fileId from downloads")
+            }
         }
-        clearDownloadedFiles()
     }
 
     fun parseMessageContent(content: TdApi.MessageContent, chatId: Long): MediaMessage {
@@ -294,109 +266,41 @@ object TelegramClientManager {
             is TdApi.MessageVideo -> {
                 val video = content.video
                 val file = video.video
-                val thumbnail = getThumbnailPath(file, video.fileName.ifEmpty { "Video" })
-                MediaMessage(
-                    id = file.id.toLong(),
-                    chat = chatId.toInt(),
+                MediaMessageMapper.fromTdFile(
+                    file = file,
+                    chatId = chatId,
                     title = video.fileName.ifEmpty { "Video" },
                     description = content.caption.text,
-                    studio = "Telegram",
-                    isMedia = true,
-                    localPath = file.local.path.ifEmpty { "" },
-                    fileId = file.id,
                     mimeType = video.mimeType,
-                    videoUrl = "",
+                    thumbnailPath = getThumbnailPath(file, video.fileName.ifEmpty { "Video" }),
                     width = video.width,
                     height = video.height,
-                    duration = video.duration.toLong(),
-                    size = file.size,
-                    thumbnailPath = thumbnail,
-                    cardImageUrl = thumbnail,
-                    backgroundImageUrl = "",
-                    isDownloaded = file.local.isDownloadingCompleted,
-                    isDownloadActive = file.local.isDownloadingActive,
-                    uniqueId = file.remote.uniqueId.ifEmpty { "" }
+                    duration = video.duration.toLong()
                 )
             }
 
             is TdApi.MessageDocument -> {
                 val document = content.document
                 val file = document.document
-                val thumbnail = getThumbnailPath(file, document.fileName.ifEmpty { "Document" })
-
-                MediaMessage(
-                    id = file.id.toLong(),
-                    chat = chatId.toInt(),
+                MediaMessageMapper.fromTdFile(
+                    file = file,
+                    chatId = chatId,
                     title = document.fileName.ifEmpty { "Document" },
                     description = content.caption.text,
-                    studio = "Telegram",
-                    isMedia = true,
-                    localPath = file.local.path.ifEmpty { "" },
-                    fileId = file.id,
                     mimeType = document.mimeType,
-                    videoUrl = "",
-                    width = 0,
-                    height = 0,
-                    duration = 0L,
-                    size = file.size,
-                    thumbnailPath = thumbnail,
-                    cardImageUrl = thumbnail,
-                    backgroundImageUrl = "",
-                    isDownloaded = file.local.isDownloadingCompleted,
-                    isDownloadActive = file.local.isDownloadingActive,
-                    uniqueId = file.remote.uniqueId.ifEmpty { "" }
+                    thumbnailPath = getThumbnailPath(file, document.fileName.ifEmpty { "Document" })
                 )
             }
 
-            is TdApi.MessageText -> {
-                MediaMessage(
+            is TdApi.MessageText ->
+                MediaMessageMapper.textMessage(
+                    chatId = chatId,
                     id = content.hashCode().toLong(),
-                    chat = chatId.toInt(),
-                    title = content.text.text,
-                    description = content.text.text,
-                    studio = "Telegram",
-                    isMedia = false,
-                    localPath = "",
-                    fileId = 0,
-                    mimeType = "",
-                    videoUrl = "",
-                    width = 0,
-                    height = 0,
-                    duration = 0L,
-                    size = 0L,
-                    thumbnailPath = "",
-                    cardImageUrl = "",
-                    backgroundImageUrl = "",
-                    isDownloaded = false,
-                    isDownloadActive = false,
-                    uniqueId = ""
+                    text = content.text.text
                 )
-            }
 
-            else -> {
-                MediaMessage(
-                    id = content.hashCode().toLong(),
-                    chat = chatId.toInt(),
-                    title = "Unsupported Content",
-                    description = "This message type is not currently supported.",
-                    studio = "Telegram",
-                    isMedia = false,
-                    localPath = "",
-                    fileId = 0,
-                    mimeType = "",
-                    videoUrl = "",
-                    width = 0,
-                    height = 0,
-                    duration = 0L,
-                    size = 0L,
-                    thumbnailPath = "",
-                    cardImageUrl = "",
-                    backgroundImageUrl = "",
-                    isDownloaded = false,
-                    isDownloadActive = false,
-                    uniqueId = ""
-                )
-            }
+            else ->
+                MediaMessageMapper.unsupported(chatId, content.hashCode().toLong())
         }
     }
 

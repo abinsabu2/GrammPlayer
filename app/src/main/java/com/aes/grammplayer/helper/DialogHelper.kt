@@ -19,11 +19,10 @@ class DialogHelper(private val fragmentManager: FragmentManager) {
      */
     fun show(message: String = "Loading...") {
         try {
-            if (loadingDialog == null || !loadingDialog!!.isAdded) {
-                loadingDialog = ModernLoadingDialogFragment.newInstance(message)
-                loadingDialog?.show(fragmentManager, tag)
-                Log.d(TAG, "Loading dialog shown: $message")
-            }
+            dismiss()
+            loadingDialog = ModernLoadingDialogFragment.newInstance(message)
+            loadingDialog?.show(fragmentManager, tag)
+            Log.d(TAG, "Loading dialog shown: $message")
         } catch (e: Exception) {
             Log.e(TAG, "Error showing loading dialog", e)
         }
@@ -48,10 +47,13 @@ class DialogHelper(private val fragmentManager: FragmentManager) {
      */
     fun dismiss() {
         try {
-            if (loadingDialog != null && loadingDialog!!.isAdded) {
-                loadingDialog?.dismissLoading()
-                Log.d(TAG, "Loading dialog dismissed")
+            loadingDialog?.dismissLoading()
+            fragmentManager.findFragmentByTag(tag)?.let { fragment ->
+                if (fragment is ModernLoadingDialogFragment) {
+                    fragment.dismissLoading()
+                }
             }
+            Log.d(TAG, "Loading dialog dismissed")
         } catch (e: Exception) {
             Log.e(TAG, "Error dismissing loading dialog", e)
         }
@@ -62,6 +64,21 @@ class DialogHelper(private val fragmentManager: FragmentManager) {
      * Check if dialog is currently shown
      */
     fun isShowing(): Boolean = loadingDialog?.isAdded == true
+
+    /**
+     * Shows the loading dialog, runs [block] (optionally updating the message), then dismisses.
+     */
+    suspend fun <T> runWithLoading(
+        message: String,
+        block: suspend (updateMessage: (String) -> Unit) -> T
+    ): T {
+        show(message)
+        return try {
+            block(::updateMessage)
+        } finally {
+            dismiss()
+        }
+    }
 
     companion object {
         private const val TAG = "LoadingDialogManager"

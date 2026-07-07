@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.leanback.widget.Presenter
 import com.aes.grammplayer.R
+import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.db.model.Chat
 
 /**
@@ -23,8 +24,7 @@ class ChatCardPresenter : Presenter() {
     override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
         Log.d(TAG, "onCreateViewHolder")
         val view = LayoutInflater.from(parent.context).inflate(R.layout.card_chat, parent, false)
-        view.isFocusable = true
-        view.isFocusableInTouchMode = true
+        view.makeFocusableForTv()
         return ViewHolder(view)
     }
 

@@ -37,6 +37,12 @@
     <string name="play">Play</string>
     <string name="save">Save</string>
     <string name="stop">Stop</string>
+    <string name="history_badge_viewed">Viewed</string>
+    <string name="history_badge_downloaded">Downloaded</string>
+    <string name="history_badge_downloading">Downloading</string>
+    <string name="clear_history">Clear History</string>
+    <string name="clear_history_confirm">Remove all viewed and downloaded history? Files on disk will not be deleted.</string>
+    <string name="clear_history_done">History cleared</string>
 
     <string name="close_button_description">Close</string>
     <string name="media_title_placeholder">Media Title</string>
@@ -57,6 +63,8 @@
     <string name="btn_play">Play</string>
     <string name="btn_download">Download</string>
     <string name="btn_downloading">Downloading…</string>
+    <string name="preview_label">PREVIEW</string>
+    <string name="preview_fullscreen">Full Screen</string>
 
     <!-- Fallback values -->
     <string name="label_untitled">Untitled</string>

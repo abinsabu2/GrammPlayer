@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 class MediaMessageRepository(private val mediaMessageDao: MediaMessageDao) {
     fun getMediaMessages(): Flow<List<MediaMessage>> = mediaMessageDao.getAll()
 
-    fun getMediaMessageById(id: Int): Flow<MediaMessage?> = mediaMessageDao.getById(id)
+    fun getMediaMessageById(id: Long): Flow<MediaMessage?> = mediaMessageDao.getById(id)
 
     fun getMediaMessagesByChatId(chatId: Int): Flow<List<MediaMessage>> = mediaMessageDao.getByChatId(chatId)
 

@@ -17,6 +17,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.ui.features.authentication.LoginActivity
 import com.aes.grammplayer.R
+import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.launch
 
@@ -56,10 +57,8 @@ class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
         privacyText.text = "Privacy Policy"
 
         // Make links focusable and clickable for D-pad
-        termsText.isFocusable = true
-        termsText.isClickable = true
-        privacyText.isFocusable = true
-        privacyText.isClickable = true
+        termsText.makeFocusableForTv(clickable = true)
+        privacyText.makeFocusableForTv(clickable = true)
 
         // Set click listeners to show popup with WebView
         termsText.setOnClickListener {

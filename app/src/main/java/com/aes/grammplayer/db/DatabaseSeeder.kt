@@ -190,11 +190,13 @@ object DatabaseSeeder {
         // Messages are ordered: chat 1 has messageIds[0..999], chat 2 has [1000..1999], etc.
         val history = chatIds.mapIndexed { chatIndex, chatId ->
             val userId = userIds[chatIndex % userIds.size].toInt()
-            val firstMessageOfChat = messageIds[chatIndex * 1000].toInt()
+            val firstMessageOfChat = messageIds[chatIndex * 1000]
             History(
                 user = userId,
                 chat = chatId.toInt(),
-                message = firstMessageOfChat
+                message = firstMessageOfChat,
+                viewed = true,
+                downloaded = chatIndex % 2 == 0
             )
         }
 

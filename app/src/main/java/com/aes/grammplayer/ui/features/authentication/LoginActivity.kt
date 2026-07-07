@@ -21,6 +21,7 @@ import com.aes.grammplayer.R
 import com.aes.grammplayer.config.TestUserConfig
 import com.aes.grammplayer.db.model.model.UserType
 import com.aes.grammplayer.helper.DialogHelper
+import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.session.UserSession
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
@@ -29,9 +30,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
 import kotlin.time.Duration.Companion.milliseconds
 
 class LoginActivity : FragmentActivity() {
@@ -329,10 +328,13 @@ class LoginActivity : FragmentActivity() {
 
     private fun navigateToMainApp() {
         loader.dismiss()
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        lifecycleScope.launch {
+            HistoryHelper.syncActiveUser(applicationContext)
+            val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
         }
-        startActivity(intent)
     }
 
     private fun setupKeyboardActionListeners() {
@@ -356,10 +358,4 @@ class LoginActivity : FragmentActivity() {
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
-    private fun logMessage(message: String) {
-        runOnUiThread {
-            val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-            logTextView.text = message
-        }
-    }
 }

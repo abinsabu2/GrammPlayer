@@ -11,6 +11,8 @@ class HistoryRepository(private val historyDao: HistoryDao) {
 
     fun getHistoryByChat(chatId: Int): Flow<List<History>> = historyDao.getByChat(chatId)
 
+    fun getMediaMessagesForUser(userId: Int) = historyDao.getMediaMessagesForUser(userId)
+
     suspend fun insert(history: History) = historyDao.insert(history)
 
     suspend fun delete(history: History) = historyDao.delete(history)

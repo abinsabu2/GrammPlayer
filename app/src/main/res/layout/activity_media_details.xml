@@ -81,6 +81,69 @@
                 android:contentDescription="Close" />
         </LinearLayout>
 
+        <!-- Inline preview — visible when a playable file is available -->
+        <FrameLayout
+            android:id="@+id/preview_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="16dp"
+            android:background="@color/detail_backdrop_background"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <FrameLayout
+                android:id="@+id/preview_video_host"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_margin="12dp"
+                android:background="#99000000"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="@string/preview_label"
+                android:textColor="@android:color/white"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/preview_fullscreen"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="12dp"
+                android:background="@drawable/button_outline_background"
+                android:defaultFocusHighlightEnabled="false"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="18dp">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_play_arrow"
+                    tools:ignore="ContentDescription" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/preview_fullscreen"
+                    android:textColor="@android:color/white"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </FrameLayout>
+
         <!-- Poster + details row -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -192,45 +255,19 @@
                 </HorizontalScrollView>
 
                 <!-- Action buttons -->
+                <!-- First place: PLAY. Second place: DOWNLOAD / CANCEL are
+                     interchangeable — only one is visible at a time and it
+                     always sits in the second slot, right after Play. -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
 
-                    <LinearLayout
-                        android:id="@+id/action_download"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:orientation="horizontal"
-                        android:gravity="center"
-                        android:background="@drawable/button_outline_background"
-                        android:defaultFocusHighlightEnabled="false"
-                        android:focusable="true"
-                        android:focusableInTouchMode="true"
-                        android:paddingStart="20dp"
-                        android:paddingEnd="24dp">
-
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_marginEnd="10dp"
-                            android:src="@drawable/ic_download"
-                            tools:ignore="ContentDescription" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="DOWNLOAD"
-                            android:textColor="@android:color/white"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
+                    <!-- First place -->
                     <LinearLayout
                         android:id="@+id/action_play"
                         android:layout_width="wrap_content"
                         android:layout_height="48dp"
-                        android:layout_marginStart="14dp"
                         android:orientation="horizontal"
                         android:gravity="center"
                         android:background="@drawable/button_outline_background"
@@ -256,6 +293,38 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
+                    <!-- Second place: DOWNLOAD (default) -->
+                    <LinearLayout
+                        android:id="@+id/action_download"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="14dp"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:background="@drawable/button_outline_background"
+                        android:defaultFocusHighlightEnabled="false"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="24dp">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginEnd="10dp"
+                            android:src="@drawable/ic_download"
+                            tools:ignore="ContentDescription" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="DOWNLOAD"
+                            android:textColor="@android:color/white"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Second place: CANCEL (shown while downloading, replaces Download) -->
                     <LinearLayout
                         android:id="@+id/action_cancel"
                         android:layout_width="wrap_content"
@@ -268,7 +337,8 @@
                         android:focusable="true"
                         android:focusableInTouchMode="true"
                         android:paddingStart="20dp"
-                        android:paddingEnd="24dp">
+                        android:paddingEnd="24dp"
+                        android:visibility="gone">
 
                         <ImageView
                             android:layout_width="16dp"

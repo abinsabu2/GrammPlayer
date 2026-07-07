@@ -100,4 +100,7 @@ dependencies {
     // ✅ Added OkHttp for test server downloads
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)  // Useful for debugging
+    implementation(libs.libvlc.all)
+    // Explicit coordinate helps some IDEs resolve org.videolan.libvlc classes.
+    implementation("org.videolan.android:libvlc-all:3.6.0")
 }

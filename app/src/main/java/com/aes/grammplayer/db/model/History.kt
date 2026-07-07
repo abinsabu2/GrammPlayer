@@ -33,5 +33,8 @@ data class History(
     @PrimaryKey val id: Long = 0,
     val user: Int,
     val chat: Int,
-    val message: Int
+    val message: Long,
+    val viewed: Boolean = false,
+    val downloaded: Boolean = false,
+    val downloading: Boolean = false
 )

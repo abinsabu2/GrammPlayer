@@ -70,7 +70,7 @@ class ModernLoadingDialogFragment : DialogFragment() {
             )
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
-            setBackgroundColor("#000000".toColorInt()) // Darker overlay
+            setBackgroundColor("#80000000".toColorInt())
 
             // Card-like dialog container
             val dialogCard = LinearLayout(ctx).apply {

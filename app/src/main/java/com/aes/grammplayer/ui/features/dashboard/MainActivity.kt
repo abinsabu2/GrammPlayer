@@ -1,21 +1,16 @@
 package com.aes.grammplayer.ui.features.dashboard
 
-import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.Fragment
 import com.aes.grammplayer.R
+import com.aes.grammplayer.ui.common.BaseHostActivity
 
 /**
  * Loads [MainFragment].
  */
-class MainActivity : FragmentActivity() {
+class MainActivity : BaseHostActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                .replace(R.id.main_fragment_container, MainFragment())
-                .commitNow()
-        }
-    }
+    override val layoutId = R.layout.activity_main
+    override val containerId = R.id.main_fragment_container
+
+    override fun createFragment(): Fragment = MainFragment()
 }
