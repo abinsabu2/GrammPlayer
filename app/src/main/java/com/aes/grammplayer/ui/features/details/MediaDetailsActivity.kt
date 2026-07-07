@@ -72,6 +72,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private var fileUpdateJob: Job? = null
     private var isDownloading = false
+    private var autoPlayStarted = false
     private var lastPreviewPath: String? = null
     private var hasRecordedHistoryView = false
     private var hasRecordedHistoryDownload = false
@@ -181,7 +182,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         MediaFileHelper.isPlayable(path)
 
     private fun syncLocalFileState() {
-        currentDownload = MediaFileHelper.syncMessageFromFile(message)
+        val synced = MediaFileHelper.syncMessageFromFile(message)
+        currentDownload = synced ?: currentDownload
     }
 
     /**
@@ -341,7 +343,8 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun openFullScreenPlayback() {
         syncLocalFileState()
-        if (!isLocalFilePlayable()) return
+        val playablePath = currentDownload?.localPath ?: message.localPath
+        if (!isLocalFilePlayable(playablePath)) return
         stopPreviewPlaybackOnly()
         startPlayback(currentDownload)
     }
@@ -538,9 +541,10 @@ class MediaDetailsActivity : AppCompatActivity() {
                 val shouldAutoPlay = !isAutoPlayEnabled ||
                     progress >= progressThreshold ||
                     downloadedMB >= bufferSizeThresholdMB
-                if (shouldAutoPlay) {
+                if (shouldAutoPlay && !PreviewPlayerHelper.isPlaying()) {
                     updatePreviewSection(file.local.path)
-                    if (isAutoPlayEnabled) {
+                    if (isAutoPlayEnabled && !autoPlayStarted) {
+                        autoPlayStarted = true
                         ActivityLogHelper.prepend(
                             this@MediaDetailsActivity,
                             logTextView,
