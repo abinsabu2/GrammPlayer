@@ -29,10 +29,6 @@ object PreviewPlayerHelper {
         onStarted: (() -> Unit)? = null
     ): Boolean {
         val file = MediaFileHelper.resolveFile(filePath) ?: return false
-        if (!PlayerHelper.isVlcInstalled(context)) {
-            Log.w(TAG, "VLC is not installed; preview unavailable")
-            return false
-        }
         return try {
             stop()
             videoHost = host

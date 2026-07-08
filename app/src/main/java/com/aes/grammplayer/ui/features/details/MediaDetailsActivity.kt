@@ -386,7 +386,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun updatePreviewSection(path: String?) {
-        if (!PlayerHelper.isVlcInstalled(this) || !isLocalFilePlayable(path)) {
+        if (!isLocalFilePlayable(path)) {
             hidePreviewSection()
             return
         }
