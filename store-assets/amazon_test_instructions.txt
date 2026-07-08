@@ -1,0 +1,108 @@
+GRAMPLAYER TV APP — AMAZON APPSTORE TEST INSTRUCTIONS
+====================================================
+
+App name:        GramPlayer TV App
+Package:         com.aes.grammplayer
+Platform:        Android TV / Fire TV (Leanback launcher)
+Internet:        Required for first launch, login, and test video download
+
+
+TEST ACCOUNT (use this — no real Telegram account needed)
+-------------------------------------------------------
+Country code:    1
+Phone number:    00
+Auth code:       12345
+
+Full test phone: +100
+
+
+FIRST LAUNCH
+------------
+1. Open the app from the TV app launcher.
+2. Onboarding (first run only):
+   - Select "Get Started" on the welcome screen.
+   - On Terms & Conditions: accept the checkbox, then proceed to Login.
+3. Login:
+   - Enter country code: 1
+   - Enter phone number: 00
+   - Tap Submit.
+   - Enter auth code: 12345
+   - Tap Submit.
+4. You will land on the Home dashboard.
+
+
+RECOMMENDED TEST FLOW (5–10 minutes)
+------------------------------------
+Step 1 — Home dashboard
+  • Confirm two main sections are visible: Chats and History.
+
+Step 2 — Browse channels
+  • Select "Open Chats" (or focus the Chats card and press OK/Enter).
+  • A grid of sample channels appears (e.g. Movies Channel, Series Hub).
+  • Open "Movies Channel" (first row, first item).
+
+Step 3 — Browse media library
+  • A grid of sample video titles is shown.
+  • Select any title (e.g. "Unrated 1000 - Chat 1") to open Details.
+
+Step 4 — Title details
+  • Verify poster image, synopsis, and file metadata load.
+  • Movie info may load from TMDB (requires network).
+
+Step 5 — Download and play
+  • Select Download on the bottom action bar.
+  • Wait for download to complete (test video is fetched from a public
+    sample URL; progress bar reaches 100%).
+  • When complete, Play and Full Screen buttons appear.
+  • Select Play or Full Screen — playback opens in the built-in player.
+  • No separate VLC install is required for the test account.
+
+Step 6 — History (optional)
+  • Press Back to return to previous screens.
+  • From Home, open History.
+  • Confirm viewed/downloaded titles appear in the list.
+
+
+FEATURES TO VERIFY
+------------------
+[ ] App launches on Fire TV / Android TV without crash
+[ ] Onboarding and Terms screens display correctly
+[ ] Test login accepts credentials above
+[ ] Dashboard shows Chats and History
+[ ] Channel grid loads with sample data
+[ ] Message/media grid loads inside a channel
+[ ] Details screen shows poster, synopsis, and metadata
+[ ] Download completes and progress is shown
+[ ] Play / Full Screen launches video playback
+[ ] D-pad / remote navigation works across all screens
+[ ] Back button returns to previous screen
+
+
+TEST MODE NOTES
+---------------
+• The test account uses local sample data (no real Telegram login).
+• Video download uses a public sample MP4 file for demonstration.
+• Full-screen playback uses the app's bundled media engine for testers.
+
+
+TROUBLESHOOTING
+---------------
+• Blank channel/message grids after fresh install:
+  Wait 30–60 seconds on first launch for local data to finish seeding,
+  then restart the app and log in again with the test account.
+
+• Download fails:
+  Confirm the device has internet access and retry Download.
+
+• Play button does not appear:
+  Wait until the download progress bar shows 100% and the file status
+  shows "Downloaded".
+
+• Login rejected:
+  Use exactly country code 1, phone 00, code 12345 (not a real number).
+
+
+CONTACT
+-------
+If you encounter issues not covered above, please contact the developer
+through the Amazon Developer Console submission thread.
