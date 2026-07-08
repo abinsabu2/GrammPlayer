@@ -24,11 +24,21 @@
         android:name="android.software.leanback"
         android:required="false" />
 
-    <!-- ==================== VLC DETECTION ==================== -->
+    <!-- ==================== VLC / STORE DETECTION ==================== -->
     <queries>
         <package android:name="org.videolan.vlc" />
+        <package android:name="com.amazon.venezia" />
+        <package android:name="com.android.vending" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="amzn" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
     </queries>
-    <!-- ==================================================== -->
+    <!-- ============================================================== -->
 
     <application
         android:name=".GPlayerApplication"

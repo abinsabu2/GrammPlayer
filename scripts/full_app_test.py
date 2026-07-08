@@ -170,38 +170,45 @@ def cold_start_flow(serial: str = SER) -> list[StepResult]:
     if "OnboardingActivity" in act or "onboarding" in act.lower():
         tap(960, 620, serial)  # get started
         time.sleep(2)
-    if "TermsActivity" in resumed_activity(serial):
+    act = resumed_activity(serial)
+    if "TermsActivity" in act:
         tap(640, 560, serial)  # checkbox area
         time.sleep(0.5)
         tap(640, 640, serial)  # login/proceed
         time.sleep(2)
         results.append(login_test_user(serial))
-    elif "LoginActivity" in resumed_activity(serial):
+    elif "LoginActivity" in act:
         results.append(login_test_user(serial))
-    elif "MainActivity" in resumed_activity(serial):
+    elif "MainActivity" in act:
         results.append(StepResult(name="Login (skipped)", passed=True, activity="MainActivity",
                                   notes="Already authenticated"))
+    else:
+        results.append(StepResult(name="Auth flow", passed=False, activity=act,
+                                  notes="Expected Terms, Login, or Main"))
     return results
 
 
-def screen_tests(serial: str = SER) -> list[StepResult]:
+def screen_tests(serial: str = SER, skip_clear: bool = True) -> list[StepResult]:
     results = []
+    if not skip_clear:
+        adb_shell(f"pm clear {PKG}", serial=serial)
+        time.sleep(1)
 
     def open_history_details(s):
         start_activity(".ui.features.history.HistoryGridActivity", serial=s)
-        time.sleep(6)
+        time.sleep(8)
         keyevent(KEY_DPAD_DOWN, s)
-        time.sleep(0.4)
+        time.sleep(0.5)
         keyevent(KEY_DPAD_DOWN, s)
-        time.sleep(0.4)
+        time.sleep(0.5)
         keyevent(KEY_DPAD_CENTER, s)
-        time.sleep(3)
+        time.sleep(5)
 
     screens = [
         ("Main dashboard", ".ui.features.dashboard.MainActivity", "MainActivity", 3.0, ""),
         ("Chats grid", ".ui.features.chats.ChatsGridActivity", "ChatsGridActivity", 5.0, ""),
         ("Messages grid", ".ui.features.messages.MessageGridActivity", "MessageGridActivity", 5.0,
-         "--el 1 --es chat_title 'Movies Channel'"),
+         "--el chat_id 1 --es chat_title MoviesChannel"),
         ("History grid", ".ui.features.history.HistoryGridActivity", "HistoryGridActivity", 6.0, ""),
         ("Settings", ".ui.features.settings.SettingsActivity", "SettingsActivity", 3.0, ""),
         ("Terms screen", ".ui.features.onboarding.TermsActivity", "TermsActivity", 2.0, ""),
@@ -230,15 +237,17 @@ def screen_tests(serial: str = SER) -> list[StepResult]:
     keyevent(KEY_BACK, serial)
     time.sleep(1)
 
-    # Dashboard interactions: open history hero from main
+    # Dashboard interactions: open history hero from main (2nd hero card)
     start_activity(".ui.features.dashboard.MainActivity", serial=serial)
     time.sleep(3)
-    keyevent(KEY_DPAD_DOWN, serial)
-    time.sleep(0.3)
-    keyevent(KEY_DPAD_RIGHT, serial)
-    time.sleep(0.3)
+    for _ in range(2):
+        keyevent(KEY_DPAD_DOWN, serial)
+        time.sleep(0.3)
+    for _ in range(2):
+        keyevent(KEY_DPAD_RIGHT, serial)
+        time.sleep(0.3)
     keyevent(KEY_DPAD_CENTER, serial)
-    time.sleep(4)
+    time.sleep(5)
     act = resumed_activity(serial)
     fatals = fatal_errors(serial=serial)
     results.append(StepResult(
@@ -248,6 +257,25 @@ def screen_tests(serial: str = SER) -> list[StepResult]:
         fatal=fatals,
     ))
     screenshot("dashboard_history_hero", serial=serial)
+    keyevent(KEY_BACK, serial)
+    time.sleep(1)
+
+    # Chats -> first chat -> messages
+    start_activity(".ui.features.chats.ChatsGridActivity", serial=serial)
+    time.sleep(5)
+    keyevent(KEY_DPAD_DOWN, serial)
+    time.sleep(0.4)
+    keyevent(KEY_DPAD_CENTER, serial)
+    time.sleep(5)
+    act = resumed_activity(serial)
+    fatals = fatal_errors(serial=serial)
+    results.append(StepResult(
+        name="Chats → Messages",
+        passed="MessageGridActivity" in act and not fatals,
+        activity=act,
+        fatal=fatals,
+    ))
+    screenshot("chats_to_messages", serial=serial)
     keyevent(KEY_BACK, serial)
 
     return results

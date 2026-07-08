@@ -1,5 +1,6 @@
 package com.aes.grammplayer.helper
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ComponentName
 import android.content.Context
@@ -8,7 +9,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.aes.grammplayer.R
 
 object PlayerHelper {
 
@@ -16,6 +19,9 @@ object PlayerHelper {
     const val VLC_PACKAGE = "org.videolan.vlc"
     private const val VLC_PLAYER_ACTIVITY = "org.videolan.vlc.gui.video.VideoPlayerActivity"
     private const val VLC_STOP_ACTION = "org.videolan.vlc.remote.StopPlayback"
+    private const val PLAY_STORE_PACKAGE = "com.android.vending"
+    private const val AMAZON_APPSTORE_PACKAGE = "com.amazon.venezia"
+    private const val AMAZON_VLC_ASIN = "B00X4N8W2G"
 
     sealed class PlayResult {
         data class Started(val fileId: Int, val path: String) : PlayResult()
@@ -105,4 +111,72 @@ object PlayerHelper {
             Log.e(TAG, "Error stopping VLC playback", e)
         }
     }
+
+    /** True on Fire TV / Fire OS devices (Amazon hardware). */
+    fun isFireTv(): Boolean =
+        Build.MANUFACTURER.equals("Amazon", ignoreCase = true) ||
+            Build.MODEL.startsWith("AFT", ignoreCase = true)
+
+    fun vlcRequiredMessage(context: Context): String =
+        if (isFireTv()) {
+            context.getString(R.string.playback_vlc_required_message_fire)
+        } else {
+            context.getString(R.string.playback_vlc_required_message)
+        }
+
+    fun vlcInstallButtonLabel(context: Context): String =
+        if (isFireTv()) {
+            context.getString(R.string.playback_vlc_install_fire)
+        } else {
+            context.getString(R.string.playback_vlc_install)
+        }
+
+    /**
+     * Opens the best VLC install option for the current device.
+     * Fire TV → Amazon Appstore, then VLC download page. Other TVs → Play Store fallback.
+     */
+    fun openVlcInstallPage(context: Context) {
+        for (intent in vlcInstallIntents()) {
+            if (intent.resolveActivity(context.packageManager) == null) continue
+            try {
+                context.startActivity(intent)
+                return
+            } catch (e: ActivityNotFoundException) {
+                Log.w(TAG, "VLC install intent not handled: ${intent.data}", e)
+            }
+        }
+        Toast.makeText(context, R.string.playback_vlc_install_failed, Toast.LENGTH_LONG).show()
+    }
+
+    private fun vlcInstallIntents(): List<Intent> {
+        if (isFireTv()) {
+            return listOf(
+                amazonAppStoreIntent("amzn://apps/android?asin=$AMAZON_VLC_ASIN"),
+                amazonAppStoreIntent("amzn://apps/android?p=$VLC_PACKAGE"),
+                browserIntent("https://www.amazon.com/gp/mas/dl/android?p=$VLC_PACKAGE"),
+                browserIntent("https://www.videolan.org/vlc/download-android.html"),
+            )
+        }
+        return listOf(
+            playStoreIntent("market://details?id=$VLC_PACKAGE"),
+            browserIntent("https://play.google.com/store/apps/details?id=$VLC_PACKAGE"),
+        )
+    }
+
+    private fun amazonAppStoreIntent(uri: String): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
+            setPackage(AMAZON_APPSTORE_PACKAGE)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+    private fun playStoreIntent(uri: String): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
+            setPackage(PLAY_STORE_PACKAGE)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+    private fun browserIntent(uri: String): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 }

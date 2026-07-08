@@ -1,6 +1,5 @@
 package com.aes.grammplayer.ui.features.details
 
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -854,28 +853,12 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun showInstallVlcDialog() {
         AlertDialog.Builder(this)
             .setTitle(R.string.playback_vlc_required_title)
-            .setMessage(R.string.playback_vlc_required_message)
-            .setPositiveButton(R.string.playback_vlc_install) { _, _ -> openVlcInstallPage() }
+            .setMessage(PlayerHelper.vlcRequiredMessage(this))
+            .setPositiveButton(PlayerHelper.vlcInstallButtonLabel(this)) { _, _ ->
+                PlayerHelper.openVlcInstallPage(this)
+            }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
-    }
-
-    private fun openVlcInstallPage() {
-        val packageName = PlayerHelper.VLC_PACKAGE
-        val marketIntent = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("market://details?id=$packageName")
-        )
-        try {
-            startActivity(marketIntent)
-        } catch (_: ActivityNotFoundException) {
-            startActivity(
-                Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
-                )
-            )
-        }
     }
 
     private fun showPlaybackError(reason: String) {

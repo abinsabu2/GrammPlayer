@@ -67,7 +67,10 @@
     <string name="preview_fullscreen">Full Screen</string>
     <string name="playback_vlc_required_title">VLC required</string>
     <string name="playback_vlc_required_message">Full screen playback opens in VLC for Android. Install VLC to continue.</string>
+    <string name="playback_vlc_required_message_fire">Full screen playback opens in VLC. On Fire TV, install VLC from the Amazon Appstore, or sideload the VLC APK from videolan.org.</string>
     <string name="playback_vlc_install">Install VLC</string>
+    <string name="playback_vlc_install_fire">Get VLC on Amazon</string>
+    <string name="playback_vlc_install_failed">Could not open a store or browser. Install VLC for Android (org.videolan.vlc) manually.</string>
     <string name="activity_log_title">ACTIVITY LOG</string>
     <string name="toggle_log_show">SHOW LOG</string>
     <string name="toggle_log_hide">HIDE LOG</string>
