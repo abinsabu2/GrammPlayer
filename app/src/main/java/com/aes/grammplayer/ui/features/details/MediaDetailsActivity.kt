@@ -130,6 +130,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             }
 
         initializeViews()
+        applyResponsiveLayout()
         setupBackNavigation()
         setupListeners()
         loadSettings()
@@ -180,6 +181,26 @@ class MediaDetailsActivity : AppCompatActivity() {
         setupRecyclerRows()
 
         applyActionButtonState(ActionButtonState.FRESH)
+    }
+
+    /** Scales text truncation to the available screen height across TV resolutions. */
+    private fun applyResponsiveLayout() {
+        val config = resources.configuration
+        val heightDp = config.screenHeightDp
+        val configuredDescriptionLines = resources.getInteger(R.integer.detail_description_max_lines)
+        val descriptionLines = when {
+            heightDp < 420 -> minOf(configuredDescriptionLines, 2)
+            heightDp < 520 -> minOf(configuredDescriptionLines, 3)
+            else -> configuredDescriptionLines
+        }
+        descriptionTextView.maxLines = descriptionLines
+        titleTextView.maxLines = resources.getInteger(R.integer.detail_title_max_lines)
+        taglineTextView.maxLines = resources.getInteger(R.integer.detail_tagline_max_lines)
+        Log.d(
+            TAG,
+            "Detail layout: ${config.screenWidthDp}x${heightDp}dp, sw=${config.smallestScreenWidthDp}dp, " +
+                "descLines=$descriptionLines, title=${titleTextView.maxLines}"
+        )
     }
 
     // ==================== Action button states ====================

@@ -76,7 +76,7 @@
             android:layout_height="@dimen/detail_promo_height"
             android:layout_marginStart="@dimen/detail_content_gap"
             android:layout_weight="1"
-            android:maxWidth="420dp">
+            android:maxWidth="@dimen/detail_promo_max_width">
 
             <TextView
                 android:id="@+id/promo_text"
@@ -114,6 +114,14 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/detail_content_column"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxWidth="@dimen/detail_content_max_width"
                 android:orientation="vertical">
 
         <!-- Poster + details -->
@@ -130,6 +138,7 @@
                 android:id="@+id/poster_image"
                 android:layout_width="@dimen/detail_poster_width"
                 android:layout_height="@dimen/detail_poster_height"
+                android:adjustViewBounds="true"
                 android:background="@color/detail_backdrop_background"
                 android:scaleType="centerCrop"
                 tools:ignore="ContentDescription" />
@@ -149,7 +158,7 @@
                     android:ellipsize="end"
                     android:letterSpacing="0.01"
                     android:lineSpacingExtra="1dp"
-                    android:maxLines="2"
+                    android:maxLines="@integer/detail_title_max_lines"
                     android:textColor="@color/detail_text_primary"
                     android:textSize="@dimen/detail_title_text"
                     android:textStyle="bold"
@@ -161,7 +170,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="@dimen/detail_section_gap"
                     android:ellipsize="end"
-                    android:maxLines="2"
+                    android:maxLines="@integer/detail_tagline_max_lines"
                     android:textColor="@color/detail_text_muted"
                     android:textSize="@dimen/detail_body_text"
                     android:textStyle="italic"
@@ -187,7 +196,7 @@
                     android:layout_marginBottom="@dimen/detail_section_gap"
                     android:ellipsize="end"
                     android:lineSpacingExtra="2dp"
-                    android:maxLines="4"
+                    android:maxLines="@integer/detail_description_max_lines"
                     android:textColor="@color/detail_text_body"
                     android:textSize="@dimen/detail_body_text"
                     tools:text="Journey to the crushing depths of the deep ocean, where only light can find you." />
@@ -359,6 +368,7 @@
         </LinearLayout>
 
             </LinearLayout>
+            </LinearLayout>
         </ScrollView>
 
         <!-- Fixed action bar -->
@@ -393,7 +403,14 @@
                 android:layout_height="0dp"
                 android:layout_weight="1" />
 
+            <HorizontalScrollView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fillViewport="false"
+                android:scrollbars="none">
+
             <LinearLayout
+                android:id="@+id/details_action_buttons"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
@@ -426,6 +443,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
                         android:text="@string/preview_fullscreen"
                         android:textColor="@color/detail_text_primary"
                         android:textSize="@dimen/detail_button_text"
@@ -458,6 +477,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
                         android:text="@string/play"
                         android:textColor="@color/detail_text_primary"
                         android:textSize="@dimen/detail_button_text"
@@ -490,6 +511,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
                         android:text="@string/download"
                         android:textColor="@color/detail_text_primary"
                         android:textSize="@dimen/detail_button_text"
@@ -524,12 +547,15 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
                         android:text="@string/cancel"
                         android:textColor="@color/detail_text_primary"
                         android:textSize="@dimen/detail_button_text"
                         android:textStyle="bold" />
                 </LinearLayout>
             </LinearLayout>
+            </HorizontalScrollView>
         </LinearLayout>
     </LinearLayout>
     </LinearLayout>

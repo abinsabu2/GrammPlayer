@@ -13,7 +13,7 @@
         android:id="@+id/card_container"
         android:layout_width="wrap_content"
         android:layout_height="@dimen/detail_setting_card_height"
-        android:minWidth="100dp"
+        android:minWidth="@dimen/detail_setting_card_min_width"
         android:orientation="horizontal"
         android:gravity="center"
         android:background="@drawable/setting_card_background"
@@ -22,8 +22,8 @@
 
         <ImageView
             android:id="@+id/icon"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="@dimen/detail_setting_card_icon_size"
+            android:layout_height="@dimen/detail_setting_card_icon_size"
             android:layout_marginEnd="8dp"
             tools:ignore="ContentDescription" />
 

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 4K and large TV displays -->
+    <dimen name="detail_screen_padding_h">36dp</dimen>
+    <dimen name="detail_screen_padding_v">12dp</dimen>
+    <dimen name="detail_app_bar_height">56dp</dimen>
+    <dimen name="detail_poster_width">156dp</dimen>
+    <dimen name="detail_poster_height">234dp</dimen>
+    <dimen name="detail_poster_radius">14dp</dimen>
+    <dimen name="detail_content_gap">20dp</dimen>
+    <dimen name="detail_section_gap">10dp</dimen>
+    <dimen name="detail_content_max_width">1440dp</dimen>
+    <dimen name="detail_promo_max_width">520dp</dimen>
+
+    <dimen name="detail_title_text">28sp</dimen>
+    <dimen name="detail_body_text">18sp</dimen>
+    <dimen name="detail_label_text">13sp</dimen>
+    <dimen name="detail_button_text">16sp</dimen>
+    <dimen name="detail_chip_text">15sp</dimen>
+    <dimen name="detail_setting_value_text">16sp</dimen>
+    <dimen name="detail_setting_caption_text">12sp</dimen>
+    <dimen name="detail_app_name_text">20sp</dimen>
+    <dimen name="detail_promo_text">15sp</dimen>
+
+    <dimen name="detail_action_button_height">52dp</dimen>
+    <dimen name="detail_setting_card_height">52dp</dimen>
+    <dimen name="detail_chip_height">40dp</dimen>
+    <dimen name="detail_app_icon_size">26dp</dimen>
+    <dimen name="detail_promo_height">40dp</dimen>
+    <dimen name="detail_button_icon_size">20dp</dimen>
+    <dimen name="detail_button_padding_start">18dp</dimen>
+    <dimen name="detail_button_padding_end">20dp</dimen>
+    <dimen name="detail_button_gap">10dp</dimen>
+    <dimen name="detail_close_padding">10dp</dimen>
+    <dimen name="detail_setting_card_margin">10dp</dimen>
+    <dimen name="detail_chip_padding_h">12dp</dimen>
+    <dimen name="detail_chip_icon_size">16dp</dimen>
+    <dimen name="detail_setting_card_min_width">120dp</dimen>
+    <dimen name="detail_setting_card_icon_size">22dp</dimen>
+</resources>
