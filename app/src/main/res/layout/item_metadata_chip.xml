@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="wrap_content"
-    android:layout_height="36dp"
+    android:layout_height="40dp"
     android:layout_marginEnd="10dp"
     android:orientation="horizontal"
     android:gravity="center"
@@ -11,10 +11,10 @@
     android:paddingEnd="14dp">
 
     <ImageView android:id="@+id/icon"
-        android:layout_width="14dp"
-        android:layout_height="14dp"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
         android:layout_marginEnd="7dp"
-        app:tint="@android:color/white"
+        app:tint="@color/detail_primary"
         tools:ignore="ContentDescription"
         xmlns:tools="http://schemas.android.com/tools" />
 
@@ -22,8 +22,8 @@
         android:id="@+id/label_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/white"
-        android:textSize="13sp"
+        android:textColor="@color/detail_text_primary"
+        android:textSize="@dimen/detail_chip_text"
         tools:text="Adventure"
         xmlns:tools="http://schemas.android.com/tools" />
 </LinearLayout>

@@ -65,6 +65,9 @@
     <string name="btn_downloading">Downloading…</string>
     <string name="preview_label">PREVIEW</string>
     <string name="preview_fullscreen">Full Screen</string>
+    <string name="activity_log_title">ACTIVITY LOG</string>
+    <string name="toggle_log_show">SHOW LOG</string>
+    <string name="toggle_log_hide">HIDE LOG</string>
 
     <!-- Fallback values -->
     <string name="label_untitled">Untitled</string>
@@ -102,4 +105,7 @@
     <string name="chip_not_downloaded">Not downloaded</string>
     <string name="chip_downloading">Downloading…</string>
     <string name="chip_idle">Idle</string>
+    <string name="cancel">CANCEL</string>
+    <string name="description">DESCRIPTION</string>
+    <string name="download">DOWNLOAD</string>
 </resources>

@@ -2,4 +2,14 @@
     <!-- Custom dimensions for the app logo -->
     <dimen name="app_logo_width">120dp</dimen>
     <dimen name="app_logo_height">60dp</dimen>
+
+    <!-- Media details — tuned for TV legibility at ~10-foot distance -->
+    <dimen name="detail_title_text">26sp</dimen>
+    <dimen name="detail_body_text">16sp</dimen>
+    <dimen name="detail_label_text">12sp</dimen>
+    <dimen name="detail_button_text">16sp</dimen>
+    <dimen name="detail_chip_text">15sp</dimen>
+    <dimen name="detail_setting_value_text">17sp</dimen>
+    <dimen name="detail_setting_caption_text">13sp</dimen>
+    <dimen name="detail_action_button_height">48dp</dimen>
 </resources>

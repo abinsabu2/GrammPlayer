@@ -12,8 +12,8 @@
     <LinearLayout
         android:id="@+id/card_container"
         android:layout_width="wrap_content"
-        android:layout_height="52dp"
-        android:minWidth="108dp"
+        android:layout_height="56dp"
+        android:minWidth="116dp"
         android:orientation="horizontal"
         android:gravity="center"
         android:background="@drawable/setting_card_background"
@@ -22,8 +22,8 @@
 
         <ImageView
             android:id="@+id/icon"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:layout_marginEnd="8dp"
             tools:ignore="ContentDescription" />
 
@@ -31,8 +31,8 @@
             android:id="@+id/value_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
-            android:textSize="15sp"
+            android:textColor="@color/detail_text_primary"
+            android:textSize="@dimen/detail_setting_value_text"
             android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end"
@@ -43,10 +43,11 @@
         android:id="@+id/caption_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:textColor="#9A9A9E"
-        android:textSize="11sp"
-        android:letterSpacing="0.03"
+        android:layout_marginTop="8dp"
+        android:letterSpacing="0.05"
+        android:textAllCaps="true"
+        android:textColor="@color/detail_text_label"
+        android:textSize="@dimen/detail_setting_caption_text"
         tools:text="BUFFER SIZE" />
 
     <TextView

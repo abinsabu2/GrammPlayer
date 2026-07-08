@@ -32,4 +32,21 @@
     <color name="card_background">#2A2A2E</color>
     <color name="card_background_focused">#33383B</color>
 
+    <!-- Media details — TV-readable text hierarchy -->
+    <color name="detail_text_primary">#FFFFFF</color>
+    <color name="detail_text_body">#E8E8EC</color>
+    <color name="detail_text_label">#B0B0B8</color>
+    <color name="detail_text_muted">#9A9AA4</color>
+
+    <!-- Material surfaces (dark) -->
+    <color name="detail_surface_base">#0E1014</color>
+    <color name="detail_surface_container">#1A1D24</color>
+    <color name="detail_surface_container_high">#242830</color>
+    <color name="detail_surface_container_highest">#2E333D</color>
+    <color name="detail_primary">#4ECDC4</color>
+    <color name="detail_primary_dark">#2A8A84</color>
+    <color name="detail_primary_container">#163B38</color>
+    <color name="detail_outline">#33FFFFFF</color>
+    <color name="detail_outline_variant">#1AFFFFFF</color>
+
 </resources>

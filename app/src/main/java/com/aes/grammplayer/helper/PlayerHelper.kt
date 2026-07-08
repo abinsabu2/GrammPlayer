@@ -49,7 +49,7 @@ object PlayerHelper {
         }
 
         val file = MediaFileHelper.resolveFile(filePath)
-        if (file == null || fileId == 0) {
+        if (file == null) {
             val path = filePath ?: "N/A"
             return PlayResult.Failed(
                 "Cannot play: File path invalid, does not exist, or too small: $path"
