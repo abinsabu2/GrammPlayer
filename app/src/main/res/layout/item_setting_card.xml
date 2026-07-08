@@ -6,8 +6,8 @@
     android:layout_marginEnd="@dimen/detail_setting_card_margin"
     android:orientation="vertical"
     android:gravity="center_horizontal"
-    android:focusable="true"
-    android:focusableInTouchMode="true">
+    android:focusable="false"
+    android:focusableInTouchMode="false">
 
     <LinearLayout
         android:id="@+id/card_container"

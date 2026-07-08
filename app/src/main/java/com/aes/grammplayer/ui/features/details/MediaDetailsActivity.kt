@@ -1,14 +1,18 @@
 package com.aes.grammplayer.ui.features.details
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -17,8 +21,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
-import com.aes.grammplayer.helper.ActivityLogHelper
 import com.aes.grammplayer.helper.FormatHelper
+import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
@@ -37,6 +41,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.core.view.isVisible
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
@@ -61,8 +66,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var titleTextView: TextView
     private lateinit var taglineTextView: TextView
     private lateinit var descriptionTextView: TextView
-    private lateinit var originalTitleTextView: TextView
-    private lateinit var crewInfoTextView: TextView
     private lateinit var posterImageView: ImageView
     private lateinit var detailBackdropImage: ImageView
     private lateinit var detailBackdropScrim: View
@@ -76,10 +79,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var downloadButton: View
     private lateinit var cancelButton: View
     private lateinit var closeButton: View
-    private lateinit var logToggleButton: View
-    private lateinit var logToggleLabel: TextView
-    private lateinit var activityLogContainer: View
-    private lateinit var logTextView: TextView
 
     // Download progress views
     private lateinit var downloadProgressContainer: View
@@ -88,14 +87,11 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     // Section containers
     private lateinit var movieInfoSection: View
-    private lateinit var genresSection: View
     private lateinit var castSection: View
-    private lateinit var crewSection: View
     private lateinit var detailsScroll: View
 
     // RecyclerViews
     private lateinit var movieStatsRecycler: RecyclerView
-    private lateinit var genreChipRecycler: RecyclerView
     private lateinit var castChipRecycler: RecyclerView
     private lateinit var fileMetadataChipRecycler: RecyclerView
     private lateinit var settingsRowRecycler: RecyclerView
@@ -118,7 +114,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     private var bufferSizeThresholdMB = 300
     private var lastDownloadProgress = 0
     private var lastDownloadedBytes = 0L
-    private var isActivityLogVisible = false
     private var staticBackdropActive = false
     private var backgroundPreviewActive = false
 
@@ -140,9 +135,10 @@ class MediaDetailsActivity : AppCompatActivity() {
         loadSettings()
         bindHeader()
         setupSettingsRow()
-        focusFirstUsableButton()
         startListeningToUpdates()
-        restrictFocusToActionButtons()   // ← D-pad movement limited to action buttons + close
+        restrictFocusToActionButtons()
+        installActionOnlyFocusGuard()
+        focusFirstUsableButton()
         recordDetailPageVisit()
     }
 
@@ -153,14 +149,10 @@ class MediaDetailsActivity : AppCompatActivity() {
         titleTextView = findViewById(R.id.title)
         taglineTextView = findViewById(R.id.tagline_text)
         descriptionTextView = findViewById(R.id.description)
-        originalTitleTextView = findViewById(R.id.original_title_text)
-        crewInfoTextView = findViewById(R.id.crew_info_text)
         posterImageView = findViewById(R.id.poster_image)
         detailsScroll = findViewById(R.id.details_scroll)
         movieInfoSection = findViewById(R.id.movie_info_section)
-        genresSection = findViewById(R.id.genres_section)
         castSection = findViewById(R.id.cast_section)
-        crewSection = findViewById(R.id.crew_section)
         detailBackdropImage = findViewById(R.id.detail_backdrop)
         detailBackdropScrim = findViewById(R.id.detail_backdrop_scrim)
         detailPageContent = findViewById(R.id.detail_page_content)
@@ -173,11 +165,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         downloadButton = findViewById(R.id.action_download)
         cancelButton = findViewById(R.id.action_cancel)
         closeButton = findViewById(R.id.action_close)
-        logToggleButton = findViewById(R.id.action_toggle_log)
-        logToggleLabel = findViewById(R.id.toggle_log_label)
-        activityLogContainer = findViewById(R.id.activity_log_container)
-        logTextView = findViewById(R.id.log_text_view)
-        setActivityLogVisible(false)
 
         // Download progress
         downloadProgressContainer = findViewById(R.id.download_progress_container)
@@ -186,7 +173,6 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         // Recyclers
         movieStatsRecycler = findViewById(R.id.movie_stats_row)
-        genreChipRecycler = findViewById(R.id.genre_chip_row)
         castChipRecycler = findViewById(R.id.cast_chip_row)
         fileMetadataChipRecycler = findViewById(R.id.file_metadata_chip_row)
         settingsRowRecycler = findViewById(R.id.settings_row)
@@ -306,105 +292,101 @@ class MediaDetailsActivity : AppCompatActivity() {
      * Collects ALL listeners in a single function.
      */
     private fun setupListeners() {
-        // Play button listener (enabled/disabled dynamically)
-        playButton.setOnClickListener {
+        bindActionButton(playButton) {
             if (isFullyDownloaded()) openFullScreenPlayback()
         }
-        previewFullscreenButton.setOnClickListener { openFullScreenPlayback() }
-
-        // Download button listener
-        downloadButton.setOnClickListener { startDownload() }
-
-        // Cancel button listener
-        cancelButton.setOnClickListener { cancelCurrentDownload() }
-
-        closeButton.setOnClickListener { handleClose() }
-        logToggleButton.setOnClickListener { toggleActivityLog() }
+        bindActionButton(previewFullscreenButton) { openFullScreenPlayback() }
+        bindActionButton(downloadButton) { startDownload() }
+        bindActionButton(cancelButton) { cancelCurrentDownload() }
+        bindActionButton(closeButton) { handleClose() }
     }
 
-    private fun setActivityLogVisible(visible: Boolean) {
-        isActivityLogVisible = visible
-        activityLogContainer.visibility = if (visible) View.VISIBLE else View.GONE
-        logToggleLabel.setText(if (visible) R.string.toggle_log_hide else R.string.toggle_log_show)
-        updateActionFocusWiring()
-    }
-
-    private fun toggleActivityLog() {
-        setActivityLogVisible(!isActivityLogVisible)
+    private fun bindActionButton(button: View, action: () -> Unit) {
+        button.isClickable = true
+        button.setOnClickListener { action() }
+        button.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
+            ) {
+                action()
+                true
+            } else {
+                false
+            }
+        }
     }
 
     // ==================== Focus / D-pad Movement ====================
 
+    private fun isActionFocusTarget(view: View?): Boolean {
+        if (view == null) return false
+        val actionBar = findViewById<View>(R.id.details_actions_bar) ?: return false
+        var current: View? = view
+        while (current != null) {
+            if (current === actionBar) return true
+            current = current.parent as? View
+        }
+        return false
+    }
+
     /**
-     * Restricts D-pad / remote "movement" to the action buttons plus the
-     * close (✕) button. Close is always enabled and reachable via Up.
+     * Restricts D-pad / remote movement to the bottom action bar only.
      */
     private fun restrictFocusToActionButtons() {
+        val fileDetailsSection = findViewById<View>(R.id.file_details_section)
 
-        // 1. Make every other interactive element unreachable by the focus engine.
         val nonFocusable = listOf(
-            titleTextView, taglineTextView, descriptionTextView, originalTitleTextView,
-            crewInfoTextView, posterImageView, detailBackdropImage, detailBackdropScrim,
-            detailsScroll, movieInfoSection, genresSection, castSection, crewSection,
-            backdropVideoHost, activityLogContainer,
-            logTextView, downloadProgressContainer, downloadStatusText,
-            downloadProgressBar, movieStatsRecycler, genreChipRecycler, castChipRecycler,
+            titleTextView, taglineTextView, descriptionTextView,
+            posterImageView, detailBackdropImage, detailBackdropScrim,
+            detailsScroll, fileDetailsSection, movieInfoSection, castSection,
+            backdropVideoHost, downloadProgressContainer, downloadStatusText,
+            downloadProgressBar, movieStatsRecycler, castChipRecycler,
             fileMetadataChipRecycler, settingsRowRecycler
         )
         nonFocusable.forEach {
             it.isFocusable = false
             it.isFocusableInTouchMode = false
-            // RecyclerViews also try to grab focus for their children:
             (it as? RecyclerView)?.apply {
                 descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
                 isFocusable = false
             }
         }
+        (detailsScroll as ViewGroup).descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
 
-        // 2. Make the action buttons, log toggle, preview fullscreen, and close button focus targets.
         listOf(
+            closeButton,
+            previewFullscreenButton,
             playButton,
             downloadButton,
-            cancelButton,
-            closeButton,
-            logToggleButton,
-            previewFullscreenButton
+            cancelButton
         ).forEach {
             it.isFocusable = true
             it.isFocusableInTouchMode = true
         }
 
-        // Close is always usable.
         closeButton.isEnabled = true
-
-        // 3. Wire the D-pad targets based on the buttons currently on screen.
         updateActionFocusWiring()
     }
 
+    /** Snaps focus back to the action bar if it escapes into scroll content. */
+    private fun installActionOnlyFocusGuard() {
+        window.decorView.viewTreeObserver.addOnGlobalFocusChangeListener { _, newFocus ->
+            if (newFocus != null && !isActionFocusTarget(newFocus)) {
+                window.decorView.post { focusFirstUsableButton() }
+            }
+        }
+    }
+
     /**
-     * Wires the D-pad focus targets among the action buttons and the close (✕)
-     * button, using ONLY the buttons that can currently take focus
-     * (visible + enabled).
-     *
-     * This fixes the bug where moving focus to the close button trapped it there:
-     * previously "Down" from close was hard-wired to Play, so when Play was
-     * disabled (or the second-slot button was hidden) focus could not return to
-     * any active button. Now close always points down to the first button that
-     * can actually receive focus, and the horizontal loop skips hidden/disabled
-     * buttons too.
-     *
-     * Must be called whenever a button's visibility or enabled state changes.
+     * Wires horizontal D-pad movement among visible action-bar buttons.
+     * Up/Down stay on the action bar so focus cannot enter the scrollable content.
      */
     private fun updateActionFocusWiring() {
         val secondButton = if (cancelButton.visibility == View.VISIBLE) cancelButton else downloadButton
-
-        val previewButton = previewFullscreenButton.takeIf { it.visibility == View.VISIBLE }
-        val actionButtons = listOf(playButton, secondButton)
-            .filter { it.visibility == View.VISIBLE && it.isEnabled }
         val focusables = buildList {
-            add(logToggleButton)
-            previewButton?.let { add(it) }
-            addAll(actionButtons)
+            add(closeButton)
+            if (previewFullscreenButton.isVisible) add(previewFullscreenButton)
+            addAll(listOf(playButton, secondButton).filter { it.isVisible && it.isEnabled })
         }
 
         focusables.forEachIndexed { index, button ->
@@ -412,15 +394,9 @@ class MediaDetailsActivity : AppCompatActivity() {
             val right = focusables[(index + 1) % focusables.size]
             button.nextFocusLeftId = left.id
             button.nextFocusRightId = right.id
-            button.nextFocusUpId = R.id.action_close
+            button.nextFocusUpId = button.id
+            button.nextFocusDownId = button.id
         }
-
-        previewButton?.nextFocusDownId = R.id.action_close
-
-        closeButton.nextFocusDownId = focusables.firstOrNull()?.id ?: R.id.action_close
-        closeButton.nextFocusUpId = previewButton?.id ?: R.id.action_close
-        closeButton.nextFocusLeftId = R.id.action_close
-        closeButton.nextFocusRightId = R.id.action_close
     }
 
     /**
@@ -432,8 +408,13 @@ class MediaDetailsActivity : AppCompatActivity() {
         root.post {
             // Only one of download/cancel is visible at a time; filtering by
             // visibility keeps focus off the hidden second-slot button.
-            listOf(playButton, downloadButton, cancelButton, logToggleButton)
-                .firstOrNull { it.visibility == View.VISIBLE && it.isEnabled }
+            buildList {
+                if (previewFullscreenButton.isVisible) add(previewFullscreenButton)
+                add(playButton)
+                add(downloadButton)
+                add(cancelButton)
+                add(closeButton)
+            }.firstOrNull { it.isVisible && it.isEnabled }
                 ?.requestFocus()
         }
     }
@@ -505,30 +486,15 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
         if (shouldStartPreview(progress, downloadedBytes, downloadComplete)) {
             updatePreviewSection(playablePath)
-            logPreviewAutoPlayTrigger(progress, downloadedBytes)
+            markPreviewAutoPlayStarted()
         } else {
             hidePreviewSection()
         }
     }
 
-    private fun logPreviewAutoPlayTrigger(progress: Int, downloadedBytes: Long) {
+    private fun markPreviewAutoPlayStarted() {
         if (!isAutoPlayEnabled || autoPlayStarted) return
         autoPlayStarted = true
-        val downloadedMB = downloadedBytes / (1024.0 * 1024.0)
-        val progressMet = progressThreshold > 0 && progress >= progressThreshold
-        val bufferMet = bufferSizeThresholdMB > 0 && downloadedMB >= bufferSizeThresholdMB
-        val trigger = when {
-            progressMet && bufferMet ->
-                "progress $progress% and buffer ${"%.1f".format(downloadedMB)} MB"
-            progressMet -> "progress $progress%"
-            bufferMet -> "buffer ${"%.1f".format(downloadedMB)} MB"
-            else -> "file playable"
-        }
-        ActivityLogHelper.prepend(
-            this@MediaDetailsActivity,
-            logTextView,
-            "Preview auto-play at $trigger"
-        )
     }
 
     private fun applyDownloadingState(
@@ -546,9 +512,24 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun openFullScreenPlayback() {
+        if (!ensureVlcInstalled()) return
         val playablePath = resolvePlayablePath() ?: return
+        val shouldResumePreview = backgroundPreviewActive
         stopPreviewPlaybackOnly()
-        startPlayback(playablePath)
+        when (val result = launchPlayback(playablePath)) {
+            is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
+            is PlayerHelper.PlayResult.Failed -> {
+                showPlaybackError(result.reason)
+                if (shouldResumePreview) {
+                    updatePreviewIfAllowed(
+                        playablePath,
+                        lastDownloadProgress,
+                        lastDownloadedBytes,
+                        isFullyDownloaded()
+                    )
+                }
+            }
+        }
     }
 
     private fun stopPreviewPlaybackOnly() {
@@ -561,11 +542,6 @@ class MediaDetailsActivity : AppCompatActivity() {
             isAutoPlayEnabled = settingsDataStore.autoPlay.first()
             progressThreshold = settingsDataStore.progressThreshold.first()
             bufferSizeThresholdMB = settingsDataStore.bufferSizeThreshold.first()
-            ActivityLogHelper.prepend(
-                this@MediaDetailsActivity,
-                logTextView,
-                "Settings loaded: AutoPlay=$isAutoPlayEnabled, Threshold=$progressThreshold%, Buffer=$bufferSizeThresholdMB MB"
-            )
             refreshLocalFileAndUpdateUI()
         }
     }
@@ -579,12 +555,10 @@ class MediaDetailsActivity : AppCompatActivity() {
             }
             isFullyDownloaded() && isLocalFilePlayable() -> {
                 applyActionButtonState(ActionButtonState.READY)
-                ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Full file available → Play enabled")
                 updatePreviewIfAllowed(message.localPath, downloadComplete = true)
             }
             else -> {
                 applyActionButtonState(ActionButtonState.FRESH)
-                ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"No physical file → Download only")
                 hidePreviewSection()
             }
         }
@@ -604,23 +578,11 @@ class MediaDetailsActivity : AppCompatActivity() {
         if (PreviewPlayerHelper.play(
             this,
             backdropVideoHost,
-            playablePath,
-            onStarted = {
-                ActivityLogHelper.prepend(
-                    this@MediaDetailsActivity,
-                    logTextView,
-                    "Background preview playback started"
-                )
-            }
+            playablePath
         )) {
             lastPreviewPath = playablePath
         } else {
             hidePreviewSection()
-            ActivityLogHelper.prepend(
-                this@MediaDetailsActivity,
-                logTextView,
-                "Background preview playback failed"
-            )
         }
     }
 
@@ -631,6 +593,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         detailBackdropScrim.visibility = View.VISIBLE
         detailPageContent.setBackgroundResource(android.R.color.transparent)
         previewFullscreenButton.visibility = View.VISIBLE
+        previewFullscreenButton.isEnabled = true
+        updateActionFocusWiring()
     }
 
     private fun hidePreviewSection() {
@@ -669,12 +633,10 @@ class MediaDetailsActivity : AppCompatActivity() {
         cancelButton.requestFocus()
         activeDownloads.add(message.fileId)
         recordHistoryDownloading()
-        ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Download started for fileId: ${message.fileId}")
 
         lifecycleScope.launch {
             try {
                 val isTestMode = settingsDataStore.isTestMode.first()
-                ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Mode: ${if (isTestMode) "Test Server" else "Telegram"}")
                 MediaDownloadDataProvider.downloadMedia(
                     mode = isTestMode,
                     mediaMessage = message,
@@ -685,7 +647,6 @@ class MediaDetailsActivity : AppCompatActivity() {
                     runOnUiThread {
                         if (isTestMode) {
                             message = updatedMessage
-                            ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Download completed successfully")
                             onDownloadComplete(message.localPath)
                             currentDownload = MediaFileHelper.buildDownloadingFileInfo(
                                 fileId = message.fileId,
@@ -698,7 +659,6 @@ class MediaDetailsActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("MediaDetailsActivity", "Download error", e)
                 runOnUiThread {
-                    ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Error: ${e.message}")
                     resetDownloadUI()
                 }
             }
@@ -782,7 +742,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         activeDownloads.clear()
         downloadProgressContainer.visibility = View.GONE
         syncDownloadInfoFromPath(localPath)
-        ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Download completed - File saved")
         recordHistoryDownloaded()
         checkLocalFileAndUpdateUI()
     }
@@ -843,23 +802,67 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun startPlayback(filePath: String) {
+    private fun launchPlayback(filePath: String): PlayerHelper.PlayResult {
         val fileId = currentDownload?.fileId?.takeIf { it != 0 } ?: message.fileId
-        when (val result = PlayerHelper.play(this, filePath, fileId)) {
-            is PlayerHelper.PlayResult.Started -> {
-                ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Started VLC playback for file ID: ${result.fileId}, path: ${result.path}")
-                recordHistoryViewed()
-            }
-            is PlayerHelper.PlayResult.Failed -> {
-                ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,result.reason)
-                when {
-                    isDownloading ->
-                        applyActionButtonState(ActionButtonState.DOWNLOADING)
-                    !isDownloading && !isLocalFilePlayable(filePath) ->
-                        applyActionButtonState(ActionButtonState.FRESH)
-                }
-            }
+        return PlayerHelper.play(this, filePath, fileId)
+    }
+
+    private fun startPlayback(filePath: String) {
+        if (!ensureVlcInstalled()) return
+        when (val result = launchPlayback(filePath)) {
+            is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
+            is PlayerHelper.PlayResult.Failed -> handlePlaybackFailure(result, filePath)
         }
+    }
+
+    private fun handlePlaybackFailure(result: PlayerHelper.PlayResult.Failed, filePath: String) {
+        showPlaybackError(result.reason)
+        when {
+            isDownloading -> applyActionButtonState(ActionButtonState.DOWNLOADING)
+            !isDownloading && !isLocalFilePlayable(filePath) ->
+                applyActionButtonState(ActionButtonState.FRESH)
+        }
+    }
+
+    private fun ensureVlcInstalled(): Boolean {
+        if (PlayerHelper.isVlcInstalled(this)) return true
+        showInstallVlcDialog()
+        return false
+    }
+
+    private fun showInstallVlcDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.playback_vlc_required_title)
+            .setMessage(R.string.playback_vlc_required_message)
+            .setPositiveButton(R.string.playback_vlc_install) { _, _ -> openVlcInstallPage() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun openVlcInstallPage() {
+        val packageName = PlayerHelper.VLC_PACKAGE
+        val marketIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("market://details?id=$packageName")
+        )
+        try {
+            startActivity(marketIntent)
+        } catch (_: ActivityNotFoundException) {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                )
+            )
+        }
+    }
+
+    private fun showPlaybackError(reason: String) {
+        if (reason.contains("not installed", ignoreCase = true)) {
+            showInstallVlcDialog()
+            return
+        }
+        Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
     }
 
     private fun stopVlcOnly() {
@@ -869,7 +872,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun stopPlayback() {
         stopVlcOnly()
         stopPreviewPlaybackOnly()
-        ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Player Playback Stoped!")
     }
 
     private fun updateDownloadProgress(progress: Int, downloadedBytes: Long = 0, totalBytes: Long = 0) {
@@ -883,16 +885,11 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun cancelCurrentDownload() {
         // B → A: stop playback, stop download, delete partial file, hide Cancel/Play, show Download.
         stopPlayback()
-        ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"User cancelled download")
         TelegramClientManager.cancelDownloadAndDelete(activeDownloads)
 
-        val deletedCount = MediaFileHelper.deleteFiles(
+        MediaFileHelper.deleteFiles(
             listOfNotNull(message.localPath, currentDownload?.localPath)
         )
-        if (deletedCount > 0) {
-            ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Deleted $deletedCount file(s)")
-        }
-
         message.localPath = ""
         message.isDownloaded = false
         isDownloading = false
@@ -908,7 +905,6 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         applyActionButtonState(ActionButtonState.FRESH)
         focusFirstUsableButton()
-        ActivityLogHelper.prepend(this@MediaDetailsActivity, logTextView,"Download cancelled and cleaned up")
     }
 
     private fun bindHeader() {
@@ -927,7 +923,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         val horizontal = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         listOf(
             movieStatsRecycler,
-            genreChipRecycler,
             castChipRecycler,
             fileMetadataChipRecycler,
             settingsRowRecycler
@@ -955,11 +950,6 @@ class MediaDetailsActivity : AppCompatActivity() {
                     bindDetailBackdrop(details)
                     bindMovieSections(details, info)
                     bindPromoBanner(details)
-                    ActivityLogHelper.prepend(
-                        this@MediaDetailsActivity,
-                        logTextView,
-                        "TMDB metadata loaded for ${details.title}"
-                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading TMDB metadata", e)
@@ -973,7 +963,11 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun bindTmdbHeader(details: TmdbMovieDetails) {
-        titleTextView.text = PosterFetcher.displayTitle(details)
+        titleTextView.text = formatTitleWithOriginal(
+            PosterFetcher.displayTitle(details),
+            details.title,
+            details.original_title
+        )
 
         val tagline = details.tagline?.takeIf { it.isNotBlank() }
         if (tagline != null) {
@@ -1026,7 +1020,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun clearDetailBackdrop() {
         staticBackdropActive = false
-        Glide.with(this).clear(detailBackdropImage)
+        GlideHelper.clear(detailBackdropImage)
         detailBackdropImage.setImageDrawable(null)
         if (!backgroundPreviewActive) {
             detailBackdropImage.visibility = View.GONE
@@ -1073,9 +1067,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun bindMovieSections(details: TmdbMovieDetails, info: ReleaseInfo) {
         bindMovieStats(details, info)
-        bindGenreRow(details)
         bindCastRow(details)
-        bindCrewSection(details)
     }
 
     private fun bindMovieStats(details: TmdbMovieDetails, info: ReleaseInfo) {
@@ -1100,17 +1092,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             }
         }
 
-        val originalTitle = details.original_title?.takeIf {
-            it.isNotBlank() && !it.equals(details.title, ignoreCase = true)
-        }
-        if (originalTitle != null) {
-            originalTitleTextView.text = getString(R.string.detail_original_title, originalTitle)
-            originalTitleTextView.visibility = View.VISIBLE
-        } else {
-            originalTitleTextView.visibility = View.GONE
-        }
-
-        if (stats.isEmpty() && originalTitle == null) {
+        if (stats.isEmpty()) {
             movieInfoSection.visibility = View.GONE
         } else {
             movieStatsRecycler.adapter = DetailStatAdapter(stats)
@@ -1118,21 +1100,9 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun bindGenreRow(details: TmdbMovieDetails) {
-        val genres = details.genres.orEmpty().map {
-            MetadataChipItem(R.drawable.ic_album, it.name)
-        }
-        if (genres.isEmpty()) {
-            genresSection.visibility = View.GONE
-        } else {
-            genreChipRecycler.adapter = MetadataChipAdapter(genres)
-            genresSection.visibility = View.VISIBLE
-        }
-    }
-
     private fun bindCastRow(details: TmdbMovieDetails) {
         val cast = details.credits?.cast.orEmpty()
-            .take(10)
+            .take(5)
             .map {
                 CastChipItem(
                     name = it.name,
@@ -1148,35 +1118,22 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun bindCrewSection(details: TmdbMovieDetails) {
-        val lines = buildList {
-            FormatHelper.joinNames(PosterFetcher.crewNames(details, "Director"))?.let {
-                add(getString(R.string.detail_crew_director, it))
-            }
-            FormatHelper.joinNames(PosterFetcher.crewNames(details, "Screenplay"))?.let {
-                add(getString(R.string.detail_crew_writer, it))
-            } ?: FormatHelper.joinNames(PosterFetcher.crewNames(details, "Writer"))?.let {
-                add(getString(R.string.detail_crew_writer, it))
-            }
-            FormatHelper.joinNames(PosterFetcher.crewNames(details, "Producer"))?.let {
-                add(getString(R.string.detail_crew_producer, it))
-            }
-        }
-        if (lines.isEmpty()) {
-            crewSection.visibility = View.GONE
-        } else {
-            crewInfoTextView.text = lines.joinToString("\n")
-            crewSection.visibility = View.VISIBLE
-        }
-    }
-
     private fun clearMovieSections() {
         movieInfoSection.visibility = View.GONE
-        genresSection.visibility = View.GONE
         castSection.visibility = View.GONE
-        crewSection.visibility = View.GONE
         taglineTextView.visibility = View.GONE
-        originalTitleTextView.visibility = View.GONE
+    }
+
+    private fun formatTitleWithOriginal(
+        displayTitle: String,
+        canonicalTitle: String?,
+        originalTitle: String?
+    ): String {
+        val original = originalTitle?.takeIf {
+            it.isNotBlank() &&
+                !it.equals(canonicalTitle ?: displayTitle, ignoreCase = true)
+        }
+        return if (original != null) "$displayTitle ($original)" else displayTitle
     }
 
     private fun buildFileMetadataChips(info: ReleaseInfo): List<MetadataChipItem> = buildList {
@@ -1264,7 +1221,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         fileUpdateJob?.cancel()
-        hidePreviewSection()
+        PreviewPlayerHelper.stop()
         stopPlayback()
         super.onDestroy()
     }

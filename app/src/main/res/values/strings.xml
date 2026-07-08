@@ -65,6 +65,9 @@
     <string name="btn_downloading">Downloading…</string>
     <string name="preview_label">PREVIEW</string>
     <string name="preview_fullscreen">Full Screen</string>
+    <string name="playback_vlc_required_title">VLC required</string>
+    <string name="playback_vlc_required_message">Full screen playback opens in VLC for Android. Install VLC to continue.</string>
+    <string name="playback_vlc_install">Install VLC</string>
     <string name="activity_log_title">ACTIVITY LOG</string>
     <string name="toggle_log_show">SHOW LOG</string>
     <string name="toggle_log_hide">HIDE LOG</string>

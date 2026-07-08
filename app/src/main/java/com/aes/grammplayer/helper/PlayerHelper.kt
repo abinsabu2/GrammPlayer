@@ -1,5 +1,6 @@
 package com.aes.grammplayer.helper
 
+import android.content.ClipData
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -74,24 +75,22 @@ object PlayerHelper {
     }
 
     private fun buildVlcPlayIntent(context: Context, contentUri: Uri): Intent {
-        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+        fun baseIntent(): Intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(contentUri, "video/*")
-            setPackage(VLC_PACKAGE)
+            clipData = ClipData.newRawUri("media", contentUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             putExtra("title", "GrammPlayer")
             putExtra("from_start", true)
         }
+
+        val viewIntent = baseIntent().apply { setPackage(VLC_PACKAGE) }
         if (viewIntent.resolveActivity(context.packageManager) != null) {
             return viewIntent
         }
 
         Log.d(TAG, "VLC VIEW intent not resolved; using explicit VideoPlayerActivity")
-        return Intent(Intent.ACTION_VIEW).apply {
+        return baseIntent().apply {
             component = ComponentName(VLC_PACKAGE, VLC_PLAYER_ACTIVITY)
-            setDataAndType(contentUri, "video/*")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            putExtra("title", "GrammPlayer")
-            putExtra("from_start", true)
         }
     }
 

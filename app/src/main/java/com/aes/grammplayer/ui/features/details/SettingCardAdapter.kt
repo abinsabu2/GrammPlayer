@@ -31,6 +31,9 @@ class SettingCardAdapter(private val items: List<SettingItem>) :
         val item = items[position]
         val context = holder.itemView.context
 
+        holder.itemView.isFocusable = false
+        holder.itemView.isFocusableInTouchMode = false
+
         if (item.iconRes != null) {
             holder.icon.visibility = View.VISIBLE
             holder.icon.setImageResource(item.iconRes)

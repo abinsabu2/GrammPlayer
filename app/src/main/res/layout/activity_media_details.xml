@@ -106,7 +106,9 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:descendantFocusability="blocksDescendants"
             android:fillViewport="true"
+            android:focusable="false"
             android:scrollbars="none">
 
             <LinearLayout
@@ -114,43 +116,13 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-        <!-- Preview + close -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/detail_screen_padding_h"
-            android:layout_marginTop="@dimen/detail_screen_padding_v"
-            android:layout_marginEnd="@dimen/detail_screen_padding_h"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:orientation="horizontal"
-                android:paddingTop="@dimen/detail_section_gap"
-                android:paddingBottom="2dp">
-
-                <ImageView
-                    android:id="@+id/action_close"
-                    android:layout_width="@dimen/detail_close_size"
-                    android:layout_height="@dimen/detail_close_size"
-                    android:background="@drawable/close_button_background"
-                    android:clickable="true"
-                    android:contentDescription="@string/close_button_description"
-                    android:focusable="true"
-                    android:padding="@dimen/detail_close_padding"
-                    android:src="@drawable/ic_cancel" />
-            </LinearLayout>
-        </LinearLayout>
-
         <!-- Poster + details -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingStart="@dimen/detail_screen_padding_h"
-            android:paddingTop="@dimen/detail_section_gap"
+            android:paddingTop="@dimen/detail_screen_padding_v"
             android:paddingEnd="@dimen/detail_screen_padding_h"
             android:paddingBottom="@dimen/detail_screen_padding_v">
 
@@ -251,160 +223,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Movie info -->
-        <LinearLayout
-            android:id="@+id/movie_info_section"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="@dimen/detail_screen_padding_h"
-            android:paddingEnd="@dimen/detail_screen_padding_h"
-            android:paddingBottom="@dimen/detail_section_gap"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="2dp"
-                android:letterSpacing="0.06"
-                android:text="@string/detail_section_movie_info"
-                android:textAllCaps="true"
-                android:textColor="@color/detail_text_label"
-                android:textSize="@dimen/detail_label_text"
-                android:textStyle="bold" />
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/detail_section_gap"
-                android:scrollbars="none">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/movie_stats_row"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:listitem="@layout/item_detail_stat" />
-            </HorizontalScrollView>
-
-            <TextView
-                android:id="@+id/original_title_text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/detail_text_muted"
-                android:textSize="@dimen/detail_label_text"
-                android:visibility="gone"
-                tools:text="Original: Dune: Part Two"
-                tools:visibility="visible" />
-        </LinearLayout>
-
-        <!-- Genres -->
-        <LinearLayout
-            android:id="@+id/genres_section"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="@dimen/detail_screen_padding_h"
-            android:paddingEnd="@dimen/detail_screen_padding_h"
-            android:paddingBottom="@dimen/detail_section_gap"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="2dp"
-                android:letterSpacing="0.06"
-                android:text="@string/detail_section_genres"
-                android:textAllCaps="true"
-                android:textColor="@color/detail_text_label"
-                android:textSize="@dimen/detail_label_text"
-                android:textStyle="bold" />
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/genre_chip_row"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:listitem="@layout/item_metadata_chip" />
-            </HorizontalScrollView>
-        </LinearLayout>
-
-        <!-- Cast -->
-        <LinearLayout
-            android:id="@+id/cast_section"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="@dimen/detail_screen_padding_h"
-            android:paddingEnd="@dimen/detail_screen_padding_h"
-            android:paddingBottom="@dimen/detail_section_gap"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="2dp"
-                android:letterSpacing="0.06"
-                android:text="@string/detail_section_cast"
-                android:textAllCaps="true"
-                android:textColor="@color/detail_text_label"
-                android:textSize="@dimen/detail_label_text"
-                android:textStyle="bold" />
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/cast_chip_row"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    tools:listitem="@layout/item_cast_chip" />
-            </HorizontalScrollView>
-        </LinearLayout>
-
-        <!-- Crew -->
-        <LinearLayout
-            android:id="@+id/crew_section"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="@dimen/detail_screen_padding_h"
-            android:paddingEnd="@dimen/detail_screen_padding_h"
-            android:paddingBottom="@dimen/detail_section_gap"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="2dp"
-                android:letterSpacing="0.06"
-                android:text="@string/detail_section_crew"
-                android:textAllCaps="true"
-                android:textColor="@color/detail_text_label"
-                android:textSize="@dimen/detail_label_text"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/crew_info_text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:lineSpacingExtra="2dp"
-                android:textColor="@color/detail_text_body"
-                android:textSize="@dimen/detail_body_text"
-                tools:text="Director: Denis Villeneuve&#10;Writer: Jon Spaihts" />
-        </LinearLayout>
-
         <!-- File details -->
         <LinearLayout
             android:id="@+id/file_details_section"
@@ -467,6 +285,79 @@
                 tools:listitem="@layout/item_setting_card" />
         </HorizontalScrollView>
 
+        <!-- Movie info -->
+        <LinearLayout
+            android:id="@+id/movie_info_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/detail_screen_padding_h"
+            android:paddingEnd="@dimen/detail_screen_padding_h"
+            android:paddingBottom="@dimen/detail_section_gap"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:letterSpacing="0.06"
+                android:text="@string/detail_section_movie_info"
+                android:textAllCaps="true"
+                android:textColor="@color/detail_text_label"
+                android:textSize="@dimen/detail_label_text"
+                android:textStyle="bold" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/detail_section_gap"
+                android:scrollbars="none">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/movie_stats_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:listitem="@layout/item_detail_stat" />
+            </HorizontalScrollView>
+        </LinearLayout>
+
+        <!-- Cast -->
+        <LinearLayout
+            android:id="@+id/cast_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/detail_screen_padding_h"
+            android:paddingEnd="@dimen/detail_screen_padding_h"
+            android:paddingBottom="@dimen/detail_section_gap"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:letterSpacing="0.06"
+                android:text="@string/detail_section_cast"
+                android:textAllCaps="true"
+                android:textColor="@color/detail_text_label"
+                android:textSize="@dimen/detail_label_text"
+                android:textStyle="bold" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/cast_chip_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:listitem="@layout/item_cast_chip" />
+            </HorizontalScrollView>
+        </LinearLayout>
+
             </LinearLayout>
         </ScrollView>
 
@@ -483,35 +374,19 @@
             android:paddingEnd="@dimen/detail_screen_padding_h"
             android:paddingBottom="@dimen/detail_section_gap">
 
-            <LinearLayout
-                android:id="@+id/action_toggle_log"
-                android:layout_width="wrap_content"
+            <ImageView
+                android:id="@+id/action_close"
+                android:layout_width="@dimen/detail_action_button_height"
                 android:layout_height="@dimen/detail_action_button_height"
                 android:background="@drawable/detail_button_outlined"
-                android:defaultFocusHighlightEnabled="false"
+                android:clickable="true"
+                android:contentDescription="@string/close_button_description"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:paddingStart="@dimen/detail_button_padding_start"
-                android:paddingEnd="@dimen/detail_button_padding_end">
-
-                <ImageView
-                    android:layout_width="@dimen/detail_button_icon_size"
-                    android:layout_height="@dimen/detail_button_icon_size"
-                    android:layout_marginEnd="@dimen/detail_section_gap"
-                    android:src="@drawable/ic_layers"
-                    tools:ignore="ContentDescription" />
-
-                <TextView
-                    android:id="@+id/toggle_log_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/toggle_log_show"
-                    android:textColor="@color/detail_text_primary"
-                    android:textSize="@dimen/detail_button_text"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                android:padding="@dimen/detail_close_padding"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_cancel"
+                tools:ignore="ContentDescription" />
 
             <View
                 android:layout_width="0dp"
@@ -521,15 +396,51 @@
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="end"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/preview_fullscreen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/detail_action_button_height"
+                    android:background="@drawable/detail_button_outlined"
+                    android:clickable="true"
+                    android:defaultFocusHighlightEnabled="false"
+                    android:descendantFocusability="blocksDescendants"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingStart="@dimen/detail_button_padding_start"
+                    android:paddingEnd="@dimen/detail_button_padding_end"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <ImageView
+                        android:layout_width="@dimen/detail_button_icon_size"
+                        android:layout_height="@dimen/detail_button_icon_size"
+                        android:layout_marginEnd="@dimen/detail_section_gap"
+                        android:src="@drawable/ic_play_arrow"
+                        tools:ignore="ContentDescription" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/preview_fullscreen"
+                        android:textColor="@color/detail_text_primary"
+                        android:textSize="@dimen/detail_button_text"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/action_play"
                     android:layout_width="wrap_content"
                     android:layout_height="@dimen/detail_action_button_height"
+                    android:layout_marginStart="@dimen/detail_button_gap"
                     android:background="@drawable/detail_button_outlined"
+                    android:clickable="true"
                     android:defaultFocusHighlightEnabled="false"
+                    android:descendantFocusability="blocksDescendants"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:gravity="center"
@@ -559,7 +470,9 @@
                     android:layout_height="@dimen/detail_action_button_height"
                     android:layout_marginStart="@dimen/detail_button_gap"
                     android:background="@drawable/detail_button_outlined"
+                    android:clickable="true"
                     android:defaultFocusHighlightEnabled="false"
+                    android:descendantFocusability="blocksDescendants"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:gravity="center"
@@ -589,7 +502,9 @@
                     android:layout_height="@dimen/detail_action_button_height"
                     android:layout_marginStart="@dimen/detail_button_gap"
                     android:background="@drawable/detail_button_outlined"
+                    android:clickable="true"
                     android:defaultFocusHighlightEnabled="false"
+                    android:descendantFocusability="blocksDescendants"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:gravity="center"
@@ -617,97 +532,5 @@
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-
-    <!-- Activity log -->
-    <LinearLayout
-        android:id="@+id/activity_log_container"
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/detail_log_height"
-        android:background="@drawable/detail_log_surface"
-        android:orientation="vertical"
-        android:paddingStart="@dimen/detail_log_padding_h"
-        android:paddingTop="@dimen/detail_log_padding_v"
-        android:paddingEnd="@dimen/detail_log_padding_h"
-        android:paddingBottom="@dimen/detail_log_padding_v"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/detail_section_gap"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            tools:ignore="UseCompoundDrawables">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:letterSpacing="0.05"
-                android:text="@string/activity_log_title"
-                android:textColor="@color/detail_text_label"
-                android:textSize="@dimen/detail_label_text" />
-
-            <ImageView
-                android:layout_width="@dimen/detail_chip_icon_size"
-                android:layout_height="@dimen/detail_chip_icon_size"
-                android:layout_marginStart="@dimen/detail_section_gap"
-                android:src="@drawable/ic_app_logo"
-                tools:ignore="ContentDescription" />
-        </LinearLayout>
-
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:fillViewport="true"
-            android:scrollbars="none">
-
-            <TextView
-                android:id="@+id/log_text_view"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:lineSpacingExtra="2dp"
-                android:textColor="@color/detail_text_body"
-                android:textSize="@dimen/detail_log_text"
-                tools:text="[09:30:20] Submersible checks complete... Success." />
-        </ScrollView>
-    </LinearLayout>
-    </LinearLayout>
-
-    <!-- Floating fullscreen control over background preview -->
-    <LinearLayout
-        android:id="@+id/preview_fullscreen"
-        android:layout_width="wrap_content"
-        android:layout_height="@dimen/detail_preview_fullscreen_height"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="@dimen/detail_screen_padding_h"
-        android:layout_marginBottom="64dp"
-        android:background="@drawable/detail_button_outlined"
-        android:defaultFocusHighlightEnabled="false"
-        android:elevation="6dp"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:paddingStart="@dimen/detail_button_padding_start"
-        android:paddingEnd="@dimen/detail_button_padding_end"
-        android:visibility="gone"
-        tools:visibility="visible">
-
-        <ImageView
-            android:layout_width="@dimen/detail_button_icon_size"
-            android:layout_height="@dimen/detail_button_icon_size"
-            android:layout_marginEnd="@dimen/detail_section_gap"
-            android:src="@drawable/ic_play_arrow"
-            tools:ignore="ContentDescription" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/preview_fullscreen"
-            android:textColor="@color/detail_text_primary"
-            android:textSize="@dimen/detail_button_text"
-            android:textStyle="bold" />
     </LinearLayout>
 </FrameLayout>
