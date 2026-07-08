@@ -17,6 +17,7 @@ object HistoryDataProvider {
     suspend fun loadHistory(): List<HistoryItem> = withContext(Dispatchers.IO) {
         try {
             val context = GPlayerApplication.AppContext
+            HistoryHelper.prepareSession(context)
             val db = AppDatabase.getDatabase(context)
             val userId = HistoryHelper.resolveActiveUserId(context)
             val historyRows = db.historyDao().getByUser(userId).first()
@@ -28,15 +29,6 @@ object HistoryDataProvider {
                     Log.w(TAG, "History row ${row.id} references missing message ${row.message}")
                     return@forEach
                 }
-                val chat = db.chatDao().getById(message.chat).first()
-                if (chat == null || chat.userId != userId) {
-                    Log.w(
-                        TAG,
-                        "Skipping history row ${row.id}: chat ${message.chat} belongs to user ${chat?.userId}, not $userId"
-                    )
-                    return@forEach
-                }
-
                 val onDisk = MediaFileHelper.existsOnDisk(message.localPath)
                 val isDownloaded = row.downloaded && (message.isDownloaded || onDisk)
                 val isDownloading = row.downloading && !isDownloaded

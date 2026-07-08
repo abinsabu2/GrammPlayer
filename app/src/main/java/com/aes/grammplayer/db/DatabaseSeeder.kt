@@ -184,22 +184,6 @@ object DatabaseSeeder {
         chatIds: List<Long>,
         messageIds: List<Long>
     ) {
-        if (messageIds.isEmpty() || db.historyDao().count() > 0) return
-
-        // Seed one history entry per chat, pointing to the first message of that chat
-        // Messages are ordered: chat 1 has messageIds[0..999], chat 2 has [1000..1999], etc.
-        val history = chatIds.mapIndexed { chatIndex, chatId ->
-            val userId = userIds[chatIndex % userIds.size].toInt()
-            val firstMessageOfChat = messageIds[chatIndex * 1000]
-            History(
-                user = userId,
-                chat = chatId.toInt(),
-                message = firstMessageOfChat,
-                viewed = true,
-                downloaded = chatIndex % 2 == 0
-            )
-        }
-
-        history.forEach { db.historyDao().insert(it) }
+        // History is populated only from real user activity (detail page, downloads, playback).
     }
 }

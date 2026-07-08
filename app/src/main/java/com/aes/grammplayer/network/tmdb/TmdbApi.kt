@@ -38,12 +38,15 @@ data class TmdbMovieResult(
 data class TmdbMovieDetails(
     val id: Int,
     val title: String,
+    val original_title: String? = null,
+    val tagline: String? = null,
     val overview: String?,
     val poster_path: String?,
     val backdrop_path: String?,
     val release_date: String?,
-    val runtime: Int?,           // in minutes
+    val runtime: Int?,
     val vote_average: Double?,
+    val status: String? = null,
     val genres: List<Genre>?,
     val credits: Credits? = null,
     val images: Images? = null,

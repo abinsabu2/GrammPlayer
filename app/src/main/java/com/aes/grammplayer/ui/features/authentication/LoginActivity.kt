@@ -163,6 +163,9 @@ class LoginActivity : FragmentActivity() {
             if (countryCode.isNotEmpty() && phone.isNotEmpty()) {
                 UserSession.initialize(fullPhoneNumber)
                 UserSession.userType = if (TestUserConfig.isTestUser(fullPhoneNumber)) UserType.TEST else UserType.REAL
+                lifecycleScope.launch {
+                    HistoryHelper.persistActivePhone(applicationContext, fullPhoneNumber)
+                }
                 settingsDataStore.setTestMode(false)
                 if (UserSession.userType == UserType.TEST) {
                     isTestMode = true
@@ -329,6 +332,7 @@ class LoginActivity : FragmentActivity() {
     private fun navigateToMainApp() {
         loader.dismiss()
         lifecycleScope.launch {
+            HistoryHelper.persistActivePhone(applicationContext, UserSession.phoneNumber)
             HistoryHelper.syncActiveUser(applicationContext)
             val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

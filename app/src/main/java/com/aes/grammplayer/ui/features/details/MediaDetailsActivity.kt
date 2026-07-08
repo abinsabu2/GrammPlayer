@@ -24,8 +24,10 @@ import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
 import com.aes.grammplayer.helper.PreviewPlayerHelper
 import com.aes.grammplayer.network.tmdb.PosterFetcher
+import com.aes.grammplayer.network.tmdb.TmdbMovieDetails
 import com.aes.grammplayer.provider.MediaDownloadDataProvider
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import com.aes.grammplayer.util.tdlib.ReleaseInfo
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
@@ -57,10 +59,17 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     // ==================== All UI Elements Collected Here ====================
     private lateinit var titleTextView: TextView
+    private lateinit var taglineTextView: TextView
     private lateinit var descriptionTextView: TextView
-    private lateinit var posterImageView: View
-    private lateinit var previewContainer: View
-    private lateinit var previewVideoHost: ViewGroup
+    private lateinit var originalTitleTextView: TextView
+    private lateinit var crewInfoTextView: TextView
+    private lateinit var posterImageView: ImageView
+    private lateinit var detailBackdropImage: ImageView
+    private lateinit var detailBackdropScrim: View
+    private lateinit var detailPageContent: View
+    private lateinit var promoBanner: View
+    private lateinit var promoTextView: TextView
+    private lateinit var backdropVideoHost: ViewGroup
     private lateinit var previewFullscreenButton: View
 
     private lateinit var playButton: View
@@ -77,8 +86,18 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var downloadStatusText: TextView
     private lateinit var downloadProgressBar: ProgressBar
 
+    // Section containers
+    private lateinit var movieInfoSection: View
+    private lateinit var genresSection: View
+    private lateinit var castSection: View
+    private lateinit var crewSection: View
+    private lateinit var detailsScroll: View
+
     // RecyclerViews
-    private lateinit var metadataChipRecycler: RecyclerView
+    private lateinit var movieStatsRecycler: RecyclerView
+    private lateinit var genreChipRecycler: RecyclerView
+    private lateinit var castChipRecycler: RecyclerView
+    private lateinit var fileMetadataChipRecycler: RecyclerView
     private lateinit var settingsRowRecycler: RecyclerView
 
     private var fileUpdateJob: Job? = null
@@ -100,6 +119,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private var lastDownloadProgress = 0
     private var lastDownloadedBytes = 0L
     private var isActivityLogVisible = false
+    private var staticBackdropActive = false
+    private var backgroundPreviewActive = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,12 +139,11 @@ class MediaDetailsActivity : AppCompatActivity() {
         setupListeners()
         loadSettings()
         bindHeader()
-        setupMetadataChipRow()
         setupSettingsRow()
         focusFirstUsableButton()
         startListeningToUpdates()
         restrictFocusToActionButtons()   // ← D-pad movement limited to action buttons + close
-        recordHistoryViewed()
+        recordDetailPageVisit()
     }
 
     /**
@@ -131,10 +151,22 @@ class MediaDetailsActivity : AppCompatActivity() {
      */
     private fun initializeViews() {
         titleTextView = findViewById(R.id.title)
+        taglineTextView = findViewById(R.id.tagline_text)
         descriptionTextView = findViewById(R.id.description)
+        originalTitleTextView = findViewById(R.id.original_title_text)
+        crewInfoTextView = findViewById(R.id.crew_info_text)
         posterImageView = findViewById(R.id.poster_image)
-        previewContainer = findViewById(R.id.preview_container)
-        previewVideoHost = findViewById(R.id.preview_video_host)
+        detailsScroll = findViewById(R.id.details_scroll)
+        movieInfoSection = findViewById(R.id.movie_info_section)
+        genresSection = findViewById(R.id.genres_section)
+        castSection = findViewById(R.id.cast_section)
+        crewSection = findViewById(R.id.crew_section)
+        detailBackdropImage = findViewById(R.id.detail_backdrop)
+        detailBackdropScrim = findViewById(R.id.detail_backdrop_scrim)
+        detailPageContent = findViewById(R.id.detail_page_content)
+        promoBanner = findViewById(R.id.promo_banner)
+        promoTextView = findViewById(R.id.promo_text)
+        backdropVideoHost = findViewById(R.id.detail_backdrop_video_host)
         previewFullscreenButton = findViewById(R.id.preview_fullscreen)
 
         playButton = findViewById(R.id.action_play)
@@ -153,8 +185,13 @@ class MediaDetailsActivity : AppCompatActivity() {
         downloadProgressBar = findViewById(R.id.download_progress_bar)
 
         // Recyclers
-        metadataChipRecycler = findViewById(R.id.metadata_chip_row)
+        movieStatsRecycler = findViewById(R.id.movie_stats_row)
+        genreChipRecycler = findViewById(R.id.genre_chip_row)
+        castChipRecycler = findViewById(R.id.cast_chip_row)
+        fileMetadataChipRecycler = findViewById(R.id.file_metadata_chip_row)
         settingsRowRecycler = findViewById(R.id.settings_row)
+
+        setupRecyclerRows()
 
         applyActionButtonState(ActionButtonState.FRESH)
     }
@@ -306,10 +343,13 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         // 1. Make every other interactive element unreachable by the focus engine.
         val nonFocusable = listOf(
-            titleTextView, descriptionTextView, posterImageView,
-            previewContainer, previewVideoHost, activityLogContainer,
+            titleTextView, taglineTextView, descriptionTextView, originalTitleTextView,
+            crewInfoTextView, posterImageView, detailBackdropImage, detailBackdropScrim,
+            detailsScroll, movieInfoSection, genresSection, castSection, crewSection,
+            backdropVideoHost, activityLogContainer,
             logTextView, downloadProgressContainer, downloadStatusText,
-            downloadProgressBar, metadataChipRecycler, settingsRowRecycler
+            downloadProgressBar, movieStatsRecycler, genreChipRecycler, castChipRecycler,
+            fileMetadataChipRecycler, settingsRowRecycler
         )
         nonFocusable.forEach {
             it.isFocusable = false
@@ -532,6 +572,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun checkLocalFileAndUpdateUI() {
         syncLocalFileState()
+        bindFileMetadataRow(ReleaseTitleParser.parse(message.title))
         when {
             isDownloading -> {
                 applyDownloadingState()
@@ -555,21 +596,20 @@ class MediaDetailsActivity : AppCompatActivity() {
             hidePreviewSection()
             return
         }
-        previewContainer.visibility = View.VISIBLE
-        previewFullscreenButton.visibility = View.VISIBLE
+        showBackgroundPreview()
         updateActionFocusWiring()
         if (path == lastPreviewPath && PreviewPlayerHelper.isPlaying()) return
 
         val playablePath = path!!
         if (PreviewPlayerHelper.play(
             this,
-            previewVideoHost,
+            backdropVideoHost,
             playablePath,
             onStarted = {
                 ActivityLogHelper.prepend(
                     this@MediaDetailsActivity,
                     logTextView,
-                    "VLC preview playback started"
+                    "Background preview playback started"
                 )
             }
         )) {
@@ -579,18 +619,39 @@ class MediaDetailsActivity : AppCompatActivity() {
             ActivityLogHelper.prepend(
                 this@MediaDetailsActivity,
                 logTextView,
-                "VLC preview playback failed"
+                "Background preview playback failed"
             )
         }
+    }
+
+    private fun showBackgroundPreview() {
+        backgroundPreviewActive = true
+        detailBackdropImage.visibility = View.GONE
+        backdropVideoHost.visibility = View.VISIBLE
+        detailBackdropScrim.visibility = View.VISIBLE
+        detailPageContent.setBackgroundResource(android.R.color.transparent)
+        previewFullscreenButton.visibility = View.VISIBLE
     }
 
     private fun hidePreviewSection() {
         PreviewPlayerHelper.stop()
         lastPreviewPath = null
-        previewContainer.visibility = View.GONE
+        backgroundPreviewActive = false
+        backdropVideoHost.visibility = View.GONE
         previewFullscreenButton.visibility = View.GONE
         posterImageView.visibility = View.VISIBLE
+        restoreStaticBackdropOrDefault()
         updateActionFocusWiring()
+    }
+
+    private fun restoreStaticBackdropOrDefault() {
+        if (staticBackdropActive) {
+            detailBackdropImage.visibility = View.VISIBLE
+            detailBackdropScrim.visibility = View.VISIBLE
+            detailPageContent.setBackgroundResource(android.R.color.transparent)
+        } else {
+            clearDetailBackdrop()
+        }
     }
 
     private fun startDownload() {
@@ -745,6 +806,14 @@ class MediaDetailsActivity : AppCompatActivity() {
         lastDownloadedBytes = 0L
     }
 
+    private fun recordDetailPageVisit() {
+        if (hasRecordedHistoryView) return
+        hasRecordedHistoryView = true
+        lifecycleScope.launch {
+            HistoryHelper.recordDetailVisit(applicationContext, message)
+        }
+    }
+
     private fun recordHistoryViewed() {
         if (hasRecordedHistoryView) return
         hasRecordedHistoryView = true
@@ -844,79 +913,294 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun bindHeader() {
         val info = ReleaseTitleParser.parse(message.title)
-
         titleTextView.text = info.displayTitle
-        descriptionTextView.text = message.description ?: ""
+        taglineTextView.visibility = View.GONE
+        descriptionTextView.text = message.description?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.detail_no_synopsis)
+        promoBanner.visibility = View.GONE
+        clearMovieSections()
+        bindFileMetadataRow(info)
+        loadTmdbMetadata(info)
+    }
 
+    private fun setupRecyclerRows() {
+        val horizontal = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        listOf(
+            movieStatsRecycler,
+            genreChipRecycler,
+            castChipRecycler,
+            fileMetadataChipRecycler,
+            settingsRowRecycler
+        ).forEach { recycler ->
+            recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            recycler.setHasFixedSize(true)
+            recycler.isFocusable = false
+            recycler.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        }
+        movieStatsRecycler.layoutManager = horizontal
+    }
+
+    private fun loadTmdbMetadata(info: ReleaseInfo) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Fetch movie data (includes poster_path and id)
-                val movie = PosterFetcher.fetchMovieData(info)
-
+                val details = PosterFetcher.fetchDetailsForRelease(info)
                 withContext(Dispatchers.Main) {
-                    // Load Poster
-                    val posterUrl = movie?.poster_path?.let {
-                        "https://image.tmdb.org/t/p/w500$it"
+                    if (details == null) {
+                        applyPosterFallback()
+                        clearDetailBackdrop()
+                        clearMovieSections()
+                        return@withContext
                     }
-
-                    if (!posterUrl.isNullOrEmpty()) {
-                        Glide.with(this@MediaDetailsActivity)
-                            .load(posterUrl)
-                            .transform(RoundedCorners(12))
-                            .placeholder(R.drawable.card_background)
-                            .error(R.drawable.card_background)
-                            .into(posterImageView as ImageView)
-                    } else {
-                        // Fallback
-                        posterImageView.setBackgroundResource(R.drawable.detail_back_drop)
-                    }
+                    bindTmdbHeader(details)
+                    bindDetailBackdrop(details)
+                    bindMovieSections(details, info)
+                    bindPromoBanner(details)
+                    ActivityLogHelper.prepend(
+                        this@MediaDetailsActivity,
+                        logTextView,
+                        "TMDB metadata loaded for ${details.title}"
+                    )
                 }
-
-                // Optional: Load more details (overview, runtime, etc.)
-                movie?.id?.let { movieId ->
-                    val details = PosterFetcher.fetchMovieDetails(movieId)
-                    withContext(Dispatchers.Main) {
-                        details?.overview?.let {
-                            descriptionTextView.text = it
-                        }
-                    }
-                }
-
             } catch (e: Exception) {
-                Log.e("MediaDetails", "Error loading poster/details", e)
+                Log.e(TAG, "Error loading TMDB metadata", e)
                 withContext(Dispatchers.Main) {
-                    posterImageView.setBackgroundResource(R.drawable.detail_back_drop)
+                    applyPosterFallback()
+                    clearDetailBackdrop()
+                    clearMovieSections()
                 }
             }
         }
     }
 
-    private fun setupMetadataChipRow() {
-        val info = ReleaseTitleParser.parse(message.title)
+    private fun bindTmdbHeader(details: TmdbMovieDetails) {
+        titleTextView.text = PosterFetcher.displayTitle(details)
 
-        val chips = buildList {
-            add(MetadataChipItem(R.drawable.ic_gear, message.fileId.toString()))
-            if (message.mimeType.isNotBlank()) {
-                add(MetadataChipItem(R.drawable.ic_check, FormatHelper.formatMimeType(message.mimeType)))
+        val tagline = details.tagline?.takeIf { it.isNotBlank() }
+        if (tagline != null) {
+            taglineTextView.text = tagline
+            taglineTextView.visibility = View.VISIBLE
+        } else {
+            taglineTextView.visibility = View.GONE
+        }
+
+        descriptionTextView.text = details.overview?.takeIf { it.isNotBlank() }
+            ?: message.description?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.detail_no_synopsis)
+
+        val posterUrl = PosterFetcher.posterUrl(details.poster_path)
+        if (posterUrl != null) {
+            val cornerRadius = resources.getDimensionPixelSize(R.dimen.detail_poster_radius)
+            Glide.with(this)
+                .load(posterUrl)
+                .transform(RoundedCorners(cornerRadius))
+                .placeholder(R.drawable.card_background)
+                .error(R.drawable.detail_back_drop)
+                .into(posterImageView)
+        } else {
+            applyPosterFallback()
+        }
+    }
+
+    private fun bindDetailBackdrop(details: TmdbMovieDetails) {
+        val backdropUrl = PosterFetcher.backdropUrl(PosterFetcher.resolveBackdropPath(details))
+        if (backdropUrl.isNullOrBlank()) {
+            staticBackdropActive = false
+            if (!backgroundPreviewActive) {
+                clearDetailBackdrop()
             }
-            add(MetadataChipItem(R.drawable.ic_check, FormatHelper.formatBytes(message.size)))
-
-            // Parsed release info chips
-            info.year?.let { add(MetadataChipItem(R.drawable.ic_check, it.toString())) }
-            info.resolution?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
-            info.service?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
-            info.source?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
-            info.videoCodec?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
-            info.audioCodec?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
-            info.container?.let { add(MetadataChipItem(R.drawable.ic_check, it.uppercase())) }
-            info.releaseGroup?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+            return
         }
 
-        metadataChipRecycler.apply {
-            layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
-            adapter = MetadataChipAdapter(chips)
-            setHasFixedSize(true)
+        staticBackdropActive = true
+        Glide.with(this)
+            .load(backdropUrl)
+            .centerCrop()
+            .into(detailBackdropImage)
+
+        if (!backgroundPreviewActive) {
+            detailBackdropImage.visibility = View.VISIBLE
+            detailBackdropScrim.visibility = View.VISIBLE
+            detailPageContent.setBackgroundResource(android.R.color.transparent)
         }
+    }
+
+    private fun clearDetailBackdrop() {
+        staticBackdropActive = false
+        Glide.with(this).clear(detailBackdropImage)
+        detailBackdropImage.setImageDrawable(null)
+        if (!backgroundPreviewActive) {
+            detailBackdropImage.visibility = View.GONE
+            detailBackdropScrim.visibility = View.GONE
+            detailPageContent.setBackgroundResource(R.drawable.detail_page_background)
+        }
+    }
+
+    private fun applyPosterFallback() {
+        posterImageView.setImageDrawable(null)
+        posterImageView.setBackgroundResource(R.drawable.detail_back_drop)
+    }
+
+    private fun bindPromoBanner(details: TmdbMovieDetails) {
+        val castLine = details.credits?.cast
+            ?.take(3)
+            ?.joinToString(", ") { it.name }
+            ?.takeIf { it.isNotBlank() }
+            ?.let { getString(R.string.detail_promo_cast, it) }
+
+        val genreLine = details.genres
+            ?.take(3)
+            ?.joinToString(" · ") { it.name }
+            ?.takeIf { it.isNotBlank() }
+
+        val runtimeLine = details.runtime
+            ?.takeIf { it > 0 }
+            ?.let { FormatHelper.formatRuntime(it) }
+
+        val ratingLine = details.vote_average
+            ?.takeIf { it > 0 }
+            ?.let { FormatHelper.formatRating(it) }
+
+        val promoText = castLine
+            ?: listOfNotNull(genreLine, runtimeLine, ratingLine).joinToString(" · ").takeIf { it.isNotBlank() }
+
+        if (promoText.isNullOrBlank()) {
+            promoBanner.visibility = View.GONE
+        } else {
+            promoTextView.text = promoText
+            promoBanner.visibility = View.VISIBLE
+        }
+    }
+
+    private fun bindMovieSections(details: TmdbMovieDetails, info: ReleaseInfo) {
+        bindMovieStats(details, info)
+        bindGenreRow(details)
+        bindCastRow(details)
+        bindCrewSection(details)
+    }
+
+    private fun bindMovieStats(details: TmdbMovieDetails, info: ReleaseInfo) {
+        val stats = buildList {
+            details.vote_average
+                ?.takeIf { it > 0 }
+                ?.let { add(DetailStatItem(FormatHelper.formatRating(it), getString(R.string.detail_stat_rating))) }
+            details.runtime
+                ?.takeIf { it > 0 }
+                ?.let { add(DetailStatItem(FormatHelper.formatRuntime(it), getString(R.string.detail_stat_runtime))) }
+            (PosterFetcher.releaseYear(details.release_date) ?: info.year)?.let {
+                add(DetailStatItem(it.toString(), getString(R.string.detail_stat_year)))
+            }
+            FormatHelper.formatReleaseDate(details.release_date)?.let {
+                add(DetailStatItem(it, getString(R.string.detail_stat_released)))
+            }
+            details.status?.takeIf { it.isNotBlank() }?.let {
+                add(DetailStatItem(it, getString(R.string.detail_stat_status)))
+            }
+            PosterFetcher.trailerLabel(details)?.let {
+                add(DetailStatItem(it, getString(R.string.detail_section_movie_info)))
+            }
+        }
+
+        val originalTitle = details.original_title?.takeIf {
+            it.isNotBlank() && !it.equals(details.title, ignoreCase = true)
+        }
+        if (originalTitle != null) {
+            originalTitleTextView.text = getString(R.string.detail_original_title, originalTitle)
+            originalTitleTextView.visibility = View.VISIBLE
+        } else {
+            originalTitleTextView.visibility = View.GONE
+        }
+
+        if (stats.isEmpty() && originalTitle == null) {
+            movieInfoSection.visibility = View.GONE
+        } else {
+            movieStatsRecycler.adapter = DetailStatAdapter(stats)
+            movieInfoSection.visibility = View.VISIBLE
+        }
+    }
+
+    private fun bindGenreRow(details: TmdbMovieDetails) {
+        val genres = details.genres.orEmpty().map {
+            MetadataChipItem(R.drawable.ic_album, it.name)
+        }
+        if (genres.isEmpty()) {
+            genresSection.visibility = View.GONE
+        } else {
+            genreChipRecycler.adapter = MetadataChipAdapter(genres)
+            genresSection.visibility = View.VISIBLE
+        }
+    }
+
+    private fun bindCastRow(details: TmdbMovieDetails) {
+        val cast = details.credits?.cast.orEmpty()
+            .take(10)
+            .map {
+                CastChipItem(
+                    name = it.name,
+                    role = it.character?.takeIf { character -> character.isNotBlank() }
+                        ?: getString(R.string.detail_cast_role_unknown)
+                )
+            }
+        if (cast.isEmpty()) {
+            castSection.visibility = View.GONE
+        } else {
+            castChipRecycler.adapter = CastChipAdapter(cast)
+            castSection.visibility = View.VISIBLE
+        }
+    }
+
+    private fun bindCrewSection(details: TmdbMovieDetails) {
+        val lines = buildList {
+            FormatHelper.joinNames(PosterFetcher.crewNames(details, "Director"))?.let {
+                add(getString(R.string.detail_crew_director, it))
+            }
+            FormatHelper.joinNames(PosterFetcher.crewNames(details, "Screenplay"))?.let {
+                add(getString(R.string.detail_crew_writer, it))
+            } ?: FormatHelper.joinNames(PosterFetcher.crewNames(details, "Writer"))?.let {
+                add(getString(R.string.detail_crew_writer, it))
+            }
+            FormatHelper.joinNames(PosterFetcher.crewNames(details, "Producer"))?.let {
+                add(getString(R.string.detail_crew_producer, it))
+            }
+        }
+        if (lines.isEmpty()) {
+            crewSection.visibility = View.GONE
+        } else {
+            crewInfoTextView.text = lines.joinToString("\n")
+            crewSection.visibility = View.VISIBLE
+        }
+    }
+
+    private fun clearMovieSections() {
+        movieInfoSection.visibility = View.GONE
+        genresSection.visibility = View.GONE
+        castSection.visibility = View.GONE
+        crewSection.visibility = View.GONE
+        taglineTextView.visibility = View.GONE
+        originalTitleTextView.visibility = View.GONE
+    }
+
+    private fun buildFileMetadataChips(info: ReleaseInfo): List<MetadataChipItem> = buildList {
+        add(MetadataChipItem(R.drawable.ic_gear, getString(R.string.format_file_id, message.fileId)))
+        if (message.mimeType.isNotBlank()) {
+            add(MetadataChipItem(R.drawable.ic_check, FormatHelper.formatMimeType(message.mimeType)))
+        }
+        add(MetadataChipItem(R.drawable.ic_storage, FormatHelper.formatBytes(message.size)))
+        info.year?.let { add(MetadataChipItem(R.drawable.ic_clock, it.toString())) }
+        info.resolution?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+        info.service?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+        info.source?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+        info.videoCodec?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+        info.audioCodec?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+        info.container?.let { add(MetadataChipItem(R.drawable.ic_check, it.uppercase())) }
+        info.releaseGroup?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+        info.groupTag?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+        if (message.isDownloaded) {
+            add(MetadataChipItem(R.drawable.ic_download, getString(R.string.chip_downloaded)))
+        }
+    }
+
+    private fun bindFileMetadataRow(info: ReleaseInfo) {
+        fileMetadataChipRecycler.adapter = MetadataChipAdapter(buildFileMetadataChips(info))
     }
 
     private fun setupSettingsRow() {

@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -30,6 +31,7 @@ class SettingsDataStore(context: Context) {
         val IS_TOC_ACCEPTED = booleanPreferencesKey("is_toc_accepted")
 
         val IS_TEST_MODE = booleanPreferencesKey("is_test_mode")
+        val ACTIVE_PHONE = stringPreferencesKey("active_phone")
     }
 
 
@@ -123,4 +125,17 @@ class SettingsDataStore(context: Context) {
             preferences[BUFFER_SIZE_THRESHOLD] = value
         }
     }
+
+    suspend fun setActivePhone(phone: String) {
+        appContext.dataStore.edit { preferences ->
+            if (phone.isBlank()) {
+                preferences.remove(ACTIVE_PHONE)
+            } else {
+                preferences[ACTIVE_PHONE] = phone
+            }
+        }
+    }
+
+    suspend fun getActivePhone(): String? =
+        appContext.dataStore.data.first()[ACTIVE_PHONE]?.takeIf { it.isNotBlank() }
 }

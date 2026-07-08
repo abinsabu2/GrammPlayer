@@ -27,10 +27,15 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("user"), Index("chat"), Index("message")]
+    indices = [
+        Index("user"),
+        Index("chat"),
+        Index("message"),
+        Index(value = ["user", "message"], unique = true)
+    ]
 )
 data class History(
-    @PrimaryKey val id: Long = 0,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val user: Int,
     val chat: Int,
     val message: Long,

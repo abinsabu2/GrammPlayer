@@ -9,9 +9,11 @@ import androidx.leanback.widget.Presenter
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.FormatHelper
-import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.MediaFileHelper
+import com.aes.grammplayer.network.tmdb.PosterFetcher
+import com.aes.grammplayer.ui.common.makeFocusableForTv
+import com.aes.grammplayer.util.tdlib.ReleaseInfo
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import com.aes.grammplayer.util.tdlib.ThumbnailGenerator
 import kotlinx.coroutines.CoroutineScope
@@ -44,8 +46,6 @@ class MessageCardPresenter : Presenter() {
         view.findViewById<TextView>(R.id.size).text =
             "Size: ${FormatHelper.formatBytesMb(item.size)}"
 
-        // Quality + source badge: resolution, video codec, service, source type
-        // e.g. "720p · H.265 · NF WEB-DL"
         view.findViewById<TextView>(R.id.quality_source)?.apply {
             val qualitySourceText = listOfNotNull(
                 info.resolution,
@@ -61,7 +61,6 @@ class MessageCardPresenter : Presenter() {
             }
         }
 
-        // Release group tag, e.g. "CPTN5DW"
         view.findViewById<TextView>(R.id.release_group)?.apply {
             text = info.releaseGroup ?: ""
             visibility = if (info.releaseGroup != null) {
@@ -81,34 +80,59 @@ class MessageCardPresenter : Presenter() {
             banner.visibility = android.view.View.GONE
         }
 
+        bindThumbnail(view, item, info)
+    }
+
+    private fun bindThumbnail(
+        view: android.view.View,
+        item: MediaMessage,
+        info: ReleaseInfo
+    ) {
         val thumbnailView = view.findViewById<ImageView>(R.id.thumbnail)
         val key = item.uniqueId.ifEmpty { item.fileId.toString() }
         thumbnailView.setTag(R.id.thumbnail, key)
 
-        val thumbnailPath = item.thumbnailPath
-        val readyPath = when {
-            !thumbnailPath.isNullOrEmpty() && File(thumbnailPath).exists() -> thumbnailPath
-            else -> ThumbnailGenerator.existingThumbnail(key)
-        }
+        val cornerRadius = view.resources.getDimensionPixelSize(R.dimen.detail_poster_radius)
+        GlideHelper.fillColor(thumbnailView, ThumbnailGenerator.colorFor(key))
 
-        if (readyPath != null) {
-            GlideHelper.loadCenterCrop(thumbnailView, readyPath)
-        } else {
-            GlideHelper.fillColor(thumbnailView, ThumbnailGenerator.colorFor(key))
-            scope.launch {
-                try {
-                    val bitmap = ThumbnailGenerator.generatePlaceholder(seed = key)
-                    val path = ThumbnailGenerator.saveBitmap(bitmap, key)
-                    if (path != null) {
-                        withContext(Dispatchers.Main) {
-                            if (thumbnailView.getTag(R.id.thumbnail) == key) {
-                                GlideHelper.loadCenterCrop(thumbnailView, path)
-                            }
+        scope.launch {
+            try {
+                val posterUrl = PosterFetcher.fetchPosterUrl(info)
+                if (posterUrl != null) {
+                    withContext(Dispatchers.Main) {
+                        if (thumbnailView.getTag(R.id.thumbnail) == key) {
+                            GlideHelper.loadUrlCenterCrop(thumbnailView, posterUrl, cornerRadius)
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to generate thumbnail for $key", e)
+                    return@launch
                 }
+
+                val thumbnailPath = item.thumbnailPath
+                val readyPath = when {
+                    !thumbnailPath.isNullOrEmpty() && File(thumbnailPath).exists() -> thumbnailPath
+                    else -> ThumbnailGenerator.existingThumbnail(key)
+                }
+
+                if (readyPath != null) {
+                    withContext(Dispatchers.Main) {
+                        if (thumbnailView.getTag(R.id.thumbnail) == key) {
+                            GlideHelper.loadCenterCrop(thumbnailView, readyPath)
+                        }
+                    }
+                    return@launch
+                }
+
+                val bitmap = ThumbnailGenerator.generatePlaceholder(seed = key)
+                val path = ThumbnailGenerator.saveBitmap(bitmap, key)
+                if (path != null) {
+                    withContext(Dispatchers.Main) {
+                        if (thumbnailView.getTag(R.id.thumbnail) == key) {
+                            GlideHelper.loadCenterCrop(thumbnailView, path)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load poster/thumbnail for $key", e)
             }
         }
     }

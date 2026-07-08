@@ -2,13 +2,16 @@ package com.aes.grammplayer.helper
 
 import android.content.Context
 import android.util.Log
+import com.aes.grammplayer.config.TestUserConfig
 import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.db.model.History
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.db.model.Settings
 import com.aes.grammplayer.db.model.User
+import com.aes.grammplayer.db.model.model.UserType
 import com.aes.grammplayer.session.UserSession
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -16,6 +19,11 @@ import kotlinx.coroutines.withContext
 object HistoryHelper {
 
     private const val TAG = "HistoryHelper"
+
+    suspend fun recordDetailVisit(context: Context, message: MediaMessage) {
+        prepareSession(context)
+        record(context, message, viewed = true)
+    }
 
     suspend fun record(
         context: Context,
@@ -27,6 +35,7 @@ object HistoryHelper {
         if (!viewed && !downloaded && !downloading) return
         withContext(Dispatchers.IO) {
             try {
+                prepareSession(context)
                 val db = AppDatabase.getDatabase(context)
                 val userId = resolveUserId(db)
                 ensureUserExists(db, userId)
@@ -43,8 +52,9 @@ object HistoryHelper {
                 db.mediaMessageDao().insert(snapshot)
 
                 val existing = db.historyDao().getByUserAndMessage(userId, snapshot.id)
+                // Delete first so re-visits get a new auto-increment id and appear at the top.
                 db.historyDao().deleteByUserAndMessage(userId, snapshot.id)
-                db.historyDao().insert(
+                val rowId = db.historyDao().insert(
                     History(
                         user = userId,
                         chat = snapshot.chat,
@@ -60,7 +70,7 @@ object HistoryHelper {
                 )
                 Log.d(
                     TAG,
-                    "Recorded history user=$userId message=${snapshot.id} viewed=$viewed downloaded=$downloaded downloading=$isDownloading"
+                    "Recorded history id=$rowId user=$userId message=${snapshot.id} viewed=$viewed downloaded=$downloaded downloading=$isDownloading"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to record history for message ${message.id}", e)
@@ -71,6 +81,7 @@ object HistoryHelper {
     suspend fun clearDownloading(context: Context, message: MediaMessage) {
         withContext(Dispatchers.IO) {
             try {
+                prepareSession(context)
                 val db = AppDatabase.getDatabase(context)
                 val userId = resolveUserId(db)
                 val existing = db.historyDao().getByUserAndMessage(userId, message.id) ?: return@withContext
@@ -87,6 +98,7 @@ object HistoryHelper {
 
     suspend fun clear(context: Context) {
         withContext(Dispatchers.IO) {
+            prepareSession(context)
             val db = AppDatabase.getDatabase(context)
             val userId = resolveActiveUserId(db)
             db.historyDao().clearHistoryForUser(userId)
@@ -97,9 +109,30 @@ object HistoryHelper {
     suspend fun resolveActiveUserId(context: Context): Int =
         resolveActiveUserId(AppDatabase.getDatabase(context))
 
+    suspend fun prepareSession(context: Context) {
+        restoreSession(context)
+        syncActiveUser(context)
+    }
+
+    suspend fun restoreSession(context: Context) {
+        if (UserSession.phoneNumber.trim().isNotEmpty()) return
+        val phone = SettingsDataStore(context.applicationContext).getActivePhone() ?: return
+        UserSession.initialize(phone)
+        UserSession.userType =
+            if (TestUserConfig.isTestUser(phone)) UserType.TEST else UserType.REAL
+        Log.d(TAG, "Restored session for phone=$phone")
+    }
+
+    suspend fun persistActivePhone(context: Context, phone: String) {
+        if (phone.isBlank()) return
+        SettingsDataStore(context.applicationContext).setActivePhone(phone)
+    }
+
     suspend fun syncActiveUser(context: Context) {
+        restoreSession(context)
         val phone = UserSession.phoneNumber.trim()
         if (phone.isEmpty()) return
+        persistActivePhone(context, phone)
         withContext(Dispatchers.IO) {
             try {
                 val db = AppDatabase.getDatabase(context)
@@ -167,8 +200,8 @@ object HistoryHelper {
         db.userDao().insert(
             User(
                 id = userId.toLong(),
-                phone = "",
-                isTestUser = false,
+                phone = UserSession.phoneNumber,
+                isTestUser = UserSession.isTestUser(),
                 isConnected = true
             )
         )
@@ -189,7 +222,13 @@ object HistoryHelper {
 
     private suspend fun ensureChatExists(db: AppDatabase, message: MediaMessage, userId: Int) {
         val existing = db.chatDao().getById(message.chat).first()
-        if (existing != null) return
+        if (existing != null) {
+            if (existing.userId != userId) {
+                db.chatDao().update(existing.copy(userId = userId))
+                Log.d(TAG, "Reassigned chat ${message.chat} to user=$userId")
+            }
+            return
+        }
 
         db.chatDao().insert(
             Chat(
@@ -219,6 +258,6 @@ object HistoryHelper {
                 userId = userId
             )
         )
-        Log.d(TAG, "Created stub chat id=${message.chat}")
+        Log.d(TAG, "Created stub chat id=${message.chat} for user=$userId")
     }
 }

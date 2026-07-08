@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface HistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(history: History)
+    suspend fun insert(history: History): Long
 
     @Delete
     suspend fun delete(history: History)

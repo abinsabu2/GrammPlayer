@@ -108,4 +108,23 @@
     <string name="cancel">Stop</string>
     <string name="description">DESCRIPTION</string>
     <string name="download">DOWNLOAD</string>
+    <string name="detail_promo_cast">Starring %1$s</string>
+    <string name="detail_section_synopsis">Synopsis</string>
+    <string name="detail_section_movie_info">Movie info</string>
+    <string name="detail_section_genres">Genres</string>
+    <string name="detail_section_cast">Cast</string>
+    <string name="detail_section_crew">Crew</string>
+    <string name="detail_section_file_details">File details</string>
+    <string name="detail_section_playback">Playback settings</string>
+    <string name="detail_stat_rating">Rating</string>
+    <string name="detail_stat_runtime">Runtime</string>
+    <string name="detail_stat_year">Year</string>
+    <string name="detail_stat_released">Released</string>
+    <string name="detail_stat_status">Status</string>
+    <string name="detail_original_title">Original: %1$s</string>
+    <string name="detail_crew_director">Director: %1$s</string>
+    <string name="detail_crew_writer">Writer: %1$s</string>
+    <string name="detail_crew_producer">Producer: %1$s</string>
+    <string name="detail_cast_role_unknown">Cast</string>
+    <string name="detail_no_synopsis">No synopsis available.</string>
 </resources>

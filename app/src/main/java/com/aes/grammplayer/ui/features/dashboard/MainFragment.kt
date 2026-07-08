@@ -88,6 +88,9 @@ class MainFragment : BrowseSupportFragment() {
         )
         loadRows()
         setupEventListeners()
+        lifecycleScope.launch {
+            HistoryHelper.prepareSession(requireContext())
+        }
     }
 
     override fun onDestroy() {
