@@ -71,6 +71,8 @@
     <string name="playback_vlc_install">Install VLC</string>
     <string name="playback_vlc_install_fire">Get VLC on Amazon</string>
     <string name="playback_vlc_install_failed">Could not open a store or browser. Install VLC for Android (org.videolan.vlc) manually.</string>
+    <string name="playback_file_not_ready">Video file is not ready to play. Download it first.</string>
+    <string name="playback_in_app_failed">Could not start playback. Try downloading the video again.</string>
     <string name="activity_log_title">ACTIVITY LOG</string>
     <string name="toggle_log_show">SHOW LOG</string>
     <string name="toggle_log_hide">HIDE LOG</string>

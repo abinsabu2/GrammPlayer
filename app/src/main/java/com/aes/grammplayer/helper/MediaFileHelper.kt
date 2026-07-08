@@ -38,9 +38,14 @@ object MediaFileHelper {
      * or null when no playable file is present.
      */
     fun syncMessageFromFile(message: MediaMessage): DownloadingFileInfo? {
-        val file = resolveFile(message.localPath) ?: return null
+        val file = resolveFile(message.localPath)
+        if (file == null) {
+            if (message.isDownloaded) message.isDownloaded = false
+            return null
+        }
         message.localPath = file.absolutePath
-        if (message.size > 0L && file.length() >= message.size) {
+        val fileSize = file.length()
+        if (message.size <= 0L || fileSize >= message.size) {
             message.isDownloaded = true
         }
         return buildDownloadingFileInfo(

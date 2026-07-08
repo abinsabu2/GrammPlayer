@@ -19,6 +19,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
+import com.aes.grammplayer.config.ReviewModeHelper
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
@@ -312,9 +313,7 @@ class MediaDetailsActivity : AppCompatActivity() {
      * Collects ALL listeners in a single function.
      */
     private fun setupListeners() {
-        bindActionButton(playButton) {
-            if (isFullyDownloaded()) openFullScreenPlayback()
-        }
+        bindActionButton(playButton) { openFullScreenPlayback() }
         bindActionButton(previewFullscreenButton) { openFullScreenPlayback() }
         bindActionButton(downloadButton) { startDownload() }
         bindActionButton(cancelButton) { cancelCurrentDownload() }
@@ -461,9 +460,11 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun isFullyDownloaded(file: TdApi.File? = null): Boolean {
         if (file != null) return isDownloadComplete(file)
-        if (message.isDownloaded) return true
-        val onDisk = MediaFileHelper.resolveFile(resolvePlayablePath()) ?: return false
-        return message.size > 0L && onDisk.length() >= message.size
+        val playablePath = resolvePlayablePath() ?: return false
+        val onDisk = MediaFileHelper.resolveFile(playablePath) ?: return false
+        val complete = message.size <= 0L || onDisk.length() >= message.size
+        if (complete) message.isDownloaded = true
+        return complete
     }
 
     private fun shouldStartPreview(
@@ -532,21 +533,33 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun openFullScreenPlayback() {
-        if (!ensureVlcInstalled()) return
-        val playablePath = resolvePlayablePath() ?: return
+        val playablePath = resolvePlayablePath()
+        if (playablePath == null) {
+            Toast.makeText(this, R.string.playback_file_not_ready, Toast.LENGTH_SHORT).show()
+            return
+        }
         val shouldResumePreview = backgroundPreviewActive
         stopPreviewPlaybackOnly()
-        when (val result = launchPlayback(playablePath)) {
-            is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
-            is PlayerHelper.PlayResult.Failed -> {
-                showPlaybackError(result.reason)
-                if (shouldResumePreview) {
-                    updatePreviewIfAllowed(
-                        playablePath,
-                        lastDownloadProgress,
-                        lastDownloadedBytes,
-                        isFullyDownloaded()
-                    )
+        lifecycleScope.launch {
+            val useInAppPlayer = ReviewModeHelper.isReviewMode(this@MediaDetailsActivity) ||
+                !PlayerHelper.isVlcInstalled(this@MediaDetailsActivity)
+            val result = if (useInAppPlayer) {
+                PlayerHelper.playInApp(this@MediaDetailsActivity, playablePath, message.fileId)
+            } else {
+                launchPlayback(playablePath)
+            }
+            when (result) {
+                is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
+                is PlayerHelper.PlayResult.Failed -> {
+                    showPlaybackError(result.reason)
+                    if (shouldResumePreview) {
+                        updatePreviewIfAllowed(
+                            playablePath,
+                            lastDownloadProgress,
+                            lastDownloadedBytes,
+                            isFullyDownloaded()
+                        )
+                    }
                 }
             }
         }
@@ -667,7 +680,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                     runOnUiThread {
                         if (isTestMode) {
                             message = updatedMessage
-                            onDownloadComplete(message.localPath)
+                            onDownloadComplete(message.localPath.orEmpty())
                             currentDownload = MediaFileHelper.buildDownloadingFileInfo(
                                 fileId = message.fileId,
                                 localPath = message.localPath,

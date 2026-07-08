@@ -31,7 +31,9 @@ object MediaDownloadDataProvider {
 
     // Multiple reliable public test video URLs (fallback on 403/any failure)
     private val TEST_VIDEO_URLS = listOf(
-        "https://filesamples.com/samples/video/mp4/sample_1280x720.mp4"
+        "https://filesamples.com/samples/video/mp4/sample_1280x720.mp4",
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        "https://download.samplelib.com/mp4/sample-5s.mp4"
     )
 
     @SuppressLint("LongLogTag")
@@ -122,6 +124,7 @@ object MediaDownloadDataProvider {
                 return original.copy(
                     localPath = destinationFile.absolutePath,
                     isDownloaded = true,
+                    size = destinationFile.length(),
                     mimeType = "video/mp4"
                 )
 

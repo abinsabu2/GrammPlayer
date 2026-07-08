@@ -27,6 +27,7 @@ import android.widget.Toast
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.aes.grammplayer.config.ReviewModeHelper
 import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
 import com.aes.grammplayer.ui.features.history.HistoryGridActivity
 import com.aes.grammplayer.R
@@ -57,6 +58,8 @@ class MainFragment : BrowseSupportFragment() {
 
     private lateinit var productLogo: ImageView
 
+    private var reviewMode = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsDataStore = SettingsDataStore(requireActivity())
@@ -86,10 +89,11 @@ class MainFragment : BrowseSupportFragment() {
         setHeaderPresenterSelector(
             ClassPresenterSelector().addClassPresenter(ListRow::class.java, DashboardHeaderPresenter())
         )
-        loadRows()
         setupEventListeners()
         lifecycleScope.launch {
             HistoryHelper.prepareSession(requireContext())
+            reviewMode = ReviewModeHelper.isReviewMode(requireContext())
+            loadRows()
         }
     }
 
@@ -139,15 +143,21 @@ class MainFragment : BrowseSupportFragment() {
         )
         rowsAdapter.add(ListRow(chatsHeader, chatsRowAdapter))
 
-        // --- Preferences row: icon cards ---
-        val settingsHeader = DashboardHeaderItem(2, "Preferences", R.drawable.ic_settings)
-        val settingsRowAdapter = ArrayObjectAdapter(IconCardPresenter())
-        settingsRowAdapter.add(DashboardItem("clear_cache", R.drawable.ic_clear_cache, "Clear Cache"))
-        settingsRowAdapter.add(DashboardItem("clear_history", R.drawable.ic_history, "Clear History"))
-        settingsRowAdapter.add(DashboardItem("settings", R.drawable.ic_settings, "Settings"))
-        settingsRowAdapter.add(DashboardItem("close", R.drawable.ic_refresh, "Close"))
-        settingsRowAdapter.add(DashboardItem("logout", R.drawable.ic_logout, "Logout"))
-        rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
+        // --- Preferences row: icon cards (trimmed for store review accounts) ---
+        val preferenceItems = listOf(
+            DashboardItem("clear_cache", R.drawable.ic_clear_cache, "Clear Cache"),
+            DashboardItem("clear_history", R.drawable.ic_history, "Clear History"),
+            DashboardItem("settings", R.drawable.ic_settings, "Settings"),
+            DashboardItem("close", R.drawable.ic_refresh, "Close"),
+            DashboardItem("logout", R.drawable.ic_logout, "Logout")
+        ).filter { ReviewModeHelper.isDashboardItemVisible(it.id, reviewMode) }
+
+        if (preferenceItems.isNotEmpty()) {
+            val settingsHeader = DashboardHeaderItem(2, "Preferences", R.drawable.ic_settings)
+            val settingsRowAdapter = ArrayObjectAdapter(IconCardPresenter())
+            preferenceItems.forEach { settingsRowAdapter.add(it) }
+            rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
+        }
 
         adapter = rowsAdapter
     }
@@ -196,6 +206,9 @@ class MainFragment : BrowseSupportFragment() {
         ) {
             when (item) {
                 is DashboardItem -> {
+                    if (reviewMode && ReviewModeHelper.isDestructiveDashboardAction(item.id)) {
+                        return
+                    }
                     when (item.id) {
                         "clear_cache" -> {
                             viewLifecycleOwner.lifecycleScope.launch {

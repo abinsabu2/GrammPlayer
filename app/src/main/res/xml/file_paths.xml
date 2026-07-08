@@ -3,6 +3,9 @@
     <files-path
         name="all_internal_files"
         path="." />
+    <files-path
+        name="tdlib_files"
+        path="tdlib/" />
     <cache-path name="cache" path="." />
     <external-files-path name="external_files" path="." />
 </paths>

@@ -1,5 +1,6 @@
 package com.aes.grammplayer.helper
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ComponentName
@@ -12,6 +13,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.aes.grammplayer.R
+import com.aes.grammplayer.ui.features.playback.InAppPlaybackActivity
 
 object PlayerHelper {
 
@@ -47,6 +49,31 @@ object PlayerHelper {
             true
         } catch (_: PackageManager.NameNotFoundException) {
             false
+        }
+    }
+
+    /** Opens full-screen playback inside the app (bundled libVLC). */
+    fun playInApp(context: Context, filePath: String?, fileId: Int = 0): PlayResult {
+        val file = MediaFileHelper.resolveFile(filePath)
+        if (file == null) {
+            val path = filePath ?: "N/A"
+            return PlayResult.Failed(
+                "Cannot play: File path invalid, does not exist, or too small: $path"
+            )
+        }
+
+        return try {
+            val intent = Intent(context, InAppPlaybackActivity::class.java).apply {
+                putExtra(InAppPlaybackActivity.EXTRA_FILE_PATH, file.absolutePath)
+                if (context !is Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
+            context.startActivity(intent)
+            PlayResult.Started(fileId, file.absolutePath)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error launching in-app player for ${file.absolutePath}", e)
+            PlayResult.Failed("Error starting in-app playback: ${e.message}")
         }
     }
 

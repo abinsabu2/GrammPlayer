@@ -157,14 +157,14 @@ object DatabaseSeeder {
                     duration = 600 + (messageId.toLong() % 9000),
                     size = 204800L + ((messageId.toLong() % 50) * 102400L),
                     isMedia = true,
-                    localPath = "/storage/chat$chatNum/$slug.mp4",
+                    localPath = "",
                     fileId = 1000 + messageId,
                     mimeType = mimeType,
                     videoUrl = "https://example.com/videos/$slug.mp4",
                     thumbnailPath = "/storage/thumbnails/$slug.jpg",
                     cardImageUrl = "https://example.com/cards/$slug.jpg",
                     backgroundImageUrl = "https://example.com/bg/$slug.jpg",
-                    isDownloaded = messageId % 3 == 0,
+                    isDownloaded = false,
                     isDownloadActive = messageId % 7 == 0,
                     uniqueId = "uid_${uniqueSuffix}"
                 )
