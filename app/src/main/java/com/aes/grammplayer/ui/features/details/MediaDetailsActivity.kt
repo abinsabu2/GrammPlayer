@@ -23,8 +23,10 @@ import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
 import com.aes.grammplayer.helper.PreviewPlayerHelper
+import com.aes.grammplayer.network.tmdb.PosterFetcher
 import com.aes.grammplayer.provider.MediaDownloadDataProvider
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
 import kotlinx.coroutines.Job
@@ -32,6 +34,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
+import android.widget.ImageView
+import androidx.core.view.isVisible
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MediaDetailsActivity : AppCompatActivity() {
 
@@ -115,6 +123,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         focusFirstUsableButton()
         startListeningToUpdates()
         restrictFocusToActionButtons()   // ← D-pad movement limited to action buttons + close
+        recordHistoryViewed()
     }
 
     /**
@@ -548,7 +557,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
         previewContainer.visibility = View.VISIBLE
         previewFullscreenButton.visibility = View.VISIBLE
-        posterImageView.visibility = View.GONE
         updateActionFocusWiring()
         if (path == lastPreviewPath && PreviewPlayerHelper.isPlaying()) return
 
@@ -563,7 +571,6 @@ class MediaDetailsActivity : AppCompatActivity() {
                     logTextView,
                     "VLC preview playback started"
                 )
-                recordHistoryViewed()
             }
         )) {
             lastPreviewPath = playablePath
@@ -836,24 +843,73 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun bindHeader() {
-        titleTextView.text = message.title
-        descriptionTextView.text = message.description
+        val info = ReleaseTitleParser.parse(message.title)
 
-        /* Glide.with(this)
-            .load(R.drawable.card_background)
-            .transform(RoundedCorners(12))
-            .placeholder(R.drawable.card_background)
-            .error(R.drawable.card_background)
-            .into(posterImageView) */
+        titleTextView.text = info.displayTitle
+        descriptionTextView.text = message.description ?: ""
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Fetch movie data (includes poster_path and id)
+                val movie = PosterFetcher.fetchMovieData(info)
+
+                withContext(Dispatchers.Main) {
+                    // Load Poster
+                    val posterUrl = movie?.poster_path?.let {
+                        "https://image.tmdb.org/t/p/w500$it"
+                    }
+
+                    if (!posterUrl.isNullOrEmpty()) {
+                        Glide.with(this@MediaDetailsActivity)
+                            .load(posterUrl)
+                            .transform(RoundedCorners(12))
+                            .placeholder(R.drawable.card_background)
+                            .error(R.drawable.card_background)
+                            .into(posterImageView as ImageView)
+                    } else {
+                        // Fallback
+                        posterImageView.setBackgroundResource(R.drawable.detail_back_drop)
+                    }
+                }
+
+                // Optional: Load more details (overview, runtime, etc.)
+                movie?.id?.let { movieId ->
+                    val details = PosterFetcher.fetchMovieDetails(movieId)
+                    withContext(Dispatchers.Main) {
+                        details?.overview?.let {
+                            descriptionTextView.text = it
+                        }
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("MediaDetails", "Error loading poster/details", e)
+                withContext(Dispatchers.Main) {
+                    posterImageView.setBackgroundResource(R.drawable.detail_back_drop)
+                }
+            }
+        }
     }
 
     private fun setupMetadataChipRow() {
+        val info = ReleaseTitleParser.parse(message.title)
+
         val chips = buildList {
             add(MetadataChipItem(R.drawable.ic_gear, message.fileId.toString()))
             if (message.mimeType.isNotBlank()) {
                 add(MetadataChipItem(R.drawable.ic_check, FormatHelper.formatMimeType(message.mimeType)))
             }
             add(MetadataChipItem(R.drawable.ic_check, FormatHelper.formatBytes(message.size)))
+
+            // Parsed release info chips
+            info.year?.let { add(MetadataChipItem(R.drawable.ic_check, it.toString())) }
+            info.resolution?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+            info.service?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+            info.source?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+            info.videoCodec?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+            info.audioCodec?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
+            info.container?.let { add(MetadataChipItem(R.drawable.ic_check, it.uppercase())) }
+            info.releaseGroup?.let { add(MetadataChipItem(R.drawable.ic_check, it)) }
         }
 
         metadataChipRecycler.apply {

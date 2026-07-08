@@ -5,7 +5,7 @@
 
     <!-- Media details — tuned for TV legibility at ~10-foot distance -->
     <dimen name="detail_title_text">26sp</dimen>
-    <dimen name="detail_body_text">16sp</dimen>
+    <dimen name="detail_body_text">18sp</dimen>
     <dimen name="detail_label_text">12sp</dimen>
     <dimen name="detail_button_text">16sp</dimen>
     <dimen name="detail_chip_text">15sp</dimen>

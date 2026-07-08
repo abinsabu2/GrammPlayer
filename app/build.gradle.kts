@@ -32,9 +32,13 @@ android {
         val apiId: Int = localProperties.getProperty("api_key")?.toIntOrNull() ?: error("API Key not found in local.properties")
         val apiHash: String = localProperties.getProperty("api_hash") ?: error("API Hash not found in local.properties")
 
+        // TMDB API Key (recommended)
+        val tmdbKey: String = localProperties.getProperty("tmbd_key")
+            ?: error("TMDB Key not found in local.properties")
+
+        buildConfigField("String", "TMDB_API_KEY", "\"$tmdbKey\"")
         buildConfigField("int", "API_ID", apiId.toString())
         buildConfigField("String", "API_HASH", "\"$apiHash\"")
-
     }
 
     buildTypes {
@@ -72,6 +76,11 @@ android {
                 newApkName
         }
     }
+
+    // ✅ Fix for KAPT NonExistentClass errors (Retrofit/Room)
+    kapt {
+        correctErrorTypes = true
+    }
 }
 
 dependencies {
@@ -97,8 +106,14 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
-    // ✅ Added OkHttp for test server downloads
+
+    // ✅ Added OkHttp
     implementation(libs.okhttp)
-    implementation(libs.okhttp.logging.interceptor)  // Useful for debugging
+    implementation(libs.okhttp.logging.interceptor)
+
+    // ✅ Retrofit + Gson
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+
     implementation(libs.libvlc.all)
 }

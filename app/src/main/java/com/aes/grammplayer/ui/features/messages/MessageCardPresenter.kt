@@ -12,6 +12,7 @@ import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.MediaFileHelper
+import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import com.aes.grammplayer.util.tdlib.ThumbnailGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,10 +38,38 @@ class MessageCardPresenter : Presenter() {
 
         val view = viewHolder.view
 
-        view.findViewById<TextView>(R.id.title).text = item.title ?: "Untitled"
+        val info = ReleaseTitleParser.parse(item.title)
+        view.findViewById<TextView>(R.id.title).text = info.displayTitle
         view.findViewById<TextView>(R.id.file_id).text = "File ID: ${item.fileId}"
         view.findViewById<TextView>(R.id.size).text =
             "Size: ${FormatHelper.formatBytesMb(item.size)}"
+
+        // Quality + source badge: resolution, video codec, service, source type
+        // e.g. "720p · H.265 · NF WEB-DL"
+        view.findViewById<TextView>(R.id.quality_source)?.apply {
+            val qualitySourceText = listOfNotNull(
+                info.resolution,
+                info.videoCodec,
+                info.service,
+                info.source
+            ).joinToString(" · ")
+            if (qualitySourceText.isNotBlank()) {
+                visibility = android.view.View.VISIBLE
+                text = qualitySourceText
+            } else {
+                visibility = android.view.View.GONE
+            }
+        }
+
+        // Release group tag, e.g. "CPTN5DW"
+        view.findViewById<TextView>(R.id.release_group)?.apply {
+            text = info.releaseGroup ?: ""
+            visibility = if (info.releaseGroup != null) {
+                android.view.View.VISIBLE
+            } else {
+                android.view.View.GONE
+            }
+        }
 
         val banner = view.findViewById<TextView>(R.id.banner)
         val isDownloaded = MediaFileHelper.existsOnDisk(item.localPath)

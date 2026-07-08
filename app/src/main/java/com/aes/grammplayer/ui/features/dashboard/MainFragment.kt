@@ -142,7 +142,6 @@ class MainFragment : BrowseSupportFragment() {
         settingsRowAdapter.add(DashboardItem("clear_cache", R.drawable.ic_clear_cache, "Clear Cache"))
         settingsRowAdapter.add(DashboardItem("clear_history", R.drawable.ic_history, "Clear History"))
         settingsRowAdapter.add(DashboardItem("settings", R.drawable.ic_settings, "Settings"))
-        settingsRowAdapter.add(DashboardItem("refresh_data", R.drawable.ic_refresh, "Refresh Data"))
         settingsRowAdapter.add(DashboardItem("close", R.drawable.ic_refresh, "Close"))
         settingsRowAdapter.add(DashboardItem("logout", R.drawable.ic_logout, "Logout"))
         rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
