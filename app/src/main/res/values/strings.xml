@@ -124,7 +124,7 @@
     <string name="detail_stat_year">Year</string>
     <string name="detail_stat_released">Released</string>
     <string name="detail_stat_status">Status</string>
-    <string name="detail_original_title">Original: %1$s</string>
+
     <string name="detail_crew_director">Director: %1$s</string>
     <string name="detail_crew_writer">Writer: %1$s</string>
     <string name="detail_crew_producer">Producer: %1$s</string>
