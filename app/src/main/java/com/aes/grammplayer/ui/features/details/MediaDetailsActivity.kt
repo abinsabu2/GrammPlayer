@@ -33,6 +33,7 @@ import com.aes.grammplayer.provider.MediaDownloadDataProvider
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import com.aes.grammplayer.util.tdlib.ReleaseInfo
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
+import com.aes.grammplayer.util.analytics.AnalyticsHelper
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
 import kotlinx.coroutines.Job
@@ -818,6 +819,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         if (hasRecordedHistoryDownload) return
         hasRecordedHistoryDownload = true
         hasRecordedHistoryDownloading = true
+        AnalyticsHelper.logMediaDownload(message.fileId, "telegram")
         lifecycleScope.launch {
             HistoryHelper.record(applicationContext, message, downloaded = true)
         }

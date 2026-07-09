@@ -7,6 +7,37 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
 }
 
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+val sanitizeForAmazonAppstore by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Rename TDLib symbols that Amazon's scanner misclassifies as ad SDKs."
+    commandLine("python3", rootProject.file("scripts/sanitize-for-amazon-appstore.py"))
+}
+
+val sanitizeReleaseDex by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Remove androidx.media ADVERTISEMENT metadata constant from release DEX."
+    dependsOn("minifyReleaseWithR8")
+    val dexDir = layout.buildDirectory.dir("intermediates/dex/release/minifyReleaseWithR8")
+    commandLine(
+        "python3",
+        rootProject.file("scripts/sanitize-for-amazon-appstore.py"),
+        "--dex-dir",
+        dexDir.get().asFile.absolutePath,
+    )
+}
+
+tasks.named("preBuild") {
+    dependsOn(sanitizeForAmazonAppstore)
+}
+
+afterEvaluate {
+    tasks.findByName("packageRelease")?.dependsOn(sanitizeReleaseDex)
+}
+
 android {
     namespace = "com.aes.grammplayer"
     compileSdk {
@@ -17,8 +48,8 @@ android {
         applicationId = "com.aes.grammplayer"
         minSdk = 21
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         val localProperties = Properties()
         val localPropertiesFile = rootProject.file("local.properties")
@@ -42,7 +73,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -106,4 +138,7 @@ dependencies {
     implementation(libs.retrofit.converter.gson)
 
     implementation(libs.libvlc.all)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
 }
