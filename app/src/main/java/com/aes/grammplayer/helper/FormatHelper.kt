@@ -1,0 +1,69 @@
+package com.aes.grammplayer.helper
+
+import android.os.StatFs
+import java.io.File
+import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+object FormatHelper {
+
+    private val oneDecimal = DecimalFormat("0.0")
+
+    fun formatBytes(sizeBytes: Long): String {
+        if (sizeBytes <= 0L) return "N/A"
+        val mb = sizeBytes / 1024.0 / 1024.0
+        return if (mb >= 1024) String.format("%.2f GB", mb / 1024.0) else String.format("%.1f MB", mb)
+    }
+
+    fun formatBytesMb(sizeBytes: Long): String {
+        if (sizeBytes <= 0L) return "N/A"
+        return String.format("%.2f MB", sizeBytes / 1024.0 / 1024.0)
+    }
+
+    fun formatBufferSizeMb(sizeMb: Int): String =
+        if (sizeMb >= 1024) String.format("%.1f GB", sizeMb / 1024.0) else "$sizeMb MB"
+
+    fun formatAvailableStorage(filesDir: File): String {
+        val stat = StatFs(filesDir.path)
+        val availableGb = stat.availableBytes / 1024.0 / 1024.0 / 1024.0
+        return String.format("%.1f GB", availableGb)
+    }
+
+    fun formatMimeType(mimeType: String): String =
+        mimeType.substringAfterLast('/').uppercase()
+
+    fun formatDownloadProgress(progress: Int, downloadedBytes: Long, totalBytes: Long): String {
+        if (totalBytes <= 0L) return "$progress%"
+        val downloadedMb = downloadedBytes / (1024.0 * 1024.0)
+        val totalMb = totalBytes / (1024.0 * 1024.0)
+        return "Downloading : $progress% (${oneDecimal.format(downloadedMb)} MB / ${oneDecimal.format(totalMb)} MB)"
+    }
+
+    fun formatRuntime(minutes: Int): String {
+        if (minutes <= 0) return "N/A"
+        val hours = minutes / 60
+        val mins = minutes % 60
+        return when {
+            hours > 0 && mins > 0 -> "${hours}h ${mins}m"
+            hours > 0 -> "${hours}h"
+            else -> "${mins}m"
+        }
+    }
+
+    fun formatRating(voteAverage: Double): String =
+        String.format("★ %.1f", voteAverage)
+
+    fun formatReleaseDate(isoDate: String?): String? {
+        if (isoDate.isNullOrBlank()) return null
+        return try {
+            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(isoDate) ?: return isoDate
+            SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(parsed)
+        } catch (_: Exception) {
+            isoDate
+        }
+    }
+
+    fun joinNames(names: List<String>, limit: Int = 2): String? =
+        names.filter { it.isNotBlank() }.take(limit).joinToString(", ").takeIf { it.isNotBlank() }
+}

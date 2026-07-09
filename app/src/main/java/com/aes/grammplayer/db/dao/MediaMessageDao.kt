@@ -1,0 +1,35 @@
+package com.aes.grammplayer.db.dao
+
+import androidx.room.*
+import com.aes.grammplayer.db.model.MediaMessage
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface MediaMessageDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(mediaMessage: MediaMessage): Long
+
+    @Update
+    suspend fun update(mediaMessage: MediaMessage)
+
+    @Delete
+    suspend fun delete(mediaMessage: MediaMessage)
+
+    @Query("SELECT * FROM MediaMessage")
+    fun getAll(): Flow<List<MediaMessage>>
+
+    @Query("SELECT * FROM MediaMessage WHERE id = :id")
+    fun getById(id: Long): Flow<MediaMessage?>
+
+    @Query("SELECT * FROM MediaMessage WHERE chat = :chatId ORDER BY id DESC")
+    fun getByChatId(chatId: Int): Flow<List<MediaMessage>>
+
+    @Query("SELECT * FROM MediaMessage WHERE isDownloaded = 1 ORDER BY id DESC")
+    fun getDownloadedMedia(): Flow<List<MediaMessage>>
+
+    @Query("SELECT COUNT(*) FROM MediaMessage")
+    suspend fun count(): Int
+
+    @Query("UPDATE MediaMessage SET localPath = '', isDownloaded = 0, isDownloadActive = 0")
+    suspend fun clearAllDownloadState()
+}

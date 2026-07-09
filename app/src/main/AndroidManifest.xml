@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     tools:ignore="MissingLeanbackLauncher">
+
     <uses-sdk
         android:minSdkVersion="21"
         android:targetSdkVersion="34" />
@@ -11,7 +12,10 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"
         tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:ignore="RequestInstallPackagesPolicy" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -19,6 +23,22 @@
     <uses-feature
         android:name="android.software.leanback"
         android:required="false" />
+
+    <!-- ==================== VLC / STORE DETECTION ==================== -->
+    <queries>
+        <package android:name="org.videolan.vlc" />
+        <package android:name="com.amazon.venezia" />
+        <package android:name="com.android.vending" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="amzn" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+    <!-- ============================================================== -->
 
     <application
         android:name=".GPlayerApplication"
@@ -28,8 +48,17 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.GrammPlayer">
+
+        <!-- Usage analytics only — do not collect advertising IDs -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_ssaid_collection_enabled"
+            android:value="false" />
+
         <activity
-            android:name=".OnboardingActivity"
+            android:name=".ui.features.onboarding.OnboardingActivity"
             android:banner="@drawable/app_logo_svg"
             android:icon="@drawable/app_logo_svg"
             android:logo="@drawable/app_logo_svg"
@@ -42,36 +71,45 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".TermsActivity"
-            android:exported="true">
+
+        <!-- Other activities remain the same -->
+        <activity android:name=".ui.features.onboarding.TermsActivity" android:exported="true">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ChatsGridActivity"
-            android:exported="true">
+
+        <activity android:name=".ui.features.chats.ChatsGridActivity" android:exported="true">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SettingsActivity"
-            android:exported="true">
+
+        <activity android:name=".ui.features.settings.SettingsActivity" android:exported="true">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MessageGridActivity"
-            android:exported="true">
+
+        <activity android:name=".ui.features.messages.MessageGridActivity" android:exported="true">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name=".ui.features.history.HistoryGridActivity" android:exported="true">
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <activity
-            android:name=".LoginActivity"
+            android:name=".ui.features.authentication.LoginActivity"
             android:exported="true"
             android:windowSoftInputMode="stateAlwaysHidden">
             <intent-filter>
@@ -79,14 +117,31 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.features.dashboard.MainActivity"
             android:exported="true">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.features.details.MediaDetailsActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:exported="true">
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.features.playback.InAppPlaybackActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

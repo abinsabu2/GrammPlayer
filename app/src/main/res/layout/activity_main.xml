@@ -3,10 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity"
+    android:background="#000000"
+    tools:context=".ui.features.dashboard.MainActivity"
     tools:deviceIds="tv">
 
     <!-- This FrameLayout will host your MainFragment (declare first so it's drawn underneath) -->
+
+    <!--
+        Fixed product logo, pinned above the sidebar (Chats/History/Preferences).
+        Sits on top of the fragment in the view hierarchy (declared after it),
+        so it always renders above the headers list and never scrolls with it.
+        Width matches Leanback's own headers column width so it lines up with
+        the sidebar below it.
+    -->
     <FrameLayout
         android:id="@+id/main_fragment_container"
         android:layout_width="match_parent"

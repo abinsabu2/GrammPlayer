@@ -2,23 +2,35 @@
 agp = "9.0.1"
 kotlin = "2.2.10"
 coreKtx = "1.10.1"
-leanback = "1.2.0-alpha02"
+leanback = "1.2.0"
 glide = "4.11.0"
 lifecycleRuntimeKtx = "2.6.1"
+lifecycleViewmodelKtx = "2.6.1"
 activityCompose = "1.8.0"
 composeBom = "2024.09.00"
 appcompat = "1.6.1"
 material = "1.10.0"
 activity = "1.8.0"
+activityKtx = "1.8.0"
 constraintlayout = "2.1.4"
 datastore = "1.1.1"
+room = "2.7.0"
 
+# NEW: Add these lines
+okhttp = "4.12.0"          # Latest stable OkHttp
+loggingInterceptor = "4.12.0"  # Optional: for debugging
+libvlc = "3.6.0"
+retrofit = "3.0.0"
+gsonConverter = "3.0.0"
+firebaseBom = "33.12.0"
+googleServices = "4.4.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-leanback = { group = "androidx.leanback", name = "leanback", version.ref = "leanback" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -31,10 +43,27 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "gsonConverter" }
+
+# NEW: Add these libraries
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "loggingInterceptor" }
+libvlc-all = { group = "org.videolan.android", name = "libvlc-all", version.ref = "libvlc" }
+
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

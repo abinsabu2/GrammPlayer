@@ -1,0 +1,364 @@
+package com.aes.grammplayer.ui.features.dashboard
+
+import java.util.Timer
+import android.app.AlertDialog
+import android.content.Intent
+import android.os.Bundle
+import android.view.LayoutInflater
+import androidx.leanback.app.BrowseSupportFragment
+import androidx.leanback.app.HeadersSupportFragment
+import androidx.leanback.widget.ArrayObjectAdapter
+import androidx.leanback.widget.ClassPresenterSelector
+import androidx.leanback.widget.FocusHighlight
+import androidx.leanback.widget.ListRow
+import androidx.leanback.widget.ListRowPresenter
+import androidx.leanback.widget.OnItemViewClickedListener
+import androidx.leanback.widget.OnItemViewSelectedListener
+import androidx.leanback.widget.Presenter
+import androidx.leanback.widget.Row
+import androidx.leanback.widget.RowPresenter
+import androidx.core.content.ContextCompat
+import android.util.Log
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.aes.grammplayer.config.ReviewModeHelper
+import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
+import com.aes.grammplayer.ui.features.history.HistoryGridActivity
+import com.aes.grammplayer.R
+import com.aes.grammplayer.ui.common.makeFocusableForTv
+import com.aes.grammplayer.helper.DialogHelper
+import com.aes.grammplayer.helper.HistoryHelper
+import com.aes.grammplayer.helper.NavigationExtras
+import com.aes.grammplayer.ui.features.authentication.LoginActivity
+import com.aes.grammplayer.ui.features.settings.SettingsActivity
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import com.aes.grammplayer.util.tdlib.TelegramClientManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * Loads a grid of cards with movies to browse.
+ */
+class MainFragment : BrowseSupportFragment() {
+
+    private var mBackgroundTimer: Timer? = null
+
+    private lateinit var loadingDialog: DialogHelper
+
+    private lateinit var settingsDataStore: SettingsDataStore
+
+    private lateinit var productLogo: ImageView
+
+    private var reviewMode = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        settingsDataStore = SettingsDataStore(requireActivity())
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        Log.i(TAG, "onCreate")
+        super.onActivityCreated(savedInstanceState)
+
+        loadingDialog = DialogHelper(requireActivity().supportFragmentManager)
+
+        // Browse chrome — title, sidebar, brand badge.
+        headersState = HEADERS_ENABLED
+        isHeadersTransitionOnBackEnabled = true
+        brandColor = ContextCompat.getColor(requireActivity(), R.color.background_gradient_start)
+        // Logo is now a fixed ImageView in activity_main.xml, pinned above the
+        // sidebar — badgeDrawable floats in the shared title strip and can't
+        // be reliably locked above "Chats", so we don't use it here.
+        val logoDrawable = ContextCompat.getDrawable(requireActivity(), R.drawable.gp_logo_bk_bg)
+        badgeDrawable = logoDrawable
+        // Custom sidebar header design: icon + label, teal on focus.
+        setHeaderPresenterSelector(
+            ClassPresenterSelector().addClassPresenter(ListRow::class.java, DashboardHeaderPresenter())
+        )
+        setupEventListeners()
+        lifecycleScope.launch {
+            HistoryHelper.prepareSession(requireContext())
+            reviewMode = ReviewModeHelper.isReviewMode(requireContext())
+            loadRows()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "onDestroy: " + mBackgroundTimer?.toString())
+        mBackgroundTimer?.cancel()
+    }
+
+    override fun onCreateHeadersSupportFragment(): HeadersSupportFragment {
+        return DashboardHeadersSupportFragment()
+    }
+
+    private fun loadRows() {
+        // ZOOM_FACTOR_NONE stops Leanback from scaling the whole row on focus —
+        // our cards handle their own focus state via card_background_selector,
+        // so we don't want the row itself growing/shifting on top of that.
+        val listRowPresenter = ListRowPresenter(FocusHighlight.ZOOM_FACTOR_NONE).apply {
+            shadowEnabled = false
+        }
+        val rowsAdapter = ArrayObjectAdapter(listRowPresenter)
+
+        // --- Chats row: hero cards for Chats + History ---
+        val chatsHeader = DashboardHeaderItem(1, "Chats", R.drawable.ic_chat)
+        val chatsRowAdapter = ArrayObjectAdapter(HeroCardPresenter())
+        chatsRowAdapter.add(
+            DashboardItem(
+                id = "chats",
+                iconRes = R.drawable.ic_chat,
+                eyebrow = "Chat Management",
+                title = "Chats",
+                description = "Your Conversations",
+                actionLabel = "Open Chats",
+                isHero = true
+            )
+        )
+        chatsRowAdapter.add(
+            DashboardItem(
+                id = "history",
+                iconRes = R.drawable.ic_history,
+                eyebrow = "History Management",
+                title = "History",
+                description = "Your History",
+                actionLabel = "Open History",
+                isHero = true
+            )
+        )
+        rowsAdapter.add(ListRow(chatsHeader, chatsRowAdapter))
+
+        // --- Preferences row: icon cards (trimmed for store review accounts) ---
+        val preferenceItems = listOf(
+            DashboardItem("clear_cache", R.drawable.ic_clear_cache, "Clear Cache"),
+            DashboardItem("clear_history", R.drawable.ic_history, "Clear History"),
+            DashboardItem("settings", R.drawable.ic_settings, "Settings"),
+            DashboardItem("close", R.drawable.ic_refresh, "Close"),
+            DashboardItem("logout", R.drawable.ic_logout, "Logout")
+        ).filter { ReviewModeHelper.isDashboardItemVisible(it.id, reviewMode) }
+
+        if (preferenceItems.isNotEmpty()) {
+            val settingsHeader = DashboardHeaderItem(2, "Preferences", R.drawable.ic_settings)
+            val settingsRowAdapter = ArrayObjectAdapter(IconCardPresenter())
+            preferenceItems.forEach { settingsRowAdapter.add(it) }
+            rowsAdapter.add(ListRow(settingsHeader, settingsRowAdapter))
+        }
+
+        adapter = rowsAdapter
+    }
+
+    private fun setupEventListeners() {
+        onItemViewClickedListener = ItemViewClickedListener()
+        onItemViewSelectedListener = ItemViewSelectedListener()
+    }
+
+    private fun confirmClearHistory() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.clear_history)
+            .setMessage(R.string.clear_history_confirm)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        loadingDialog.runWithLoading("Clearing history...") {
+                            HistoryHelper.clear(requireContext())
+                        }
+                        if (isAdded) {
+                            Toast.makeText(requireContext(), R.string.clear_history_done, Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Clear history failed", e)
+                        if (isAdded) {
+                            Toast.makeText(
+                                requireContext(),
+                                "Failed to clear history",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private inner class ItemViewClickedListener : OnItemViewClickedListener {
+        override fun onItemClicked(
+            itemViewHolder: Presenter.ViewHolder,
+            item: Any,
+            rowViewHolder: RowPresenter.ViewHolder,
+            row: Row
+        ) {
+            when (item) {
+                is DashboardItem -> {
+                    if (reviewMode && ReviewModeHelper.isDestructiveDashboardAction(item.id)) {
+                        return
+                    }
+                    when (item.id) {
+                        "clear_cache" -> {
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                try {
+                                    val deletedCount = loadingDialog.runWithLoading("Clearing cache...") {
+                                        withContext(Dispatchers.IO) {
+                                            TelegramClientManager.clearDownloadCache(requireContext())
+                                        }
+                                    }
+                                    if (!isAdded) return@launch
+                                    val cacheClearText =
+                                        "Cleared $deletedCount downloaded files from cache"
+                                    Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT)
+                                        .show()
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Clear cache failed", e)
+                                    if (isAdded) {
+                                        Toast.makeText(
+                                            requireContext(),
+                                            "Failed to clear cache",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                        }
+                        "clear_history" -> confirmClearHistory()
+                        "settings" -> {
+                            val intent = Intent(activity, SettingsActivity::class.java)
+                            startActivity(intent)
+                        }
+                        "close" -> {
+                            TelegramClientManager.clearDownloadedFiles()
+                            requireActivity().finish()
+                        }
+                        "chats" -> {
+                            val intent = Intent(activity, ChatsGridActivity::class.java).apply {
+                                putExtra(NavigationExtras.CHAT_ID, 1000L)
+                                putExtra(NavigationExtras.CHAT_TITLE, "Chats")
+                            }
+                            startActivity(intent)
+                        }
+                        "history" -> {
+                            startActivity(Intent(activity, HistoryGridActivity::class.java))
+                        }
+                        "logout" -> {
+                            lifecycleScope.launch {
+                                try {
+                                    loadingDialog.runWithLoading("Logging out") { update ->
+                                        TelegramClientManager.logOut()
+                                        update("Logged out")
+                                        delay(500.milliseconds)
+                                    }
+                                    val intent = Intent(activity, LoginActivity::class.java).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    }
+                                    settingsDataStore.setTestMode(false)
+                                    startActivity(intent)
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Logout failed: ${e.message}", e)
+                                }
+                            }
+                        }
+                        else -> {
+                            Toast.makeText(requireContext(), "Clicked on: ${item.title}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private inner class ItemViewSelectedListener : OnItemViewSelectedListener {
+        override fun onItemSelected(
+            itemViewHolder: Presenter.ViewHolder?, item: Any?,
+            rowViewHolder: RowPresenter.ViewHolder, row: Row
+        ) {
+            when (item) {
+                is DashboardItem -> {
+                    when (item.id) {
+                        "chats" -> {
+                            // Reserved for selection-based preview/behavior if needed later.
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Renders the large hero card: icon, eyebrow label, title, description, action button.
+     * Used for both the "Chats" and "History" row items.
+     */
+    private inner class HeroCardPresenter : Presenter() {
+        override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.card_hero, parent, false)
+            // Must be focusable, or the card can never take D-pad focus and
+            // onItemClicked/onItemSelected will never fire for it.
+            view.makeFocusableForTv()
+            return ViewHolder(view)
+        }
+
+        override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
+            val d = item as DashboardItem
+            val view = viewHolder.view
+            view.findViewById<ImageView>(R.id.icon).setImageResource(d.iconRes)
+            view.findViewById<TextView>(R.id.eyebrow).text = d.eyebrow
+            view.findViewById<TextView>(R.id.title).text = d.title
+            view.findViewById<TextView>(R.id.description).text = d.description
+            view.findViewById<TextView>(R.id.actionButton).text = d.actionLabel
+        }
+
+        override fun onUnbindViewHolder(viewHolder: ViewHolder) {}
+    }
+
+    /**
+     * Renders the small square icon cards used for the Preferences row
+     * (Clear Cache, Settings, Refresh Data, Close, Logout).
+     */
+    private inner class IconCardPresenter : Presenter() {
+        override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.card_icon, parent, false)
+            view.makeFocusableForTv()
+            return ViewHolder(view)
+        }
+
+        override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
+            val d = item as DashboardItem
+            val view = viewHolder.view
+            view.findViewById<ImageView>(R.id.icon).setImageResource(d.iconRes)
+            view.findViewById<TextView>(R.id.title).text = d.title
+        }
+
+        override fun onUnbindViewHolder(viewHolder: ViewHolder) {}
+    }
+
+    companion object {
+        private val TAG = "MainFragment"
+    }
+}
+
+/**
+ * Sidebar headers list, with extra top padding reserved for the fixed
+ * product logo overlaid in activity_main.xml — otherwise the logo would
+ * sit on top of the first header row ("Chats").
+ */
+class DashboardHeadersSupportFragment : HeadersSupportFragment() {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        val topPaddingPx = (80 * resources.displayMetrics.density).toInt()
+        view.setPadding(view.paddingLeft, topPaddingPx, view.paddingRight, view.paddingBottom)
+    }
+}

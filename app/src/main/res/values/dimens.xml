@@ -1,5 +1,54 @@
 <resources>
-    <!-- Custom dimensions for the app logo -->
     <dimen name="app_logo_width">120dp</dimen>
     <dimen name="app_logo_height">60dp</dimen>
+
+    <!-- Media details layout -->
+    <dimen name="detail_screen_padding_h">20dp</dimen>
+    <dimen name="detail_screen_padding_v">8dp</dimen>
+    <dimen name="detail_app_bar_height">48dp</dimen>
+    <dimen name="detail_preview_height">130dp</dimen>
+    <dimen name="detail_poster_width">108dp</dimen>
+    <dimen name="detail_poster_height">144dp</dimen>
+    <dimen name="detail_poster_radius">12dp</dimen>
+    <dimen name="detail_close_size">40dp</dimen>
+    <dimen name="detail_content_gap">14dp</dimen>
+    <dimen name="detail_section_gap">8dp</dimen>
+    <dimen name="detail_log_height">96dp</dimen>
+
+    <!-- Media details typography -->
+    <dimen name="detail_title_text">20sp</dimen>
+    <dimen name="detail_body_text">14sp</dimen>
+    <dimen name="detail_label_text">11sp</dimen>
+    <dimen name="detail_button_text">14sp</dimen>
+    <dimen name="detail_chip_text">13sp</dimen>
+    <dimen name="detail_setting_value_text">14sp</dimen>
+    <dimen name="detail_setting_caption_text">11sp</dimen>
+    <dimen name="detail_action_button_height">40dp</dimen>
+    <dimen name="detail_setting_card_height">44dp</dimen>
+    <dimen name="detail_chip_height">34dp</dimen>
+    <dimen name="detail_app_icon_size">22dp</dimen>
+    <dimen name="detail_app_name_text">16sp</dimen>
+    <dimen name="detail_promo_height">32dp</dimen>
+    <dimen name="detail_promo_text">12sp</dimen>
+    <dimen name="detail_progress_height">4dp</dimen>
+    <dimen name="detail_preview_padding_h">12dp</dimen>
+    <dimen name="detail_preview_padding_v">8dp</dimen>
+    <dimen name="detail_preview_label_text">12sp</dimen>
+    <dimen name="detail_preview_fullscreen_height">36dp</dimen>
+    <dimen name="detail_button_icon_size">16dp</dimen>
+    <dimen name="detail_button_padding_start">14dp</dimen>
+    <dimen name="detail_button_padding_end">16dp</dimen>
+    <dimen name="detail_button_gap">8dp</dimen>
+    <dimen name="detail_close_padding">8dp</dimen>
+    <dimen name="detail_log_padding_h">18dp</dimen>
+    <dimen name="detail_log_padding_v">8dp</dimen>
+    <dimen name="detail_log_text">12sp</dimen>
+    <dimen name="detail_setting_caption_margin">4dp</dimen>
+    <dimen name="detail_setting_card_margin">8dp</dimen>
+    <dimen name="detail_chip_padding_h">10dp</dimen>
+    <dimen name="detail_chip_icon_size">14dp</dimen>
+    <dimen name="detail_content_max_width">9999dp</dimen>
+    <dimen name="detail_promo_max_width">360dp</dimen>
+    <dimen name="detail_setting_card_min_width">100dp</dimen>
+    <dimen name="detail_setting_card_icon_size">18dp</dimen>
 </resources>

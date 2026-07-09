@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="@dimen/detail_setting_card_margin"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:focusable="false"
+    android:focusableInTouchMode="false">
+
+    <LinearLayout
+        android:id="@+id/card_container"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/detail_setting_card_height"
+        android:minWidth="@dimen/detail_setting_card_min_width"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/setting_card_background"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <ImageView
+            android:id="@+id/icon"
+            android:layout_width="@dimen/detail_setting_card_icon_size"
+            android:layout_height="@dimen/detail_setting_card_icon_size"
+            android:layout_marginEnd="8dp"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/value_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/detail_text_primary"
+            android:textSize="@dimen/detail_setting_value_text"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="512 MB" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/caption_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/detail_setting_caption_margin"
+        android:letterSpacing="0.05"
+        android:textAllCaps="true"
+        android:textColor="@color/detail_text_label"
+        android:textSize="@dimen/detail_setting_caption_text"
+        tools:text="BUFFER SIZE" />
+
+    <TextView
+        android:id="@+id/subcaption_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:textSize="10sp"
+        android:visibility="gone"
+        tools:text="Current: 4K UHD"
+        tools:visibility="visible" />
+</LinearLayout>
