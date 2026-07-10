@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 4K and large TV displays -->
+    <dimen name="grid_card_chat_size">180dp</dimen>
+    <dimen name="grid_card_media_width">440dp</dimen>
+    <dimen name="grid_card_media_height">180dp</dimen>
+    <dimen name="grid_card_thumbnail_size">110dp</dimen>
+    <dimen name="grid_card_title_text">16sp</dimen>
+    <dimen name="grid_card_body_text">13sp</dimen>
+    <dimen name="grid_card_chat_title_text">18sp</dimen>
     <dimen name="detail_screen_padding_h">36dp</dimen>
     <dimen name="detail_screen_padding_v">12dp</dimen>
     <dimen name="detail_app_bar_height">56dp</dimen>

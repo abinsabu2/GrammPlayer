@@ -2,4 +2,8 @@
 <resources>
     <item name="grid_thumbnail_bind_key" type="id" />
     <item name="grid_thumbnail_bind_job" type="id" />
+    <item name="grid_thumbnail_loaded" type="id" />
+    <item name="grid_card_file_id" type="id" />
+    <item name="dashboard_header_item" type="id" />
+    <item name="grid_download_progress" type="id" />
 </resources>

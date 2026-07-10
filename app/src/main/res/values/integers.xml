@@ -3,4 +3,8 @@
     <integer name="detail_description_max_lines">4</integer>
     <integer name="detail_title_max_lines">2</integer>
     <integer name="detail_tagline_max_lines">2</integer>
+
+    <!-- Phones and compact screens (sw &lt; 480dp) -->
+    <integer name="grid_column_count_media">1</integer>
+    <integer name="grid_column_count_chat">2</integer>
 </resources>

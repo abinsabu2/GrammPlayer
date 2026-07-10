@@ -8,7 +8,7 @@ import androidx.leanback.widget.Presenter
 import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.FormatHelper
-import com.aes.grammplayer.helper.MediaFileHelper
+import com.aes.grammplayer.ui.common.GridDownloadLabelBinder
 import com.aes.grammplayer.ui.common.GridThumbnailBinder
 import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
@@ -63,16 +63,7 @@ class MessageCardPresenter : Presenter() {
             }
         }
 
-        val banner = view.findViewById<TextView>(R.id.banner)
-        val isDownloaded = MediaFileHelper.existsOnDisk(item.localPath)
-
-        if (isDownloaded) {
-            banner.visibility = android.view.View.VISIBLE
-            banner.text = if (item.isDownloadActive) "Downloading..." else "Ready"
-        } else {
-            banner.visibility = android.view.View.GONE
-        }
-
+        GridDownloadLabelBinder.bindMessageBanner(view, item)
         GridThumbnailBinder.bind(view, item, info, scope)
     }
 

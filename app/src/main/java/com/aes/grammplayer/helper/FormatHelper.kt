@@ -40,6 +40,8 @@ object FormatHelper {
         return "Downloading : $progress% (${oneDecimal.format(downloadedMb)} MB / ${oneDecimal.format(totalMb)} MB)"
     }
 
+    fun formatGridDownloadLabel(progress: Int): String = "Downloading: $progress%"
+
     fun formatRuntime(minutes: Int): String {
         if (minutes <= 0) return "N/A"
         val hours = minutes / 60

@@ -8,4 +8,13 @@ import androidx.leanback.widget.HeaderItem
  * icon, so DashboardHeaderPresenter can render icon + label instead of the
  * default text-only header row.
  */
-class DashboardHeaderItem(id: Long, name: String, val iconRes: Int) : HeaderItem(id, name)
+class DashboardHeaderItem(
+    id: Long,
+    name: String,
+    val iconRes: Int,
+    val showProgressIcon: Boolean = false
+) : HeaderItem(id, name) {
+
+    /** Mutable label for rows that update in place (e.g. download progress). */
+    var displayName: String = name
+}

@@ -42,7 +42,10 @@ object GridThumbnailBinder {
         val thumbnailView = view.findViewById<ImageView>(R.id.thumbnail) ?: return
         val key = message.uniqueId.ifEmpty { message.fileId.toString() }
 
+        if (shouldSkipRebind(thumbnailView, key)) return
+
         (thumbnailView.getTag(R.id.grid_thumbnail_bind_job) as? Job)?.cancel()
+        thumbnailView.setTag(R.id.grid_thumbnail_loaded, false)
 
         thumbnailView.setTag(R.id.grid_thumbnail_bind_key, key)
         val placeholderColor = ThumbnailGenerator.colorFor(key)
@@ -94,7 +97,18 @@ object GridThumbnailBinder {
         (thumbnailView.getTag(R.id.grid_thumbnail_bind_job) as? Job)?.cancel()
         thumbnailView.setTag(R.id.grid_thumbnail_bind_job, null)
         thumbnailView.setTag(R.id.grid_thumbnail_bind_key, null)
+        thumbnailView.setTag(R.id.grid_thumbnail_loaded, null)
         GlideHelper.clear(thumbnailView)
+    }
+
+    private fun shouldSkipRebind(thumbnailView: ImageView, key: String): Boolean {
+        if (!isCurrentBind(thumbnailView, key)) return false
+        if (thumbnailView.getTag(R.id.grid_thumbnail_loaded) == true) return true
+        return (thumbnailView.getTag(R.id.grid_thumbnail_bind_job) as? Job)?.isActive == true
+    }
+
+    private fun markThumbnailLoaded(thumbnailView: ImageView) {
+        thumbnailView.setTag(R.id.grid_thumbnail_loaded, true)
     }
 
     private suspend fun resolveRemoteUrls(message: MediaMessage, info: ReleaseInfo): List<String> =
@@ -200,6 +214,7 @@ object GridThumbnailBinder {
                         dataSource: DataSource,
                         isFirstResource: Boolean
                     ): Boolean {
+                        markThumbnailLoaded(thumbnailView)
                         onSuccess()
                         return false
                     }
@@ -225,6 +240,25 @@ object GridThumbnailBinder {
                 .transform(CenterCrop(), RoundedCorners(cornerRadius))
                 .placeholder(placeholder)
                 .error(placeholder)
+                .listener(object : RequestListener<Drawable> {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean
+                    ): Boolean = false
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        markThumbnailLoaded(thumbnailView)
+                        return false
+                    }
+                })
                 .into(thumbnailView)
         } catch (e: IllegalArgumentException) {
             Log.w(TAG, "Skipping local thumbnail load — context destroyed", e)

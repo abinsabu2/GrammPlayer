@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Standard 1080p TV -->
+    <dimen name="grid_card_chat_size">160dp</dimen>
+    <dimen name="grid_card_media_width">400dp</dimen>
+    <dimen name="grid_card_media_height">160dp</dimen>
+    <dimen name="grid_card_thumbnail_size">96dp</dimen>
+    <dimen name="grid_card_title_text">14sp</dimen>
+    <dimen name="grid_card_body_text">12sp</dimen>
+    <dimen name="grid_card_chat_title_text">16sp</dimen>
     <dimen name="detail_screen_padding_h">24dp</dimen>
     <dimen name="detail_screen_padding_v">8dp</dimen>
     <dimen name="detail_app_bar_height">48dp</dimen>

@@ -5,25 +5,22 @@ import android.util.Log
 import android.view.View
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
-import androidx.leanback.widget.Row
-import androidx.leanback.widget.RowPresenter
-import androidx.lifecycle.lifecycleScope
+import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.DialogHelper
-import com.aes.grammplayer.helper.NavigationExtras
 import com.aes.grammplayer.provider.MediaMessageDataProvider
 import com.aes.grammplayer.ui.common.BaseGridFragment
 import com.aes.grammplayer.ui.features.details.MediaDetailsActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
-import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MessageGridFragment : BaseGridFragment() {
 
     private lateinit var settingsDataStore: SettingsDataStore
     private lateinit var loader: DialogHelper
+    private var isLoadingMessages = false
 
     override fun createItemPresenter(): Presenter = MessageCardPresenter()
 
@@ -38,23 +35,31 @@ class MessageGridFragment : BaseGridFragment() {
 
     override fun onResume() {
         super.onResume()
-        if (::loader.isInitialized) {
-            loader.dismiss()
+        if (!isLoadingMessages) {
+            refreshAllCards()
         }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setContentVisible(false)
         viewLifecycleOwner.lifecycleScope.launch {
+            isLoadingMessages = true
             try {
-                loader.runWithLoading("Loading messages...") { update ->
+                loader.runWithLoading(getString(R.string.loading_messages_progress, 0)) { update ->
                     loadMessages(update)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
+            } finally {
+                isLoadingMessages = false
+                setContentVisible(true)
             }
         }
-        refreshAllCards()
+    }
+
+    private fun setContentVisible(visible: Boolean) {
+        view?.visibility = if (visible) View.VISIBLE else View.INVISIBLE
     }
 
     private fun setupEventListeners() {
@@ -71,17 +76,19 @@ class MessageGridFragment : BaseGridFragment() {
             return
         }
         val userMode = settingsDataStore.isTestMode.first()
-        withContext(Dispatchers.Main) {
-            MediaMessageDataProvider.loadAllMediaMessages(
-                mode = userMode,
-                chatId = chatId,
-                limit = 10000
-            ) { mediaMessage ->
+        gridAdapter.clear()
+        MediaMessageDataProvider.loadAllMediaMessages(
+            mode = userMode,
+            chatId = chatId,
+            limit = 10000,
+            onMediaLoaded = { mediaMessage ->
                 gridAdapter.add(mediaMessage)
+            },
+            onProgress = { count ->
+                updateMessage(getString(R.string.loading_messages_progress, count))
             }
-            updateMessage("Loaded ${gridAdapter.size()} messages from chat")
-            refreshAllCards()
-        }
+        )
+        refreshAllCards()
     }
 
     companion object {
