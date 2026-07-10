@@ -11,7 +11,7 @@ import org.videolan.libvlc.util.VLCVideoLayout
 
 /**
  * Inline preview playback using the VLC engine (libvlc).
- * Full-screen playback is handled separately via the installed VLC app.
+ * Full-screen playback is handled separately via [InAppPlaybackActivity] or external VLC.
  */
 object PreviewPlayerHelper {
 
@@ -42,16 +42,35 @@ object PreviewPlayerHelper {
             host.addView(layout)
             videoLayout = layout
 
-            val options = arrayListOf(
-                "--intf", "dummy",
-                "--no-video-title-show",
-                "--no-stats"
-            )
+            layout.post {
+                if (videoLayout !== layout) return@post
+                if (!startPlaybackOnLayout(context, layout, file.absolutePath, onStarted, hwDecode = true)) {
+                    stop()
+                }
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed VLC preview setup for $filePath", e)
+            stop()
+            false
+        }
+    }
+
+    private fun startPlaybackOnLayout(
+        context: Context,
+        layout: VLCVideoLayout,
+        filePath: String,
+        onStarted: (() -> Unit)?,
+        hwDecode: Boolean
+    ): Boolean {
+        return try {
+            releasePlayerInstances()
+            val options = VlcPlaybackOptions.build(hwDecode)
             libVlc = LibVLC(context.applicationContext, options)
             mediaPlayer = MediaPlayer(libVlc).apply {
                 attachViews(layout, null, false, false)
-                val media = Media(libVlc, file.absolutePath)
-                media.setHWDecoderEnabled(true, false)
+                val media = Media(libVlc, filePath)
+                media.setHWDecoderEnabled(hwDecode, false)
                 media.addOption(":input-repeat=65535")
                 setMedia(media)
                 media.release()
@@ -64,9 +83,13 @@ object PreviewPlayerHelper {
             }
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed VLC preview for $filePath", e)
-            stop()
-            false
+            if (hwDecode) {
+                Log.w(TAG, "HW decode preview failed, retrying software decoder", e)
+                startPlaybackOnLayout(context, layout, filePath, onStarted, hwDecode = false)
+            } else {
+                Log.e(TAG, "Failed VLC preview for $filePath", e)
+                false
+            }
         }
     }
 
@@ -84,21 +107,29 @@ object PreviewPlayerHelper {
 
     fun isPlaying(): Boolean = mediaPlayer?.isPlaying == true
 
-    fun stop() {
+    fun stop(onReleased: (() -> Unit)? = null) {
+        val host = videoHost
+        releasePlayerInstances()
+        host?.removeAllViews()
+        videoHost = null
+        videoLayout = null
+        host?.post { onReleased?.invoke() } ?: onReleased?.invoke()
+    }
+
+    private fun releasePlayerInstances() {
         try {
-            mediaPlayer?.stop()
-            videoLayout?.let {
-                mediaPlayer?.detachViews()
+            mediaPlayer?.let { player ->
+                if (player.isPlaying) {
+                    player.stop()
+                }
+                videoLayout?.let { player.detachViews() }
+                player.release()
             }
-            mediaPlayer?.release()
             libVlc?.release()
         } catch (e: Exception) {
             Log.w(TAG, "Error stopping VLC preview", e)
         }
-        videoHost?.removeAllViews()
         mediaPlayer = null
         libVlc = null
-        videoLayout = null
-        videoHost = null
     }
 }

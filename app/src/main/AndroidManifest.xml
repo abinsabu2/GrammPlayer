@@ -139,6 +139,8 @@
         <activity
             android:name=".ui.features.playback.InAppPlaybackActivity"
             android:exported="false"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
 
         <provider

@@ -99,6 +99,7 @@ object PlayerHelper {
                 file
             )
             val intent = buildVlcPlayIntent(context, contentUri)
+            grantVlcUriPermission(context, contentUri)
             context.startActivity(intent)
             AnalyticsHelper.logMediaPlay(fileId, "vlc")
             PlayResult.Started(fileId, file.absolutePath)
@@ -107,6 +108,18 @@ object PlayerHelper {
             PlayResult.Failed(
                 "Error while launching VLC Media Player for ${file.absolutePath}: ${e.message}"
             )
+        }
+    }
+
+    private fun grantVlcUriPermission(context: Context, contentUri: Uri) {
+        try {
+            context.grantUriPermission(
+                VLC_PACKAGE,
+                contentUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not pre-grant URI permission to VLC", e)
         }
     }
 

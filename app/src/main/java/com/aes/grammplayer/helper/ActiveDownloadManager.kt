@@ -24,9 +24,21 @@ object ActiveDownloadManager {
     @Volatile
     private var current: Session? = null
 
+    @Volatile
+    private var completed: Session? = null
+
     fun currentSession(): Session? = current
 
+    fun peekCompletedSession(): Session? = completed
+
+    fun clearCompletedSession() {
+        completed = null
+    }
+
     fun isActive(fileId: Int): Boolean = current?.fileId == fileId
+
+    fun wasRecentlyCompleted(fileId: Int): Boolean =
+        completed?.fileId == fileId || current?.fileId == fileId
 
     fun otherActiveSession(fileId: Int): Session? {
         val active = current ?: return null
@@ -34,6 +46,7 @@ object ActiveDownloadManager {
     }
 
     fun begin(message: MediaMessage) {
+        completed = null
         current = Session(
             fileId = message.fileId,
             messageId = message.id,
@@ -50,6 +63,7 @@ object ActiveDownloadManager {
 
     fun complete(fileId: Int) {
         if (current?.fileId == fileId) {
+            completed = current
             current = null
         }
     }
@@ -79,6 +93,9 @@ object ActiveDownloadManager {
         DownloadProgressTracker.clear(active.fileId)
         if (current?.fileId == active.fileId) {
             current = null
+        }
+        if (completed?.fileId == active.fileId) {
+            completed = null
         }
     }
 }

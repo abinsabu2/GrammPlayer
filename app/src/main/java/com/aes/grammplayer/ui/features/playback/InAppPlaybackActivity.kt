@@ -10,6 +10,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.helper.MediaFileHelper
+import com.aes.grammplayer.helper.VlcPlaybackOptions
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
@@ -43,10 +44,10 @@ class InAppPlaybackActivity : AppCompatActivity() {
             }
         })
 
-        startPlayback(file.absolutePath)
+        preparePlaybackSurface(file.absolutePath)
     }
 
-    private fun startPlayback(filePath: String) {
+    private fun preparePlaybackSurface(filePath: String) {
         val host = findViewById<FrameLayout>(R.id.playback_root)
         val layout = VLCVideoLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -59,26 +60,33 @@ class InAppPlaybackActivity : AppCompatActivity() {
         }
         host.addView(layout)
         videoLayout = layout
+        layout.post {
+            if (videoLayout !== layout || isFinishing) return@post
+            startPlayback(layout, filePath, hwDecode = true)
+        }
+    }
 
+    private fun startPlayback(layout: VLCVideoLayout, filePath: String, hwDecode: Boolean) {
+        releasePlayer()
         try {
-            val options = arrayListOf(
-                "--intf", "dummy",
-                "--no-video-title-show",
-                "--no-stats"
-            )
-            libVlc = LibVLC(applicationContext, options)
+            libVlc = LibVLC(applicationContext, VlcPlaybackOptions.build(hwDecode))
             mediaPlayer = MediaPlayer(libVlc).apply {
-                attachViews(layout, null, true, false)
+                attachViews(layout, null, false, false)
                 val media = Media(libVlc, filePath)
-                media.setHWDecoderEnabled(true, false)
+                media.setHWDecoderEnabled(hwDecode, false)
                 setMedia(media)
                 media.release()
                 play()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "In-app playback failed for $filePath", e)
-            Toast.makeText(this, R.string.playback_in_app_failed, Toast.LENGTH_LONG).show()
-            finish()
+            if (hwDecode) {
+                Log.w(TAG, "HW decode playback failed, retrying software decoder", e)
+                startPlayback(layout, filePath, hwDecode = false)
+            } else {
+                Log.e(TAG, "In-app playback failed for $filePath", e)
+                Toast.makeText(this, R.string.playback_in_app_failed, Toast.LENGTH_LONG).show()
+                finish()
+            }
         }
     }
 
@@ -94,16 +102,19 @@ class InAppPlaybackActivity : AppCompatActivity() {
 
     private fun releasePlayer() {
         try {
-            mediaPlayer?.stop()
-            videoLayout?.let { mediaPlayer?.detachViews() }
-            mediaPlayer?.release()
+            mediaPlayer?.let { player ->
+                if (player.isPlaying) {
+                    player.stop()
+                }
+                videoLayout?.let { player.detachViews() }
+                player.release()
+            }
             libVlc?.release()
         } catch (e: Exception) {
             Log.w(TAG, "Error releasing in-app player", e)
         }
         mediaPlayer = null
         libVlc = null
-        videoLayout = null
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {

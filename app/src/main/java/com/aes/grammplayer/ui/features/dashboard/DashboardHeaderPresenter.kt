@@ -58,7 +58,11 @@ class DashboardHeaderPresenter : RowHeaderPresenter() {
         val title = view.findViewById<TextView>(R.id.title) ?: return
         val icon = view.findViewById<ImageView>(R.id.icon) ?: return
 
-        if (header?.showProgressIcon == true) {
+        if (header?.isReady == true) {
+            val readyColor = ContextCompat.getColor(view.context, R.color.accent_teal)
+            title.setTextColor(ColorUtils.blendARGB(TITLE_UNSELECTED, TITLE_SELECTED, level))
+            icon.setColorFilter(ColorUtils.blendARGB(readyColor, ICON_SELECTED, level))
+        } else if (header?.showProgressIcon == true) {
             val progressColor = ContextCompat.getColor(view.context, R.color.downloading_border)
             title.setTextColor(ColorUtils.blendARGB(progressColor, TITLE_SELECTED, level))
             icon.setColorFilter(ColorUtils.blendARGB(progressColor, ICON_SELECTED, level))

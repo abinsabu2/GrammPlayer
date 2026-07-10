@@ -68,6 +68,8 @@
     <string name="download_replace_confirm">Continue</string>
     <string name="detail_bottom_download_status">%1$s (%2$d) : %3$d%%</string>
     <string name="dashboard_downloading_row_title">In progress</string>
+    <string name="dashboard_downloading_row_ready">Ready</string>
+    <string name="grid_label_ready">Ready</string>
     <string name="loading_messages_progress">Loading %1$d of messages</string>
     <string name="preview_label">PREVIEW</string>
     <string name="preview_fullscreen">Full Screen</string>
