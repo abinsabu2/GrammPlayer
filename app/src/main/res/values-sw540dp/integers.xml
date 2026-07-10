@@ -3,4 +3,8 @@
     <integer name="detail_description_max_lines">4</integer>
     <integer name="detail_title_max_lines">2</integer>
     <integer name="detail_tagline_max_lines">2</integer>
+
+    <!-- Standard 1080p TV -->
+    <integer name="grid_column_count_media">3</integer>
+    <integer name="grid_column_count_chat">4</integer>
 </resources>

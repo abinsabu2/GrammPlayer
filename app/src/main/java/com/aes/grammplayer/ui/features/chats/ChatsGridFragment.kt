@@ -11,6 +11,8 @@ import androidx.leanback.widget.Row
 import androidx.leanback.widget.RowPresenter
 import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.R
+import androidx.annotation.IntegerRes
+import androidx.annotation.DimenRes
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.helper.NavigationExtras
@@ -25,6 +27,12 @@ class ChatsGridFragment : BaseGridFragment() {
 
     private lateinit var settingsDataStore: SettingsDataStore
     private lateinit var loader: DialogHelper
+
+    @IntegerRes
+    override val gridColumnCountResId: Int = R.integer.grid_column_count_chat
+
+    @DimenRes
+    override val gridCardWidthDimen: Int = R.dimen.grid_card_chat_size
 
     override fun createItemPresenter(): Presenter = ChatCardPresenter()
 

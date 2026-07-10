@@ -40,24 +40,32 @@ class DashboardHeaderPresenter : RowHeaderPresenter() {
         val header = row.headerItem as? DashboardHeaderItem ?: return
 
         val view = viewHolder.view
+        view.setTag(R.id.dashboard_header_item, header)
         view.findViewById<ImageView>(R.id.icon).setImageResource(header.iconRes)
-        view.findViewById<TextView>(R.id.title).text = header.name
+        view.findViewById<TextView>(R.id.title).text = header.displayName
 
-        (viewHolder as? ViewHolder)?.let { applySelectLevel(it) }
+        (viewHolder as? ViewHolder)?.let { applySelectLevel(it, header) }
     }
 
     override fun onSelectLevelChanged(holder: ViewHolder) {
-        applySelectLevel(holder)
+        val header = holder.view.getTag(R.id.dashboard_header_item) as? DashboardHeaderItem
+        applySelectLevel(holder, header)
     }
 
-    private fun applySelectLevel(holder: ViewHolder) {
+    private fun applySelectLevel(holder: ViewHolder, header: DashboardHeaderItem?) {
         val level = holder.selectLevel
         val view = holder.view
         val title = view.findViewById<TextView>(R.id.title) ?: return
         val icon = view.findViewById<ImageView>(R.id.icon) ?: return
 
-        title.setTextColor(ColorUtils.blendARGB(TITLE_UNSELECTED, TITLE_SELECTED, level))
-        icon.setColorFilter(ColorUtils.blendARGB(ICON_UNSELECTED, ICON_SELECTED, level))
+        if (header?.showProgressIcon == true) {
+            val progressColor = ContextCompat.getColor(view.context, R.color.downloading_border)
+            title.setTextColor(ColorUtils.blendARGB(progressColor, TITLE_SELECTED, level))
+            icon.setColorFilter(ColorUtils.blendARGB(progressColor, ICON_SELECTED, level))
+        } else {
+            title.setTextColor(ColorUtils.blendARGB(TITLE_UNSELECTED, TITLE_SELECTED, level))
+            icon.setColorFilter(ColorUtils.blendARGB(ICON_UNSELECTED, ICON_SELECTED, level))
+        }
         applyGlassBackground(view, level)
     }
 

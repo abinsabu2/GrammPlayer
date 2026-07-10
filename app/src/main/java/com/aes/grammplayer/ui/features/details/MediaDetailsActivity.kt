@@ -22,6 +22,8 @@ import com.aes.grammplayer.R
 import com.aes.grammplayer.config.ReviewModeHelper
 import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
+import com.aes.grammplayer.helper.ActiveDownloadManager
+import com.aes.grammplayer.helper.DownloadProgressTracker
 import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.HistoryHelper
@@ -86,6 +88,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var downloadProgressContainer: View
     private lateinit var downloadStatusText: TextView
     private lateinit var downloadProgressBar: ProgressBar
+    private lateinit var bottomDownloadStatus: View
+    private lateinit var bottomDownloadStatusText: TextView
 
     // Section containers
     private lateinit var movieInfoSection: View
@@ -99,6 +103,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var settingsRowRecycler: RecyclerView
 
     private var fileUpdateJob: Job? = null
+    private var downloadProgressObserverJob: Job? = null
     private var isDownloading = false
     private var autoPlayStarted = false
     private var lastPreviewPath: String? = null
@@ -173,6 +178,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         downloadProgressContainer = findViewById(R.id.download_progress_container)
         downloadStatusText = findViewById(R.id.download_status_text)
         downloadProgressBar = findViewById(R.id.download_progress_bar)
+        bottomDownloadStatus = findViewById(R.id.bottom_download_status)
+        bottomDownloadStatusText = findViewById(R.id.bottom_download_status_text)
 
         // Recyclers
         movieStatsRecycler = findViewById(R.id.movie_stats_row)
@@ -361,7 +368,8 @@ class MediaDetailsActivity : AppCompatActivity() {
             posterImageView, detailBackdropImage, detailBackdropScrim,
             detailsScroll, fileDetailsSection, movieInfoSection, castSection,
             backdropVideoHost, downloadProgressContainer, downloadStatusText,
-            downloadProgressBar, movieStatsRecycler, castChipRecycler,
+            downloadProgressBar, bottomDownloadStatus, bottomDownloadStatusText,
+            movieStatsRecycler, castChipRecycler,
             fileMetadataChipRecycler, settingsRowRecycler
         )
         nonFocusable.forEach {
@@ -661,12 +669,50 @@ class MediaDetailsActivity : AppCompatActivity() {
             return
         }
 
+        if (isDownloading || ActiveDownloadManager.isActive(message.fileId)) {
+            return
+        }
+
+        ActiveDownloadManager.otherActiveSession(message.fileId)?.let { other ->
+            showReplaceDownloadDialog(other)
+            return
+        }
+
+        performDownloadStart()
+    }
+
+    private fun showReplaceDownloadDialog(other: ActiveDownloadManager.Session) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.download_replace_title)
+            .setMessage(getString(R.string.download_replace_message, other.displayTitle))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.download_replace_confirm) { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        ActiveDownloadManager.cancelActiveDownload(applicationContext, other)
+                        performDownloadStart()
+                    } catch (e: Exception) {
+                        Log.e("MediaDetailsActivity", "Failed to replace active download", e)
+                        Toast.makeText(
+                            this@MediaDetailsActivity,
+                            R.string.error_fragment_message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun performDownloadStart() {
         // A → B: hide Download, show Cancel, then start download.
         resetPlaybackSessionFlags()
         isDownloading = true
         applyActionButtonState(ActionButtonState.DOWNLOADING)
         cancelButton.requestFocus()
         activeDownloads.add(message.fileId)
+        ActiveDownloadManager.begin(message)
+        refreshBottomDownloadStatus(0)
         recordHistoryDownloading()
 
         lifecycleScope.launch {
@@ -703,8 +749,10 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun resetDownloadUI() {
         isDownloading = false
         activeDownloads.clear()
+        ActiveDownloadManager.release(message.fileId)
+        DownloadProgressTracker.clear(message.fileId)
         currentDownload = null
-        downloadProgressContainer.visibility = View.GONE
+        refreshBottomDownloadStatus()
         lifecycleScope.launch {
             HistoryHelper.clearDownloading(applicationContext, message)
         }
@@ -720,6 +768,20 @@ class MediaDetailsActivity : AppCompatActivity() {
                     if (update.file.id == message.fileId) {
                         handleFileUpdate(update.file)
                     }
+                    ActiveDownloadManager.currentSession()?.let { active ->
+                        if (update.file.id == active.fileId) {
+                            refreshBottomDownloadStatus()
+                        }
+                    }
+                }
+            }
+        }
+
+        downloadProgressObserverJob?.cancel()
+        downloadProgressObserverJob = lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                DownloadProgressTracker.updates.collect {
+                    refreshBottomDownloadStatus()
                 }
             }
         }
@@ -740,7 +802,10 @@ class MediaDetailsActivity : AppCompatActivity() {
             lastDownloadedBytes = downloadedBytes
 
             val localPath = file.local.path.takeIf { it.isNotEmpty() }
-            localPath?.let { message.localPath = it }
+            localPath?.let {
+                message.localPath = it
+                ActiveDownloadManager.updateLocalPath(message.fileId, it)
+            }
             currentDownload = localPath?.let {
                 MediaFileHelper.buildDownloadingFileInfo(
                     fileId = file.id,
@@ -766,6 +831,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         if (hasRecordedHistoryDownload && message.isDownloaded && isLocalFilePlayable(localPath)) {
             isDownloading = false
             activeDownloads.clear()
+            ActiveDownloadManager.complete(message.fileId)
+            refreshBottomDownloadStatus()
             syncDownloadInfoFromPath(localPath)
             applyActionButtonState(ActionButtonState.READY)
             updatePreviewIfAllowed(localPath, downloadComplete = true)
@@ -775,7 +842,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         message.isDownloaded = true
         isDownloading = false
         activeDownloads.clear()
-        downloadProgressContainer.visibility = View.GONE
+        ActiveDownloadManager.complete(message.fileId)
+        refreshBottomDownloadStatus()
         syncDownloadInfoFromPath(localPath)
         recordHistoryDownloaded()
         checkLocalFileAndUpdateUI()
@@ -895,11 +963,53 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun updateDownloadProgress(progress: Int, downloadedBytes: Long = 0, totalBytes: Long = 0) {
-        downloadProgressContainer.visibility = View.VISIBLE
+        lastDownloadProgress = progress
+        lastDownloadedBytes = downloadedBytes
         downloadProgressBar.progress = progress
-
         downloadStatusText.text =
             FormatHelper.formatDownloadProgress(progress, downloadedBytes, totalBytes)
+        if (ActiveDownloadManager.isActive(message.fileId)) {
+            downloadProgressContainer.visibility = View.VISIBLE
+        }
+        refreshBottomDownloadStatus(progress)
+    }
+
+    private fun refreshBottomDownloadStatus(progress: Int? = null) {
+        val session = ActiveDownloadManager.currentSession()
+        if (session == null) {
+            bottomDownloadStatus.visibility = View.GONE
+            if (!isDownloading) {
+                downloadProgressContainer.visibility = View.GONE
+            }
+            return
+        }
+
+        if (session.fileId == message.fileId) {
+            bottomDownloadStatus.visibility = View.GONE
+            if (isDownloading) {
+                downloadProgressContainer.visibility = View.VISIBLE
+                val resolvedProgress = progress
+                    ?: DownloadProgressTracker.progressFor(session.fileId)
+                    ?: lastDownloadProgress
+                downloadProgressBar.progress = resolvedProgress
+            } else {
+                downloadProgressContainer.visibility = View.GONE
+            }
+            return
+        }
+
+        // Another file is downloading — bottom bar only, not the in-page progress UI.
+        downloadProgressContainer.visibility = View.GONE
+        val resolvedProgress = progress
+            ?: DownloadProgressTracker.progressFor(session.fileId)
+            ?: 0
+        bottomDownloadStatus.visibility = View.VISIBLE
+        bottomDownloadStatusText.text = getString(
+            R.string.detail_bottom_download_status,
+            session.displayTitle,
+            session.fileId,
+            resolvedProgress
+        )
     }
 
     private fun cancelCurrentDownload() {
@@ -916,8 +1026,10 @@ class MediaDetailsActivity : AppCompatActivity() {
         hidePreviewSection()
         resetPlaybackSessionFlags()
         activeDownloads.clear()
+        ActiveDownloadManager.release(message.fileId)
+        DownloadProgressTracker.clear(message.fileId)
         currentDownload = null
-        downloadProgressContainer.visibility = View.GONE
+        refreshBottomDownloadStatus()
 
         lifecycleScope.launch {
             HistoryHelper.clearDownloading(applicationContext, message)
@@ -1241,14 +1353,34 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        syncDownloadStateWithManager()
         if (isLocalFilePlayable(message.localPath)) {
             lastPreviewPath = null
             updatePreviewIfAllowed(message.localPath, downloadComplete = isFullyDownloaded())
         }
     }
 
+    private fun syncDownloadStateWithManager() {
+        val active = ActiveDownloadManager.currentSession()
+        when {
+            isDownloading && active?.fileId != message.fileId -> {
+                isDownloading = false
+                activeDownloads.clear()
+                currentDownload = null
+                checkLocalFileAndUpdateUI()
+            }
+            !isDownloading && active?.fileId == message.fileId -> {
+                isDownloading = true
+                activeDownloads.add(message.fileId)
+                applyActionButtonState(ActionButtonState.DOWNLOADING)
+            }
+        }
+        refreshBottomDownloadStatus()
+    }
+
     override fun onDestroy() {
         fileUpdateJob?.cancel()
+        downloadProgressObserverJob?.cancel()
         PreviewPlayerHelper.stop()
         stopPlayback()
         super.onDestroy()

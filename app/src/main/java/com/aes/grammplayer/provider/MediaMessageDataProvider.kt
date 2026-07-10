@@ -18,6 +18,7 @@ object MediaMessageDataProvider {
         chatId: Long,
         limit: Int = 100000,
         onMediaLoaded: (MediaMessage) -> Unit,
+        onProgress: (Int) -> Unit = {},
     ) {
         val context = GPlayerApplication.Companion.AppContext
         val database = AppDatabase.getDatabase(context)
@@ -33,7 +34,12 @@ object MediaMessageDataProvider {
                     )
                 }
 
-                mediaMessages.forEach { mediaMessage -> onMediaLoaded(mediaMessage) }
+                mediaMessages.forEachIndexed { index, mediaMessage ->
+                    withContext(Dispatchers.Main.immediate) {
+                        onMediaLoaded(mediaMessage)
+                        onProgress(index + 1)
+                    }
+                }
 
             } catch (e: Exception) {
                 Log.e(

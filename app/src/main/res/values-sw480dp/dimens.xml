@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 720p and compact TV layouts -->
+    <dimen name="grid_card_chat_size">140dp</dimen>
+    <dimen name="grid_card_media_width">360dp</dimen>
+    <dimen name="grid_card_media_height">150dp</dimen>
+    <dimen name="grid_card_thumbnail_size">88dp</dimen>
+    <dimen name="grid_card_title_text">13sp</dimen>
+    <dimen name="grid_card_body_text">11sp</dimen>
+    <dimen name="grid_card_chat_title_text">14sp</dimen>
     <dimen name="detail_screen_padding_h">12dp</dimen>
     <dimen name="detail_screen_padding_v">4dp</dimen>
     <dimen name="detail_app_bar_height">40dp</dimen>

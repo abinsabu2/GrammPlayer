@@ -398,10 +398,42 @@
                 android:src="@drawable/ic_cancel"
                 tools:ignore="ContentDescription" />
 
-            <View
+            <FrameLayout
                 android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/bottom_download_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <ImageView
+                        android:layout_width="@dimen/detail_button_icon_size"
+                        android:layout_height="@dimen/detail_button_icon_size"
+                        android:contentDescription="@string/btn_downloading"
+                        android:src="@drawable/ic_download"
+                        app:tint="@color/downloading_border"
+                        tools:ignore="ContentDescription" />
+
+                    <TextView
+                        android:id="@+id/bottom_download_status_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/downloading_border"
+                        android:textSize="@dimen/detail_button_text"
+                        android:textStyle="bold"
+                        tools:text="Ocean with David Attenborough (12345) : 87%" />
+                </LinearLayout>
+            </FrameLayout>
 
             <HorizontalScrollView
                 android:layout_width="wrap_content"
