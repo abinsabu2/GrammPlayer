@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:background="@drawable/header_item_background"
+    android:background="@drawable/header_item_background_glass"
     android:defaultFocusHighlightEnabled="false"
     android:paddingStart="14dp"
     android:paddingEnd="14dp"

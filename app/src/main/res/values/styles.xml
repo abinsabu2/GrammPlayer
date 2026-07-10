@@ -4,6 +4,10 @@
       res/values/styles.xml (don't overwrite the file — just merge it in).
       Used by the rotated sidebar tab labels in activity_media_details.xml.
     -->
+    <style name="Widget.GrammPlayer.Headers.VerticalGridView" parent="Widget.Leanback.Headers.VerticalGridView">
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+
     <style name="DetailsSidebarTab">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>

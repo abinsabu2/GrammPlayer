@@ -12,6 +12,8 @@
 -keepclassmembers,allowshrinking,allowobfuscation interface * {
     @retrofit2.http.* <methods>;
 }
+-keep class com.aes.grammplayer.network.tmdb.** { *; }
+-keepclassmembers class com.aes.grammplayer.network.tmdb.** { <fields>; }
 -dontwarn okhttp3.**
 -dontwarn okio.**
 

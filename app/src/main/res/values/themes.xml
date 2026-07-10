@@ -1,5 +1,9 @@
 <resources>
 
-    <style name="Theme.GrammPlayer" parent="@style/Theme.Leanback" />
+    <style name="Theme.GrammPlayer" parent="@style/Theme.Leanback">
+        <item name="browseRowsMarginStart">@dimen/dashboard_sidebar_width</item>
+        <item name="defaultBrandColor">@android:color/transparent</item>
+        <item name="headersVerticalGridStyle">@style/Widget.GrammPlayer.Headers.VerticalGridView</item>
+    </style>
 </resources>
 

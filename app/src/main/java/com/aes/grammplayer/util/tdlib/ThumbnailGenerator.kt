@@ -107,6 +107,9 @@ object ThumbnailGenerator {
      * null if none exists yet. Lets callers reuse a cached thumbnail instead of
      * regenerating (and re-randomising) it on every sync.
      */
+    fun isGeneratedPlaceholder(path: String): Boolean =
+        path.contains("/thumbnails/") && path.contains("_thumb_$STYLE_VERSION")
+
     fun existingThumbnail(key: String): String? {
         return try {
             val context = GPlayerApplication.Companion.AppContext

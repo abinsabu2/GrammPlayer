@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
 import com.aes.grammplayer.config.ReviewModeHelper
+import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
@@ -1024,6 +1025,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
 
         staticBackdropActive = true
+        persistBackdropUrl(backdropUrl)
         Glide.with(this)
             .load(backdropUrl)
             .centerCrop()
@@ -1044,6 +1046,15 @@ class MediaDetailsActivity : AppCompatActivity() {
             detailBackdropImage.visibility = View.GONE
             detailBackdropScrim.visibility = View.GONE
             detailPageContent.setBackgroundResource(R.drawable.detail_page_background)
+        }
+    }
+
+    private fun persistBackdropUrl(backdropUrl: String) {
+        if (backdropUrl.isBlank() || message.backgroundImageUrl == backdropUrl) return
+        message = message.copy(backgroundImageUrl = backdropUrl)
+        lifecycleScope.launch(Dispatchers.IO) {
+            AppDatabase.getDatabase(applicationContext).mediaMessageDao().insert(message)
+            HistoryHelper.record(applicationContext, message, viewed = true)
         }
     }
 

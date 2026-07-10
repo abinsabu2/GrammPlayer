@@ -29,6 +29,9 @@
     <color name="downloading_border">#FFFF00</color> <!-- Bright Yellow for downloading -->
 
     <color name="accent_teal">#4ECDC4</color>
+    <color name="dashboard_header_glass_background">#591A1D24</color>
+    <color name="dashboard_header_glass_border">#40FFFFFF</color>
+    <color name="dashboard_header_selected_background">#CC1A1D24</color>
     <color name="card_background">#2A2A2E</color>
     <color name="card_background_focused">#33383B</color>
 

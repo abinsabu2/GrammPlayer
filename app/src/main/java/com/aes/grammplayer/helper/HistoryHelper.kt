@@ -10,6 +10,7 @@ import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.db.model.Settings
 import com.aes.grammplayer.db.model.User
 import com.aes.grammplayer.db.model.model.UserType
+import com.aes.grammplayer.network.tmdb.PosterFetcher
 import com.aes.grammplayer.session.UserSession
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.Dispatchers
@@ -44,10 +45,16 @@ object HistoryHelper {
 
                 val isDownloaded = downloaded || message.isDownloaded
                 val isDownloading = downloading && !isDownloaded
+                val existingMessage = db.mediaMessageDao().getById(message.id).first()
                 val snapshot = message.copy(
                     isDownloaded = isDownloaded,
                     isDownloadActive = !isDownloaded && (isDownloading || message.isDownloadActive),
-                    localPath = message.localPath
+                    localPath = message.localPath,
+                    backgroundImageUrl = message.backgroundImageUrl
+                        .takeIf { PosterFetcher.isTrustedImageUrl(it) }
+                        ?: existingMessage?.backgroundImageUrl
+                            ?.takeIf { PosterFetcher.isTrustedImageUrl(it) }
+                            .orEmpty()
                 )
                 db.mediaMessageDao().insert(snapshot)
 
