@@ -947,7 +947,6 @@ class MediaDetailsActivity : AppCompatActivity() {
             settingsRowRecycler
         ).forEach { recycler ->
             recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-            recycler.setHasFixedSize(true)
             recycler.isFocusable = false
             recycler.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
         }
@@ -1182,7 +1181,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun setupSettingsRow() {
         settingsRowRecycler.apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
-            setHasFixedSize(true)
         }
 
         lifecycleScope.launch {
