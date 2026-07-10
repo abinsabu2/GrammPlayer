@@ -24,6 +24,7 @@ keystore.properties
 # Generated build folders
 build/
 app/build/
+app/release/
 */build/
 
 # Generated APKs, AABs, and other outputs
@@ -45,6 +46,7 @@ build-cache/
 #  System Files
 # =========================================
 # macOS generated files
+**/.DS_Store
 .DS_Store
 # Windows thumbnail cache
 Thumbs.db
@@ -68,3 +70,5 @@ daemon/
 kotlin-profile/
 native/
 wrapper/
+.tmp/
+.kotlin/
