@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
 import com.aes.grammplayer.config.ReviewModeHelper
+import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
@@ -947,7 +948,6 @@ class MediaDetailsActivity : AppCompatActivity() {
             settingsRowRecycler
         ).forEach { recycler ->
             recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-            recycler.setHasFixedSize(true)
             recycler.isFocusable = false
             recycler.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
         }
@@ -1025,6 +1025,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
 
         staticBackdropActive = true
+        persistBackdropUrl(backdropUrl)
         Glide.with(this)
             .load(backdropUrl)
             .centerCrop()
@@ -1045,6 +1046,15 @@ class MediaDetailsActivity : AppCompatActivity() {
             detailBackdropImage.visibility = View.GONE
             detailBackdropScrim.visibility = View.GONE
             detailPageContent.setBackgroundResource(R.drawable.detail_page_background)
+        }
+    }
+
+    private fun persistBackdropUrl(backdropUrl: String) {
+        if (backdropUrl.isBlank() || message.backgroundImageUrl == backdropUrl) return
+        message = message.copy(backgroundImageUrl = backdropUrl)
+        lifecycleScope.launch(Dispatchers.IO) {
+            AppDatabase.getDatabase(applicationContext).mediaMessageDao().insert(message)
+            HistoryHelper.record(applicationContext, message, viewed = true)
         }
     }
 
@@ -1182,7 +1192,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun setupSettingsRow() {
         settingsRowRecycler.apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
-            setHasFixedSize(true)
         }
 
         lifecycleScope.launch {

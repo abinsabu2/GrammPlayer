@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/dashboard_header_selected_background" />
+    <solid android:color="@color/dashboard_header_glass_background" />
     <corners android:radius="@dimen/dashboard_header_corner_radius" />
     <stroke
-        android:width="1.5dp"
-        android:color="@color/accent_teal" />
+        android:width="1dp"
+        android:color="@color/dashboard_header_glass_border" />
 </shape>

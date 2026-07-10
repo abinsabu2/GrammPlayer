@@ -162,8 +162,8 @@ object DatabaseSeeder {
                     mimeType = mimeType,
                     videoUrl = "https://example.com/videos/$slug.mp4",
                     thumbnailPath = "/storage/thumbnails/$slug.jpg",
-                    cardImageUrl = "https://example.com/cards/$slug.jpg",
-                    backgroundImageUrl = "https://example.com/bg/$slug.jpg",
+                    cardImageUrl = "",
+                    backgroundImageUrl = "",
                     isDownloaded = false,
                     isDownloadActive = messageId % 7 == 0,
                     uniqueId = "uid_${uniqueSuffix}"

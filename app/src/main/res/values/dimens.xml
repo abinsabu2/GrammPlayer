@@ -2,6 +2,29 @@
     <dimen name="app_logo_width">120dp</dimen>
     <dimen name="app_logo_height">60dp</dimen>
 
+    <!-- Leanback start padding (56dp) + headers (270dp) + dock end padding (50dp). -->
+    <dimen name="dashboard_sidebar_width">376dp</dimen>
+    <dimen name="dashboard_header_corner_radius">24dp</dimen>
+
+    <!-- Dashboard preference icon cards -->
+    <dimen name="preference_card_width">140dp</dimen>
+    <dimen name="preference_card_height">92dp</dimen>
+    <dimen name="preference_card_corner_radius">20dp</dimen>
+    <dimen name="preference_card_icon_size">24dp</dimen>
+
+    <!-- Vertical grid cards (chats, history, messages) -->
+    <dimen name="grid_card_chat_size">160dp</dimen>
+    <dimen name="grid_card_media_width">400dp</dimen>
+    <dimen name="grid_card_media_height">160dp</dimen>
+    <dimen name="grid_card_thumbnail_size">96dp</dimen>
+    <dimen name="grid_card_thumbnail_radius">8dp</dimen>
+    <dimen name="grid_card_margin">12dp</dimen>
+    <dimen name="grid_card_padding">12dp</dimen>
+    <dimen name="grid_card_thumbnail_margin_end">14dp</dimen>
+    <dimen name="grid_card_title_text">14sp</dimen>
+    <dimen name="grid_card_body_text">12sp</dimen>
+    <dimen name="grid_card_chat_title_text">16sp</dimen>
+
     <!-- Media details layout -->
     <dimen name="detail_screen_padding_h">20dp</dimen>
     <dimen name="detail_screen_padding_v">8dp</dimen>

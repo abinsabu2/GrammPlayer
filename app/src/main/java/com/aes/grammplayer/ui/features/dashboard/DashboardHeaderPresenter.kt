@@ -1,9 +1,12 @@
 package com.aes.grammplayer.ui.features.dashboard
 
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.leanback.widget.Presenter
 import androidx.leanback.widget.Row
@@ -49,14 +52,32 @@ class DashboardHeaderPresenter : RowHeaderPresenter() {
 
     private fun applySelectLevel(holder: ViewHolder) {
         val level = holder.selectLevel
-        val title = holder.view.findViewById<TextView>(R.id.title) ?: return
-        val icon = holder.view.findViewById<ImageView>(R.id.icon) ?: return
+        val view = holder.view
+        val title = view.findViewById<TextView>(R.id.title) ?: return
+        val icon = view.findViewById<ImageView>(R.id.icon) ?: return
 
         title.setTextColor(ColorUtils.blendARGB(TITLE_UNSELECTED, TITLE_SELECTED, level))
         icon.setColorFilter(ColorUtils.blendARGB(ICON_UNSELECTED, ICON_SELECTED, level))
+        applyGlassBackground(view, level)
+    }
 
-        // Drives header_item_background's selector (state_activated) to show
-        // the rounded teal highlight only on the currently selected row.
-        holder.view.isActivated = level >= 1f
+    private fun applyGlassBackground(view: View, level: Float) {
+        val context = view.context
+        val density = view.resources.displayMetrics.density
+        val cornerRadius = view.resources.getDimension(R.dimen.dashboard_header_corner_radius)
+
+        val glassColor = ContextCompat.getColor(context, R.color.dashboard_header_glass_background)
+        val selectedColor = ContextCompat.getColor(context, R.color.dashboard_header_selected_background)
+        val glassBorder = ContextCompat.getColor(context, R.color.dashboard_header_glass_border)
+        val selectedBorder = ContextCompat.getColor(context, R.color.accent_teal)
+
+        val background = (view.background?.mutate() as? GradientDrawable) ?: GradientDrawable().also {
+            it.cornerRadius = cornerRadius
+            view.background = it
+        }
+
+        background.setColor(ColorUtils.blendARGB(glassColor, selectedColor, level))
+        val strokeWidth = ((1f + level) * density).toInt().coerceAtLeast(1)
+        background.setStroke(strokeWidth, ColorUtils.blendARGB(glassBorder, selectedBorder, level))
     }
 }

@@ -32,7 +32,7 @@ object MediaMessageMapper {
         duration = duration,
         size = file.size,
         thumbnailPath = thumbnailPath,
-        cardImageUrl = thumbnailPath,
+        cardImageUrl = "",
         backgroundImageUrl = "",
         isDownloaded = file.local.isDownloadingCompleted,
         isDownloadActive = file.local.isDownloadingActive,

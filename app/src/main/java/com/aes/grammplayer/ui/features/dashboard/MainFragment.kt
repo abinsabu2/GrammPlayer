@@ -1,6 +1,5 @@
 package com.aes.grammplayer.ui.features.dashboard
 
-import java.util.Timer
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
@@ -32,9 +31,12 @@ import com.aes.grammplayer.ui.features.chats.ChatsGridActivity
 import com.aes.grammplayer.ui.features.history.HistoryGridActivity
 import com.aes.grammplayer.R
 import com.aes.grammplayer.ui.common.makeFocusableForTv
+import com.aes.grammplayer.helper.DashboardBackdropHelper
 import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.helper.HistoryHelper
+import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.NavigationExtras
+import com.bumptech.glide.Glide
 import com.aes.grammplayer.ui.features.authentication.LoginActivity
 import com.aes.grammplayer.ui.features.settings.SettingsActivity
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
@@ -49,8 +51,6 @@ import kotlin.time.Duration.Companion.milliseconds
  * Loads a grid of cards with movies to browse.
  */
 class MainFragment : BrowseSupportFragment() {
-
-    private var mBackgroundTimer: Timer? = null
 
     private lateinit var loadingDialog: DialogHelper
 
@@ -67,6 +67,7 @@ class MainFragment : BrowseSupportFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        makeBrowseChromeTransparent(view)
     }
 
     @Deprecated("Deprecated in Java")
@@ -79,7 +80,7 @@ class MainFragment : BrowseSupportFragment() {
         // Browse chrome — title, sidebar, brand badge.
         headersState = HEADERS_ENABLED
         isHeadersTransitionOnBackEnabled = true
-        brandColor = ContextCompat.getColor(requireActivity(), R.color.background_gradient_start)
+        brandColor = ContextCompat.getColor(requireActivity(), android.R.color.transparent)
         // Logo is now a fixed ImageView in activity_main.xml, pinned above the
         // sidebar — badgeDrawable floats in the shared title strip and can't
         // be reliably locked above "Chats", so we don't use it here.
@@ -97,10 +98,66 @@ class MainFragment : BrowseSupportFragment() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "onDestroy: " + mBackgroundTimer?.toString())
-        mBackgroundTimer?.cancel()
+    override fun onResume() {
+        super.onResume()
+        refreshDashboardBackdrop()
+    }
+
+    override fun onDestroyView() {
+        backdropImageView()?.let { GlideHelper.clear(it) }
+        super.onDestroyView()
+    }
+
+    private fun refreshDashboardBackdrop() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val backdropUrl = try {
+                DashboardBackdropHelper.resolveLastItemBackdropUrl(requireContext())
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to resolve dashboard backdrop", e)
+                null
+            }
+            if (!isAdded) return@launch
+            if (backdropUrl.isNullOrBlank()) {
+                applyDefaultBackdrop()
+            } else {
+                loadBackdropFromUrl(backdropUrl)
+            }
+        }
+    }
+
+    private fun backdropImageView(): ImageView? =
+        activity?.findViewById(R.id.dashboard_backdrop)
+
+    private fun applyDefaultBackdrop() {
+        val imageView = backdropImageView() ?: return
+        GlideHelper.clear(imageView)
+        imageView.setImageResource(R.drawable.detail_back_drop)
+    }
+
+    private fun loadBackdropFromUrl(url: String) {
+        val imageView = backdropImageView() ?: return
+        try {
+            Glide.with(imageView)
+                .load(url)
+                .centerCrop()
+                .error(R.drawable.detail_back_drop)
+                .into(imageView)
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "Skipping backdrop load — host context destroyed")
+            applyDefaultBackdrop()
+        }
+    }
+
+    private fun makeBrowseChromeTransparent(root: View) {
+        root.setBackgroundResource(android.R.color.transparent)
+        intArrayOf(
+            androidx.leanback.R.id.browse_frame,
+            androidx.leanback.R.id.browse_container_dock,
+            androidx.leanback.R.id.browse_headers_dock,
+            androidx.leanback.R.id.scale_frame
+        ).forEach { viewId ->
+            root.findViewById<View?>(viewId)?.setBackgroundResource(android.R.color.transparent)
+        }
     }
 
     override fun onCreateHeadersSupportFragment(): HeadersSupportFragment {
@@ -360,5 +417,16 @@ class DashboardHeadersSupportFragment : HeadersSupportFragment() {
         super.onViewCreated(view, savedInstanceState)
         val topPaddingPx = (80 * resources.displayMetrics.density).toInt()
         view.setPadding(view.paddingLeft, topPaddingPx, view.paddingRight, view.paddingBottom)
+        view.setBackgroundResource(android.R.color.transparent)
+        listOf(
+            androidx.leanback.R.id.browse_headers_root,
+            androidx.leanback.R.id.browse_headers
+        ).forEach { viewId ->
+            view.findViewById<View>(viewId)?.apply {
+                setBackgroundResource(android.R.color.transparent)
+                backgroundTintList = null
+            }
+        }
+        view.findViewById<View>(androidx.leanback.R.id.fade_out_edge)?.visibility = View.GONE
     }
 }
