@@ -33,7 +33,10 @@ object DownloadProgressTracker {
 
     private suspend fun handleFileUpdate(file: TdApi.File) {
         if (isDownloadComplete(file)) {
-            if (activeDownloads.remove(file.id) != null) {
+            val wasTracked = activeDownloads.remove(file.id) != null
+            val isManaged = ActiveDownloadManager.wasRecentlyCompleted(file.id) ||
+                ActiveDownloadManager.isActive(file.id)
+            if (wasTracked || isManaged) {
                 _updates.emit(file.id)
             }
             return

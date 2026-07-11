@@ -50,7 +50,30 @@ class DownloadingCardPresenter : Presenter() {
     }
 
     companion object {
+        private const val READY_STATE = -1
+
         fun bindProgress(view: View, message: MediaMessage) {
+            if (DownloadProgressTracker.isMessageDownloading(message)) {
+                bindDownloading(view, message)
+            } else {
+                bindReady(view)
+            }
+        }
+
+        fun bindReady(view: View) {
+            val lastProgress = view.getTag(R.id.grid_download_progress) as? Int
+            if (lastProgress == READY_STATE) return
+            view.setTag(R.id.grid_download_progress, READY_STATE)
+
+            view.findViewById<TextView>(R.id.banner)?.apply {
+                visibility = View.VISIBLE
+                text = view.context.getString(R.string.grid_label_ready)
+                setTextColor(ContextCompat.getColor(context, R.color.accent_teal))
+            }
+            view.findViewById<ProgressBar>(R.id.download_progress_bar)?.visibility = View.GONE
+        }
+
+        private fun bindDownloading(view: View, message: MediaMessage) {
             val progress = DownloadProgressTracker.progressFromMessage(message) ?: 0
             val lastProgress = view.getTag(R.id.grid_download_progress) as? Int
             if (lastProgress == progress) return
@@ -61,7 +84,10 @@ class DownloadingCardPresenter : Presenter() {
                 text = FormatHelper.formatGridDownloadLabel(progress)
                 setTextColor(ContextCompat.getColor(context, R.color.downloading_border))
             }
-            view.findViewById<ProgressBar>(R.id.download_progress_bar)?.progress = progress
+            view.findViewById<ProgressBar>(R.id.download_progress_bar)?.apply {
+                visibility = View.VISIBLE
+                this.progress = progress
+            }
         }
     }
 }

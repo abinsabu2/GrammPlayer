@@ -39,6 +39,7 @@ import com.aes.grammplayer.helper.DownloadProgressTracker
 import com.aes.grammplayer.helper.DownloadingDashboardHelper
 import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.helper.GlideHelper
+
 import com.aes.grammplayer.helper.NavigationExtras
 import com.aes.grammplayer.ui.features.details.MediaDetailsActivity
 
@@ -71,6 +72,7 @@ class MainFragment : BrowseSupportFragment() {
     private var downloadingListRow: DownloadingListRow? = null
     private var downloadingRowAdapter: ArrayObjectAdapter? = null
     private var downloadingHeader: DashboardHeaderItem? = null
+    private var downloadingShowReady = false
     private val downloadingCardPresenter = DownloadingCardPresenter()
     private val downloadingRowPresenter = ListRowPresenter(FocusHighlight.ZOOM_FACTOR_NONE).apply {
         shadowEnabled = false
@@ -251,10 +253,10 @@ class MainFragment : BrowseSupportFragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 DownloadProgressTracker.updates.collect { fileId ->
                     val activeFileId = ActiveDownloadManager.currentSession()?.fileId
-                    if (fileId == activeFileId) {
-                        refreshDownloadingCard()
-                    } else if (activeFileId == null) {
-                        refreshDownloadingRow()
+                    when {
+                        fileId == activeFileId -> refreshDownloadingCard()
+                        activeFileId == null -> refreshDownloadingRow()
+                        ActiveDownloadManager.wasRecentlyCompleted(fileId) -> refreshDownloadingRow()
                     }
                 }
             }
@@ -264,56 +266,115 @@ class MainFragment : BrowseSupportFragment() {
     private fun refreshDownloadingRow() {
         val adapter = rowsAdapter ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            val message = try {
-                DownloadingDashboardHelper.loadActiveDownloadMessage(requireContext())
+            val item = try {
+                DownloadingDashboardHelper.loadDashboardDownloadItem(requireContext())
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load active download for dashboard", e)
+                Log.e(TAG, "Failed to load dashboard download item", e)
                 null
             }
             if (!isAdded) return@launch
 
-            if (message == null) {
-                removeDownloadingRow(adapter)
-                return@launch
-            }
-
-            val headerTitle = getString(R.string.dashboard_downloading_row_title)
-
-            if (downloadingListRow == null) {
-                downloadingHeader = DashboardHeaderItem(
-                    DOWNLOADING_ROW_ID,
-                    headerTitle,
-                    R.drawable.ic_download,
-                    showProgressIcon = true
-                )
-                downloadingRowAdapter = ArrayObjectAdapter(downloadingCardPresenter).apply {
-                    add(message)
+            when (item) {
+                null -> {
+                    if (!downloadingShowReady) {
+                        removeDownloadingRow(adapter)
+                    }
                 }
-                downloadingListRow = DownloadingListRow(
-                    DOWNLOADING_ROW_ID,
-                    downloadingHeader!!,
-                    downloadingRowAdapter!!
-                )
-                adapter.add(DOWNLOADING_ROW_INDEX, downloadingListRow!!)
-            } else {
-                val current = downloadingRowAdapter?.get(0) as? MediaMessage
-                if (current?.fileId != message.fileId) {
-                    downloadingRowAdapter?.replace(0, message)
+                is DownloadingDashboardHelper.DashboardDownloadItem.Ready -> {
+                    ensureDownloadingRow(adapter, item.message)
+                    showDownloadingReadyState(item.message)
+                    ActiveDownloadManager.clearCompletedSession()
                 }
-                updateVisibleDownloadingProgress(message)
+                is DownloadingDashboardHelper.DashboardDownloadItem.InProgress -> {
+                    resetDownloadingReadyState()
+                    ensureDownloadingRow(adapter, item.message)
+                    updateVisibleDownloadingProgress(item.message)
+                }
             }
         }
     }
 
     private fun refreshDownloadingCard() {
-        val rowAdapter = downloadingRowAdapter
-        if (rowAdapter == null || rowAdapter.size() == 0) {
-            refreshDownloadingRow()
-            return
+        refreshDownloadingRow()
+    }
+
+    private fun ensureDownloadingRow(adapter: ArrayObjectAdapter, message: MediaMessage) {
+        val headerTitle = if (downloadingShowReady) {
+            getString(R.string.dashboard_downloading_row_ready)
+        } else {
+            getString(R.string.dashboard_downloading_row_title)
         }
 
-        val message = rowAdapter.get(0) as? MediaMessage ?: return
-        updateVisibleDownloadingProgress(message)
+        if (downloadingListRow == null) {
+            downloadingHeader = DashboardHeaderItem(
+                DOWNLOADING_ROW_ID,
+                headerTitle,
+                R.drawable.ic_download,
+                showProgressIcon = !downloadingShowReady
+            ).apply {
+                displayName = headerTitle
+                isReady = downloadingShowReady
+            }
+            downloadingRowAdapter = ArrayObjectAdapter(downloadingCardPresenter).apply {
+                add(message)
+            }
+            downloadingListRow = DownloadingListRow(
+                DOWNLOADING_ROW_ID,
+                downloadingHeader!!,
+                downloadingRowAdapter!!
+            )
+            adapter.add(DOWNLOADING_ROW_INDEX, downloadingListRow!!)
+        } else {
+            downloadingRowAdapter?.replace(0, message)
+        }
+    }
+
+    private fun showDownloadingReadyState(message: MediaMessage) {
+        downloadingRowAdapter?.replace(0, message)
+        if (!downloadingShowReady) {
+            downloadingShowReady = true
+            downloadingHeader?.displayName = getString(R.string.dashboard_downloading_row_ready)
+            downloadingHeader?.isReady = true
+            notifyDownloadingRowChanged()
+            Log.i(TAG, "Download complete — dashboard row now Ready for fileId=${message.fileId}")
+        }
+        updateVisibleDownloadingReady(message)
+    }
+
+    private fun resetDownloadingReadyState() {
+        if (!downloadingShowReady) return
+        downloadingShowReady = false
+        downloadingHeader?.displayName = getString(R.string.dashboard_downloading_row_title)
+        downloadingHeader?.isReady = false
+    }
+
+    private fun notifyDownloadingRowChanged() {
+        val adapter = rowsAdapter ?: return
+        val row = downloadingListRow ?: return
+        val index = adapter.indexOf(row)
+        if (index >= 0) {
+            adapter.notifyArrayItemRangeChanged(index, 1)
+        }
+    }
+
+    private fun updateVisibleDownloadingReady(message: MediaMessage): Boolean {
+        val root = view ?: return false
+        return updateDownloadingReadyInTree(root, message.fileId)
+    }
+
+    private fun updateDownloadingReadyInTree(root: View, fileId: Int): Boolean {
+        if (root.getTag(R.id.grid_card_file_id) == fileId) {
+            DownloadingCardPresenter.bindReady(root)
+            return true
+        }
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) {
+                if (updateDownloadingReadyInTree(root.getChildAt(index), fileId)) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private fun updateVisibleDownloadingProgress(message: MediaMessage): Boolean {
@@ -345,6 +406,7 @@ class MainFragment : BrowseSupportFragment() {
         downloadingListRow = null
         downloadingRowAdapter = null
         downloadingHeader = null
+        downloadingShowReady = false
     }
 
     private fun setupEventListeners() {

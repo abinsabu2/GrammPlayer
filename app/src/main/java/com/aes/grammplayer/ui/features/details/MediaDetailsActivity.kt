@@ -549,29 +549,44 @@ class MediaDetailsActivity : AppCompatActivity() {
             return
         }
         val shouldResumePreview = backgroundPreviewActive
-        stopPreviewPlaybackOnly()
-        lifecycleScope.launch {
-            val useInAppPlayer = ReviewModeHelper.isReviewMode(this@MediaDetailsActivity) ||
-                !PlayerHelper.isVlcInstalled(this@MediaDetailsActivity)
-            val result = if (useInAppPlayer) {
-                PlayerHelper.playInApp(this@MediaDetailsActivity, playablePath, message.fileId)
-            } else {
-                launchPlayback(playablePath)
-            }
-            when (result) {
-                is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
-                is PlayerHelper.PlayResult.Failed -> {
-                    showPlaybackError(result.reason)
-                    if (shouldResumePreview) {
-                        updatePreviewIfAllowed(
-                            playablePath,
-                            lastDownloadProgress,
-                            lastDownloadedBytes,
-                            isFullyDownloaded()
-                        )
+        launchFullScreenPlayback(playablePath, shouldResumePreview)
+    }
+
+    private fun launchFullScreenPlayback(playablePath: String, shouldResumePreview: Boolean) {
+        val startPlayback = {
+            lifecycleScope.launch {
+                val useInAppPlayer = ReviewModeHelper.isReviewMode(this@MediaDetailsActivity) ||
+                    !PlayerHelper.isVlcInstalled(this@MediaDetailsActivity)
+                val result = if (useInAppPlayer) {
+                    PlayerHelper.playInApp(this@MediaDetailsActivity, playablePath, message.fileId)
+                } else {
+                    launchPlayback(playablePath)
+                }
+                when (result) {
+                    is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
+                    is PlayerHelper.PlayResult.Failed -> {
+                        showPlaybackError(result.reason)
+                        if (shouldResumePreview) {
+                            updatePreviewIfAllowed(
+                                playablePath,
+                                lastDownloadProgress,
+                                lastDownloadedBytes,
+                                isFullyDownloaded()
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        if (backgroundPreviewActive) {
+            backgroundPreviewActive = false
+            PreviewPlayerHelper.stop {
+                backdropVideoHost.post { startPlayback() }
+            }
+        } else {
+            stopPreviewPlaybackOnly()
+            backdropVideoHost.post { startPlayback() }
         }
     }
 

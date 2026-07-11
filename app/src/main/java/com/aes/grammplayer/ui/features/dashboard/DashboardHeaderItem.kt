@@ -17,4 +17,7 @@ class DashboardHeaderItem(
 
     /** Mutable label for rows that update in place (e.g. download progress). */
     var displayName: String = name
+
+    /** When true, header uses ready styling instead of in-progress yellow. */
+    var isReady: Boolean = false
 }
