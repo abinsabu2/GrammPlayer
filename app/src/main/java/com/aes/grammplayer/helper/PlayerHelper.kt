@@ -31,11 +31,6 @@ object PlayerHelper {
         data class Failed(val reason: String) : PlayResult()
     }
 
-    /**
-     * Checks whether the VLC app package is present. Uses [PackageManager.getPackageInfo]
-     * because [PackageManager.getLaunchIntentForPackage] often returns null on TV devices
-     * even when VLC is installed.
-     */
     fun isVlcInstalled(context: Context): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -123,23 +118,40 @@ object PlayerHelper {
         }
     }
 
+    /**
+     * Updated with better compatibility for Realtek devices
+     */
     private fun buildVlcPlayIntent(context: Context, contentUri: Uri): Intent {
         fun baseIntent(): Intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(contentUri, "video/*")
             clipData = ClipData.newRawUri("media", contentUri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+
             putExtra("title", "GrammPlayer")
             putExtra("from_start", true)
+            putExtra("fullscreen", true)
+            putExtra("start_paused", false)
+
+            // === Fixes for Realtek + "unknown output format" issues ===
+            putExtra("hw", false)                    // Disable hardware decoding (most stable)
+            putExtra("avcodec-hw", "none")           // Force software decoding
+            putExtra("android-mediacodec", false)
+            putExtra("deinterlace", false)
+            putExtra("vout", "android-opaque")
         }
 
-        val viewIntent = baseIntent().apply { setPackage(VLC_PACKAGE) }
-        if (viewIntent.resolveActivity(context.packageManager) != null) {
-            return viewIntent
-        }
-
-        Log.d(TAG, "VLC VIEW intent not resolved; using explicit VideoPlayerActivity")
-        return baseIntent().apply {
+        // Prefer explicit component for better reliability on TV boxes
+        val explicitIntent = baseIntent().apply {
             component = ComponentName(VLC_PACKAGE, VLC_PLAYER_ACTIVITY)
+        }
+
+        if (explicitIntent.resolveActivity(context.packageManager) != null) {
+            return explicitIntent
+        }
+
+        Log.d(TAG, "Explicit VLC intent not resolved, falling back to package intent")
+        return baseIntent().apply {
+            setPackage(VLC_PACKAGE)
         }
     }
 
@@ -155,10 +167,9 @@ object PlayerHelper {
         }
     }
 
-    /** True on Fire TV / Fire OS devices (Amazon hardware). */
     fun isFireTv(): Boolean =
         Build.MANUFACTURER.equals("Amazon", ignoreCase = true) ||
-            Build.MODEL.startsWith("AFT", ignoreCase = true)
+                Build.MODEL.startsWith("AFT", ignoreCase = true)
 
     fun vlcRequiredMessage(context: Context): String =
         if (isFireTv()) {
@@ -174,10 +185,6 @@ object PlayerHelper {
             context.getString(R.string.playback_vlc_install)
         }
 
-    /**
-     * Opens the best VLC install option for the current device.
-     * Fire TV → Amazon Appstore, then VLC download page. Other TVs → Play Store fallback.
-     */
     fun openVlcInstallPage(context: Context) {
         for (intent in vlcInstallIntents()) {
             if (intent.resolveActivity(context.packageManager) == null) continue
