@@ -29,7 +29,6 @@ import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
-import com.aes.grammplayer.helper.PreviewPlayerHelper
 import com.aes.grammplayer.network.tmdb.PosterFetcher
 import com.aes.grammplayer.network.tmdb.TmdbMovieDetails
 import com.aes.grammplayer.provider.MediaDownloadDataProvider
@@ -76,7 +75,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var detailPageContent: View
     private lateinit var promoBanner: View
     private lateinit var promoTextView: TextView
-    private lateinit var backdropVideoHost: ViewGroup
     private lateinit var previewFullscreenButton: View
 
     private lateinit var playButton: View
@@ -166,7 +164,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         detailPageContent = findViewById(R.id.detail_page_content)
         promoBanner = findViewById(R.id.promo_banner)
         promoTextView = findViewById(R.id.promo_text)
-        backdropVideoHost = findViewById(R.id.detail_backdrop_video_host)
         previewFullscreenButton = findViewById(R.id.preview_fullscreen)
 
         playButton = findViewById(R.id.action_play)
@@ -367,7 +364,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             titleTextView, taglineTextView, descriptionTextView,
             posterImageView, detailBackdropImage, detailBackdropScrim,
             detailsScroll, fileDetailsSection, movieInfoSection, castSection,
-            backdropVideoHost, downloadProgressContainer, downloadStatusText,
+            downloadProgressContainer, downloadStatusText,
             downloadProgressBar, bottomDownloadStatus, bottomDownloadStatusText,
             movieStatsRecycler, castChipRecycler,
             fileMetadataChipRecycler, settingsRowRecycler
@@ -516,7 +513,6 @@ class MediaDetailsActivity : AppCompatActivity() {
             return
         }
         if (shouldStartPreview(progress, downloadedBytes, downloadComplete)) {
-            updatePreviewSection(playablePath)
             markPreviewAutoPlayStarted()
         } else {
             hidePreviewSection()
@@ -555,43 +551,12 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun launchFullScreenPlayback(playablePath: String, shouldResumePreview: Boolean) {
         val startPlayback = {
             lifecycleScope.launch {
-                val useInAppPlayer = ReviewModeHelper.isReviewMode(this@MediaDetailsActivity) ||
-                    !PlayerHelper.isVlcInstalled(this@MediaDetailsActivity)
-                val result = if (useInAppPlayer) {
-                    PlayerHelper.playInApp(this@MediaDetailsActivity, playablePath, message.fileId)
-                } else {
-                    launchPlayback(playablePath)
-                }
-                when (result) {
-                    is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
-                    is PlayerHelper.PlayResult.Failed -> {
-                        showPlaybackError(result.reason)
-                        if (shouldResumePreview) {
-                            updatePreviewIfAllowed(
-                                playablePath,
-                                lastDownloadProgress,
-                                lastDownloadedBytes,
-                                isFullyDownloaded()
-                            )
-                        }
-                    }
-                }
+                launchPlayback(playablePath)
             }
-        }
-
-        if (backgroundPreviewActive) {
-            backgroundPreviewActive = false
-            PreviewPlayerHelper.stop {
-                backdropVideoHost.post { startPlayback() }
-            }
-        } else {
-            stopPreviewPlaybackOnly()
-            backdropVideoHost.post { startPlayback() }
         }
     }
 
     private fun stopPreviewPlaybackOnly() {
-        PreviewPlayerHelper.stop()
         lastPreviewPath = null
     }
 
@@ -623,31 +588,9 @@ class MediaDetailsActivity : AppCompatActivity() {
         focusFirstUsableButton()
     }
 
-    private fun updatePreviewSection(path: String?) {
-        if (!isLocalFilePlayable(path)) {
-            hidePreviewSection()
-            return
-        }
-        showBackgroundPreview()
-        updateActionFocusWiring()
-        if (path == lastPreviewPath && PreviewPlayerHelper.isPlaying()) return
-
-        val playablePath = path!!
-        if (PreviewPlayerHelper.play(
-            this,
-            backdropVideoHost,
-            playablePath
-        )) {
-            lastPreviewPath = playablePath
-        } else {
-            hidePreviewSection()
-        }
-    }
-
     private fun showBackgroundPreview() {
         backgroundPreviewActive = true
         detailBackdropImage.visibility = View.GONE
-        backdropVideoHost.visibility = View.VISIBLE
         detailBackdropScrim.visibility = View.VISIBLE
         detailPageContent.setBackgroundResource(android.R.color.transparent)
         previewFullscreenButton.visibility = View.VISIBLE
@@ -656,10 +599,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun hidePreviewSection() {
-        PreviewPlayerHelper.stop()
         lastPreviewPath = null
         backgroundPreviewActive = false
-        backdropVideoHost.visibility = View.GONE
         previewFullscreenButton.visibility = View.GONE
         posterImageView.visibility = View.VISIBLE
         restoreStaticBackdropOrDefault()
@@ -1362,7 +1303,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        PreviewPlayerHelper.pause()
         super.onPause()
     }
 
@@ -1396,7 +1336,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     override fun onDestroy() {
         fileUpdateJob?.cancel()
         downloadProgressObserverJob?.cancel()
-        PreviewPlayerHelper.stop()
         stopPlayback()
         super.onDestroy()
     }

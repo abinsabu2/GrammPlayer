@@ -16,14 +16,6 @@
         tools:ignore="ContentDescription"
         tools:visibility="visible" />
 
-    <FrameLayout
-        android:id="@+id/detail_backdrop_video_host"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:visibility="gone"
-        tools:visibility="visible" />
-
     <View
         android:id="@+id/detail_backdrop_scrim"
         android:layout_width="match_parent"

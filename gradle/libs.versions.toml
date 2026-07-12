@@ -19,7 +19,6 @@ room = "2.7.0"
 # NEW: Add these lines
 okhttp = "4.12.0"          # Latest stable OkHttp
 loggingInterceptor = "4.12.0"  # Optional: for debugging
-libvlc = "3.6.0"
 retrofit = "3.0.0"
 gsonConverter = "3.0.0"
 firebaseBom = "33.12.0"
@@ -56,7 +55,6 @@ retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-
 # NEW: Add these libraries
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "loggingInterceptor" }
-libvlc-all = { group = "org.videolan.android", name = "libvlc-all", version.ref = "libvlc" }
 
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
