@@ -25,9 +25,6 @@
     public *;
 }
 
-# VLC
--keep class org.videolan.libvlc.** { *; }
-
 # Firebase Analytics
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }

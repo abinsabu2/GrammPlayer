@@ -19,7 +19,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
-import com.aes.grammplayer.config.ReviewModeHelper
 import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.ActiveDownloadManager
@@ -29,7 +28,6 @@ import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
-import com.aes.grammplayer.helper.PreviewPlayerHelper
 import com.aes.grammplayer.network.tmdb.PosterFetcher
 import com.aes.grammplayer.network.tmdb.TmdbMovieDetails
 import com.aes.grammplayer.provider.MediaDownloadDataProvider
@@ -548,50 +546,10 @@ class MediaDetailsActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.playback_file_not_ready, Toast.LENGTH_SHORT).show()
             return
         }
-        val shouldResumePreview = backgroundPreviewActive
-        launchFullScreenPlayback(playablePath, shouldResumePreview)
-    }
-
-    private fun launchFullScreenPlayback(playablePath: String, shouldResumePreview: Boolean) {
-        val startPlayback = {
-            lifecycleScope.launch {
-                val useInAppPlayer = ReviewModeHelper.isReviewMode(this@MediaDetailsActivity) ||
-                    !PlayerHelper.isVlcInstalled(this@MediaDetailsActivity)
-                val result = if (useInAppPlayer) {
-                    PlayerHelper.playInApp(this@MediaDetailsActivity, playablePath, message.fileId)
-                } else {
-                    launchPlayback(playablePath)
-                }
-                when (result) {
-                    is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
-                    is PlayerHelper.PlayResult.Failed -> {
-                        showPlaybackError(result.reason)
-                        if (shouldResumePreview) {
-                            updatePreviewIfAllowed(
-                                playablePath,
-                                lastDownloadProgress,
-                                lastDownloadedBytes,
-                                isFullyDownloaded()
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        if (backgroundPreviewActive) {
-            backgroundPreviewActive = false
-            PreviewPlayerHelper.stop {
-                backdropVideoHost.post { startPlayback() }
-            }
-        } else {
-            stopPreviewPlaybackOnly()
-            backdropVideoHost.post { startPlayback() }
-        }
+        startPlayback(playablePath)
     }
 
     private fun stopPreviewPlaybackOnly() {
-        PreviewPlayerHelper.stop()
         lastPreviewPath = null
     }
 
@@ -630,24 +588,13 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
         showBackgroundPreview()
         updateActionFocusWiring()
-        if (path == lastPreviewPath && PreviewPlayerHelper.isPlaying()) return
-
-        val playablePath = path!!
-        if (PreviewPlayerHelper.play(
-            this,
-            backdropVideoHost,
-            playablePath
-        )) {
-            lastPreviewPath = playablePath
-        } else {
-            hidePreviewSection()
-        }
+        lastPreviewPath = path
     }
 
     private fun showBackgroundPreview() {
         backgroundPreviewActive = true
-        detailBackdropImage.visibility = View.GONE
-        backdropVideoHost.visibility = View.VISIBLE
+        backdropVideoHost.visibility = View.GONE
+        detailBackdropImage.visibility = View.VISIBLE
         detailBackdropScrim.visibility = View.VISIBLE
         detailPageContent.setBackgroundResource(android.R.color.transparent)
         previewFullscreenButton.visibility = View.VISIBLE
@@ -656,7 +603,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun hidePreviewSection() {
-        PreviewPlayerHelper.stop()
         lastPreviewPath = null
         backgroundPreviewActive = false
         backdropVideoHost.visibility = View.GONE
@@ -1362,7 +1308,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        PreviewPlayerHelper.pause()
         super.onPause()
     }
 
@@ -1396,7 +1341,6 @@ class MediaDetailsActivity : AppCompatActivity() {
     override fun onDestroy() {
         fileUpdateJob?.cancel()
         downloadProgressObserverJob?.cancel()
-        PreviewPlayerHelper.stop()
         stopPlayback()
         super.onDestroy()
     }
