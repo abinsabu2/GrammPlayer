@@ -27,7 +27,7 @@ class MessageGridFragment : BaseGridFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsDataStore = SettingsDataStore(requireActivity())
-        loader = DialogHelper(requireActivity().supportFragmentManager)
+        loader = DialogHelper(childFragmentManager)
         title = chatTitle.ifEmpty { "Messages" }
         setupGrid()
         setupEventListeners()

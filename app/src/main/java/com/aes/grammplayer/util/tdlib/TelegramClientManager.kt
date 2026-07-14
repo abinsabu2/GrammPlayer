@@ -37,6 +37,7 @@ object TelegramClientManager {
         private set
 
     private const val LOGOUT_TIMEOUT_MS = 10_000L
+    private const val HISTORY_PAGE_TIMEOUT_MS = 15_000L
 
     /**
      * Initializes the TDLib client, automatically selecting the best storage location.
@@ -224,12 +225,13 @@ object TelegramClientManager {
         var fromMessageId = 0L
 
         while (true) {
+            val activeClient = client ?: break
             val response = CompletableDeferred<TdApi.Object?>()
-            client?.send(TdApi.GetChatHistory(chatId, fromMessageId, 0, limit, false)) {
+            activeClient.send(TdApi.GetChatHistory(chatId, fromMessageId, 0, limit, false)) {
                 response.complete(it)
             }
 
-            val result = response.await()
+            val result = withTimeoutOrNull(HISTORY_PAGE_TIMEOUT_MS.milliseconds) { response.await() }
 
             if (result !is TdApi.Messages || result.messages.isEmpty()) {
                 break

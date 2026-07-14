@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
 object MediaMessageDataProvider {
@@ -43,6 +44,8 @@ object MediaMessageDataProvider {
                     }
                 }
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(
                     "MediaMessageDataProvider",
