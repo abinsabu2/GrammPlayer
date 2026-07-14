@@ -26,8 +26,10 @@ object MediaMessageDataProvider {
         withContext(Dispatchers.IO) {
             try {
                 val mediaMessages = if (mode) {
+                    Log.d("Tage", "loadAllMediaMessages:db");
                     database.mediaMessageDao().getByChatId(chatId.toInt()).first()
                 } else {
+                    Log.d("Tage", "loadAllMediaMessages:TGM");
                     TelegramClientManager.loadMessagesForChat(
                         chatId = chatId,
                         limit = 100

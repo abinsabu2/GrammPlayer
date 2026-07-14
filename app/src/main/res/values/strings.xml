@@ -70,7 +70,7 @@
     <string name="dashboard_downloading_row_title">In progress</string>
     <string name="dashboard_downloading_row_ready">Ready</string>
     <string name="grid_label_ready">Ready</string>
-    <string name="loading_messages_progress">Loading %1$d of messages</string>
+    <string name="loading_messages_progress">Loading messages: %1$d</string>
     <string name="preview_label">PREVIEW</string>
     <string name="preview_fullscreen">Full Screen</string>
     <string name="playback_vlc_required_title">VLC required</string>
