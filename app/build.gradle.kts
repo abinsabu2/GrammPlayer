@@ -7,10 +7,6 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
 }
 
-if (file("google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
-}
-
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 if (keystorePropertiesFile.exists()) {
@@ -157,7 +153,5 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
 
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
     implementation("com.google.android.gms:play-services-basement:18.5.0")
 }

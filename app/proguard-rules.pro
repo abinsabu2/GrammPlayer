@@ -25,7 +25,5 @@
     public *;
 }
 
-# Firebase Analytics
--keep class com.google.firebase.** { *; }
+# Google Play Services (TLS ProviderInstaller)
 -keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**

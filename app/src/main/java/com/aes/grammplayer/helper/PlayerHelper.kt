@@ -12,7 +12,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.aes.grammplayer.R
-import com.aes.grammplayer.util.analytics.AnalyticsHelper
 
 object PlayerHelper {
 
@@ -68,7 +67,6 @@ object PlayerHelper {
             val intent = buildVlcPlayIntent(context, contentUri)
             grantVlcUriPermission(context, contentUri)
             context.startActivity(intent)
-            AnalyticsHelper.logMediaPlay(fileId, "vlc")
             PlayResult.Started(fileId, file.absolutePath)
         } catch (e: Exception) {
             Log.e(TAG, "Error launching VLC for ${file.absolutePath}", e)

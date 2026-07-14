@@ -48,14 +48,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GrammPlayer">
 
-        <!-- Usage analytics only — do not collect advertising IDs -->
-        <meta-data
-            android:name="google_analytics_adid_collection_enabled"
-            android:value="false" />
-        <meta-data
-            android:name="google_analytics_ssaid_collection_enabled"
-            android:value="false" />
-
         <activity
             android:name=".ui.features.onboarding.OnboardingActivity"
             android:banner="@drawable/app_logo_svg"
