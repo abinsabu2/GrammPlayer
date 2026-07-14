@@ -48,20 +48,12 @@ class MessageCardPresenter : Presenter() {
             ).joinToString(" · ")
             if (qualitySourceText.isNotBlank()) {
                 visibility = android.view.View.VISIBLE
-                text = qualitySourceText
+                text = "Quality: ${qualitySourceText}"
             } else {
                 visibility = android.view.View.GONE
             }
         }
 
-        view.findViewById<TextView>(R.id.release_group)?.apply {
-            text = info.releaseGroup ?: ""
-            visibility = if (info.releaseGroup != null) {
-                android.view.View.VISIBLE
-            } else {
-                android.view.View.GONE
-            }
-        }
 
         GridDownloadLabelBinder.bindMessageBanner(view, item)
         GridThumbnailBinder.bind(view, item, info, scope)
