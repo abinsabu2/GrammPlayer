@@ -3,6 +3,7 @@ package com.aes.grammplayer.ui.features.messages
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import com.aes.grammplayer.R
@@ -25,6 +26,7 @@ class MessageGridFragment : BaseGridFragment() {
     private var userMode = true
     private var pageOffset = 0
     private var pageCursor = 0L
+    private var pageSize = 50
 
     override fun createItemPresenter(): Presenter = MessageCardPresenter()
 
@@ -50,9 +52,7 @@ class MessageGridFragment : BaseGridFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             isLoadingMessages = true
             try {
-                loader.runWithLoading(getString(R.string.loading_messages_progress, 0)) {
-                    loadFirstPage()
-                }
+                loadFirstPage()
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
             } finally {
@@ -81,6 +81,7 @@ class MessageGridFragment : BaseGridFragment() {
             return
         }
         userMode = settingsDataStore.isTestMode.first()
+        pageSize = settingsDataStore.messagesPageSize.first()
         gridAdapter.clear()
         pageOffset = 0
         pageCursor = 0L
@@ -108,7 +109,8 @@ class MessageGridFragment : BaseGridFragment() {
             mode = userMode,
             chatId = chatId,
             offset = pageOffset,
-            cursor = pageCursor
+            cursor = pageCursor,
+            pageSize = pageSize
         )
         pageOffset = page.nextOffset
         pageCursor = page.nextCursor
