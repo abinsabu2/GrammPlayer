@@ -25,6 +25,9 @@ class SettingsDataStore(context: Context) {
         val BUFFER_COUNTER = intPreferencesKey("buffer_counter")
         val PROGRESS_THRESHOLD = intPreferencesKey("progress_threshold")
         val BUFFER_SIZE_THRESHOLD = intPreferencesKey("buffer_size_threshold")
+        val MESSAGES_PAGE_SIZE = intPreferencesKey("messages_page_size")
+
+        const val DEFAULT_MESSAGES_PAGE_SIZE = 50
 
         val IS_ONBOARDING_DONE = booleanPreferencesKey("is_onboarding_done")
 
@@ -123,6 +126,16 @@ class SettingsDataStore(context: Context) {
     suspend fun setBufferSizeThreshold(value: Int) {
         appContext.dataStore.edit { preferences ->
             preferences[BUFFER_SIZE_THRESHOLD] = value
+        }
+    }
+
+    val messagesPageSize: Flow<Int> = appContext.dataStore.data.map { preferences ->
+        preferences[MESSAGES_PAGE_SIZE] ?: DEFAULT_MESSAGES_PAGE_SIZE
+    }
+
+    suspend fun setMessagesPageSize(value: Int) {
+        appContext.dataStore.edit { preferences ->
+            preferences[MESSAGES_PAGE_SIZE] = value.coerceIn(10, 500)
         }
     }
 

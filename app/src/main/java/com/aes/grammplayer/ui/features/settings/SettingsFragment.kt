@@ -68,6 +68,15 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 )
             }
 
+            val messagesPageSize = settingsDataStore.messagesPageSize.first()
+            newActions.add(
+                GuidedAction.Builder(requireContext())
+                    .id(ACTION_ID_MESSAGES_PAGE_SIZE)
+                    .title("Messages Loaded per Page:")
+                    .description("$messagesPageSize")
+                    .build()
+            )
+
             newActions.add(
                 GuidedAction.Builder(requireContext())
                     .id(ACTION_ID_RESET_DEFAULT)
@@ -110,12 +119,25 @@ class SettingsFragment : GuidedStepSupportFragment() {
                     notifyActionChanged(findActionPositionById(ACTION_ID_BUFFER_SIZE_THRESHOLD))
                 }
             }
+            ACTION_ID_MESSAGES_PAGE_SIZE -> {
+                lifecycleScope.launch {
+                    val current = settingsDataStore.messagesPageSize.first()
+                    // Cycle through fixed choices, wrapping back to the smallest.
+                    val next = PAGE_SIZE_CHOICES[
+                        (PAGE_SIZE_CHOICES.indexOf(current) + 1) % PAGE_SIZE_CHOICES.size
+                    ]
+                    settingsDataStore.setMessagesPageSize(next)
+                    action.description = "$next"
+                    notifyActionChanged(findActionPositionById(ACTION_ID_MESSAGES_PAGE_SIZE))
+                }
+            }
             ACTION_ID_RESET_DEFAULT -> {
                 lifecycleScope.launch {
                     // Assuming default values: Auto Play = false (Off), Progress Threshold = 30%, Buffer Size = 300 MB
                     settingsDataStore.setAutoPlay(false)
                     settingsDataStore.setProgressThreshold(30)
                     settingsDataStore.setBufferSizeThreshold(300)
+                    settingsDataStore.setMessagesPageSize(SettingsDataStore.DEFAULT_MESSAGES_PAGE_SIZE)
                     loadActions()
                 }
             }
@@ -127,5 +149,8 @@ class SettingsFragment : GuidedStepSupportFragment() {
         private const val ACTION_ID_PROGRESS_THRESHOLD = 2L
         private const val ACTION_ID_BUFFER_SIZE_THRESHOLD = 3L
         private const val ACTION_ID_RESET_DEFAULT = 4L
+        private const val ACTION_ID_MESSAGES_PAGE_SIZE = 5L
+
+        private val PAGE_SIZE_CHOICES = listOf(25, 50, 100, 200)
     }
 }

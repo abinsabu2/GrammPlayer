@@ -18,7 +18,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.aes.grammplayer.ui.features.dashboard.MainActivity
 import com.aes.grammplayer.R
-import com.aes.grammplayer.util.analytics.AnalyticsHelper
 import com.aes.grammplayer.config.TestUserConfig
 import com.aes.grammplayer.db.model.model.UserType
 import com.aes.grammplayer.helper.DialogHelper
@@ -332,7 +331,6 @@ class LoginActivity : FragmentActivity() {
 
     private fun navigateToMainApp() {
         loader.dismiss()
-        AnalyticsHelper.logLogin()
         lifecycleScope.launch {
             HistoryHelper.persistActivePhone(applicationContext, UserSession.phoneNumber)
             HistoryHelper.syncActiveUser(applicationContext)

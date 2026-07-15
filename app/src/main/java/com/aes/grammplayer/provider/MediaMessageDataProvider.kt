@@ -4,49 +4,67 @@ import android.annotation.SuppressLint
 import android.util.Log
 import com.aes.grammplayer.GPlayerApplication
 import com.aes.grammplayer.db.AppDatabase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
-import kotlinx.coroutines.flow.first
 
 object MediaMessageDataProvider {
 
+    const val PAGE_SIZE = 50
+
+    /**
+     * Loads ONE page of media messages for a chat.
+     *
+     * @param mode   true = local (Room, offset paging), false = remote (TDLib, cursor paging)
+     * @param offset local paging offset (Room)
+     * @param cursor remote paging cursor: TDLib fromMessageId (0 = newest)
+     */
     @SuppressLint("LongLogTag")
-    suspend fun loadAllMediaMessages(
-        mode: Boolean = true,   // true = local, false = remote
+    suspend fun loadMediaMessagesPage(
+        mode: Boolean = true,
         chatId: Long,
-        limit: Int = 100000,
-        onMediaLoaded: (MediaMessage) -> Unit,
-        onProgress: (Int) -> Unit = {},
-    ) {
+        offset: Int = 0,
+        cursor: Long = 0L,
+        pageSize: Int = PAGE_SIZE,
+    ): Page<MediaMessage> {
         val context = GPlayerApplication.Companion.AppContext
         val database = AppDatabase.getDatabase(context)
 
-        withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             try {
-                val mediaMessages = if (mode) {
-                    database.mediaMessageDao().getByChatId(chatId.toInt()).first()
+                if (mode) {
+                    val items = database.mediaMessageDao()
+                        .getByChatIdPaged(chatId.toInt(), pageSize, offset)
+                    Page(
+                        items = items,
+                        nextOffset = offset + items.size,
+                        nextCursor = 0L,
+                        endReached = items.size < pageSize
+                    )
                 } else {
-                    TelegramClientManager.loadMessagesForChat(
+                    val page = TelegramClientManager.loadMessagesPage(
                         chatId = chatId,
-                        limit = 100
+                        fromMessageId = cursor,
+                        pageSize = pageSize
+                    )
+                    Page(
+                        items = page.items,
+                        nextOffset = 0,
+                        nextCursor = page.nextFromMessageId,
+                        endReached = page.endReached
                     )
                 }
-
-                mediaMessages.forEachIndexed { index, mediaMessage ->
-                    withContext(Dispatchers.Main.immediate) {
-                        onMediaLoaded(mediaMessage)
-                        onProgress(index + 1)
-                    }
-                }
-
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(
                     "MediaMessageDataProvider",
                     "Error loading media messages for chat $chatId: ${e.message}",
                     e
                 )
+                Page(emptyList(), offset, cursor, endReached = true)
             }
         }
     }

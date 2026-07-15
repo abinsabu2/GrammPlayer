@@ -81,7 +81,7 @@ object GridThumbnailBinder {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load thumbnail for $key", e)
+                //Log.e(TAG, "Failed to load thumbnail for $key", e)
                 withContext(Dispatchers.Main) {
                     if (isCurrentBind(thumbnailView, key)) {
                         GlideHelper.fillColor(thumbnailView, placeholderColor)

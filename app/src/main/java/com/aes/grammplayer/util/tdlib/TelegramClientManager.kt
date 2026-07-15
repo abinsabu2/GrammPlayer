@@ -21,6 +21,16 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * One page of media messages from TDLib chat history.
+ * [nextFromMessageId] is the cursor for the next page (oldest message id seen).
+ */
+data class MessagesPage(
+    val items: List<MediaMessage>,
+    val nextFromMessageId: Long,
+    val endReached: Boolean
+)
+
 object TelegramClientManager {
 
     var client: Client? = null
@@ -37,6 +47,7 @@ object TelegramClientManager {
         private set
 
     private const val LOGOUT_TIMEOUT_MS = 10_000L
+    private const val HISTORY_PAGE_TIMEOUT_MS = 15_000L
 
     /**
      * Initializes the TDLib client, automatically selecting the best storage location.
@@ -129,43 +140,48 @@ object TelegramClientManager {
     }
 
     /**
-     * Loads all chats from Telegram and maps them to the local Chat model.
-     * Suspends until all individual GetChat calls have completed.
+     * Loads ONE page of chats from Telegram, mapped to the local Chat model.
+     * `GetChats` returns the main list ordered; we fetch `offset + pageSize` ids and
+     * resolve only the `[offset, offset + pageSize)` slice via `GetChat`.
+     * Suspends until every GetChat call in the slice has completed.
      */
-    suspend fun loadAllGroups(limit: Int = 100000, userId: Int): List<Chat> =
+    suspend fun loadGroupsPage(offset: Int, pageSize: Int, userId: Int): List<Chat> =
         suspendCancellableCoroutine { continuation ->
-            client?.send(TdApi.GetChats(TdApi.ChatListMain(), limit)) { result ->
+            val outerClient = client
+            if (outerClient == null) {
+                continuation.resume(emptyList())
+                return@suspendCancellableCoroutine
+            }
+            outerClient.send(TdApi.GetChats(TdApi.ChatListMain(), offset + pageSize)) { result ->
                 if (result is TdApi.Chats) {
-                    val chatIds = result.chatIds
+                    val pageIds = result.chatIds.drop(offset).take(pageSize)
 
-                    if (chatIds.isEmpty()) {
+                    if (pageIds.isEmpty()) {
                         continuation.resume(emptyList())
                         return@send
                     }
 
                     val chats = Collections.synchronizedList(mutableListOf<Chat>())
-                    val remaining = AtomicInteger(chatIds.size)
+                    val remaining = AtomicInteger(pageIds.size)
 
-                    chatIds.forEach { chatId ->
-                        client?.send(TdApi.GetChat(chatId)) { chatObj ->
+                    pageIds.forEach { chatId ->
+                        val innerClient = client
+                        if (innerClient == null) {
+                            if (remaining.decrementAndGet() == 0) continuation.resume(chats)
+                            return@forEach
+                        }
+                        innerClient.send(TdApi.GetChat(chatId)) { chatObj ->
                             if (chatObj is TdApi.Chat) {
-
-                                // Skip "Telegram" system chat
-                                if (chatObj.title == "Telegram") {
-                                    remaining.decrementAndGet()
-                                    return@send
-                                }
-
-                                // Skip chats whose last message is a contact registration notification
                                 val lastMessage = chatObj.lastMessage
-                                if (lastMessage != null && lastMessage.content is TdApi.MessageContactRegistered) {
-                                    remaining.decrementAndGet()
-                                    return@send
+                                val skip = chatObj.title == "Telegram" ||
+                                        (lastMessage != null &&
+                                                lastMessage.content is TdApi.MessageContactRegistered)
+                                if (!skip) {
+                                    chats.add(chatObj.toAppChat(userId))
                                 }
-
-                                chats.add(chatObj.toAppChat(userId))
                             }
-
+                            // Always decrement exactly once per callback so the
+                            // coroutine resumes even when the last id is skipped.
                             if (remaining.decrementAndGet() == 0) {
                                 continuation.resume(chats)
                             }
@@ -216,22 +232,35 @@ object TelegramClientManager {
         )
     }
 
-    suspend fun loadMessagesForChat(
+    /**
+     * Loads ONE page of media messages (video/document) for a chat, paging backward
+     * from [fromMessageId] (0 = newest). Keeps fetching raw history batches only until
+     * [pageSize] media items are gathered, then returns the cursor for the next page.
+     */
+    suspend fun loadMessagesPage(
         chatId: Long,
-        limit: Int = 100,
-    ): List<MediaMessage> = withContext(Dispatchers.IO) {
-        val allMessages = mutableListOf<MediaMessage>()
-        var fromMessageId = 0L
+        fromMessageId: Long,
+        pageSize: Int = 50,
+    ): MessagesPage = withContext(Dispatchers.IO) {
+        val collected = mutableListOf<MediaMessage>()
+        var cursor = fromMessageId
+        var endReached = false
 
-        while (true) {
+        while (collected.size < pageSize) {
+            val activeClient = client
+            if (activeClient == null) {
+                endReached = true
+                break
+            }
             val response = CompletableDeferred<TdApi.Object?>()
-            client?.send(TdApi.GetChatHistory(chatId, fromMessageId, 0, limit, false)) {
+            activeClient.send(TdApi.GetChatHistory(chatId, cursor, 0, 100, false)) {
                 response.complete(it)
             }
 
-            val result = response.await()
+            val result = withTimeoutOrNull(HISTORY_PAGE_TIMEOUT_MS.milliseconds) { response.await() }
 
             if (result !is TdApi.Messages || result.messages.isEmpty()) {
+                endReached = true
                 break
             }
 
@@ -241,13 +270,13 @@ object TelegramClientManager {
                             message.content is TdApi.MessageDocument
                 }
                 .forEach { message ->
-                    allMessages.add(parseMessageContent(message.content, chatId))
+                    collected.add(parseMessageContent(message.content, chatId))
                 }
 
-            fromMessageId = result.messages.last().id
+            cursor = result.messages.last().id
         }
 
-        allMessages
+        MessagesPage(collected, cursor, endReached)
     }
 
     fun cancelDownloadAndDelete(fileIds: MutableSet<Int>) {

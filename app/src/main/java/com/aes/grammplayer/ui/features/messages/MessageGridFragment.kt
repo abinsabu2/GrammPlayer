@@ -3,6 +3,7 @@ package com.aes.grammplayer.ui.features.messages
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import com.aes.grammplayer.R
@@ -22,12 +23,17 @@ class MessageGridFragment : BaseGridFragment() {
     private lateinit var loader: DialogHelper
     private var isLoadingMessages = false
 
+    private var userMode = true
+    private var pageOffset = 0
+    private var pageCursor = 0L
+    private var pageSize = 50
+
     override fun createItemPresenter(): Presenter = MessageCardPresenter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsDataStore = SettingsDataStore(requireActivity())
-        loader = DialogHelper(requireActivity().supportFragmentManager)
+        loader = DialogHelper(childFragmentManager)
         title = chatTitle.ifEmpty { "Messages" }
         setupGrid()
         setupEventListeners()
@@ -46,9 +52,7 @@ class MessageGridFragment : BaseGridFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             isLoadingMessages = true
             try {
-                loader.runWithLoading(getString(R.string.loading_messages_progress, 0)) { update ->
-                    loadMessages(update)
-                }
+                loadFirstPage()
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
             } finally {
@@ -70,25 +74,48 @@ class MessageGridFragment : BaseGridFragment() {
         }
     }
 
-    private suspend fun loadMessages(updateMessage: (String) -> Unit) {
+    private suspend fun loadFirstPage() {
         if (chatId == 0L) {
             Log.e(TAG, "No Chat ID provided, cannot load messages.")
+            endReached = true
             return
         }
-        val userMode = settingsDataStore.isTestMode.first()
+        userMode = settingsDataStore.isTestMode.first()
+        pageSize = settingsDataStore.messagesPageSize.first()
         gridAdapter.clear()
-        MediaMessageDataProvider.loadAllMediaMessages(
+        pageOffset = 0
+        pageCursor = 0L
+        endReached = false
+        fetchAndAppendPage()
+        refreshAllCards()
+    }
+
+    override fun loadNextPage() {
+        if (isPageLoading || endReached) return
+        isPageLoading = true
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                fetchAndAppendPage()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading next message page", e)
+            } finally {
+                isPageLoading = false
+            }
+        }
+    }
+
+    private suspend fun fetchAndAppendPage() {
+        val page = MediaMessageDataProvider.loadMediaMessagesPage(
             mode = userMode,
             chatId = chatId,
-            limit = 10000,
-            onMediaLoaded = { mediaMessage ->
-                gridAdapter.add(mediaMessage)
-            },
-            onProgress = { count ->
-                updateMessage(getString(R.string.loading_messages_progress, count))
-            }
+            offset = pageOffset,
+            cursor = pageCursor,
+            pageSize = pageSize
         )
-        refreshAllCards()
+        pageOffset = page.nextOffset
+        pageCursor = page.nextCursor
+        endReached = page.endReached
+        appendItems(page.items)
     }
 
     companion object {

@@ -24,6 +24,9 @@ interface MediaMessageDao {
     @Query("SELECT * FROM MediaMessage WHERE chat = :chatId ORDER BY id DESC")
     fun getByChatId(chatId: Int): Flow<List<MediaMessage>>
 
+    @Query("SELECT * FROM MediaMessage WHERE chat = :chatId ORDER BY id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getByChatIdPaged(chatId: Int, limit: Int, offset: Int): List<MediaMessage>
+
     @Query("SELECT * FROM MediaMessage WHERE isDownloaded = 1 ORDER BY id DESC")
     fun getDownloadedMedia(): Flow<List<MediaMessage>>
 

@@ -7,10 +7,6 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
 }
 
-if (file("google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
-}
-
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 if (keystorePropertiesFile.exists()) {
@@ -55,7 +51,7 @@ android {
         minSdk = 21
         targetSdk = 36
         versionCode = 2
-        versionName = "1.1"
+        versionName = "2.2"
 
         val localProperties = Properties()
         val localPropertiesFile = rootProject.file("local.properties")
@@ -157,9 +153,5 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
 
-    implementation(libs.libvlc.all)
-
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
     implementation("com.google.android.gms:play-services-basement:18.5.0")
 }
