@@ -18,6 +18,9 @@ interface ChatDao {
     @Query("SELECT * FROM Chats")
     fun getAll(): Flow<List<Chat>>
 
+    @Query("SELECT * FROM Chats LIMIT :limit OFFSET :offset")
+    suspend fun getAllPaged(limit: Int, offset: Int): List<Chat>
+
     @Query("SELECT * FROM Chats WHERE id = :id")
     fun getById(id: Int): Flow<Chat?>
 

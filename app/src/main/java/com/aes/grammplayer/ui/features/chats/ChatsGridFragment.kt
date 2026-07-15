@@ -7,8 +7,6 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
-import androidx.leanback.widget.Row
-import androidx.leanback.widget.RowPresenter
 import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.R
 import androidx.annotation.IntegerRes
@@ -28,6 +26,9 @@ class ChatsGridFragment : BaseGridFragment() {
     private lateinit var settingsDataStore: SettingsDataStore
     private lateinit var loader: DialogHelper
 
+    private var userMode = true
+    private var pageOffset = 0
+
     @IntegerRes
     override val gridColumnCountResId: Int = R.integer.grid_column_count_chat
 
@@ -39,7 +40,7 @@ class ChatsGridFragment : BaseGridFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsDataStore = SettingsDataStore(requireActivity())
-        loader = DialogHelper(requireActivity().supportFragmentManager)
+        loader = DialogHelper(childFragmentManager)
         badgeDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.gp_logo_bk_bg)
         setupGrid()
         setupEventListeners()
@@ -57,7 +58,7 @@ class ChatsGridFragment : BaseGridFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 loader.runWithLoading("Loading chats...") {
-                    loadChats()
+                    loadFirstPage()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading chats", e)
@@ -78,11 +79,37 @@ class ChatsGridFragment : BaseGridFragment() {
         }
     }
 
-    private suspend fun loadChats() {
-        val userMode = settingsDataStore.isTestMode.first()
-        ChatsDataProvider.loadAllGroups(userMode, filter = { it.title != "Telegram" }) { chat ->
-            gridAdapter.add(chat)
+    private suspend fun loadFirstPage() {
+        userMode = settingsDataStore.isTestMode.first()
+        gridAdapter.clear()
+        pageOffset = 0
+        endReached = false
+        fetchAndAppendPage()
+    }
+
+    override fun loadNextPage() {
+        if (isPageLoading || endReached) return
+        isPageLoading = true
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                fetchAndAppendPage()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading next chat page", e)
+            } finally {
+                isPageLoading = false
+            }
         }
+    }
+
+    private suspend fun fetchAndAppendPage() {
+        val page = ChatsDataProvider.loadGroupsPage(
+            mode = userMode,
+            offset = pageOffset,
+            filter = { it.title != "Telegram" }
+        )
+        pageOffset = page.nextOffset
+        endReached = page.endReached
+        appendItems(page.items)
     }
 
     companion object {

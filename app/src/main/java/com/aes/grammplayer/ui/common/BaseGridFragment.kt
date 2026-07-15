@@ -34,6 +34,36 @@ abstract class BaseGridFragment : VerticalGridSupportFragment() {
 
     private var downloadProgressJob: Job? = null
 
+    // ==================== Lazy paging ====================
+
+    /** True while a page request is in flight; blocks duplicate triggers. */
+    protected var isPageLoading = false
+
+    /** True once the data source reports no further pages. */
+    protected var endReached = false
+
+    /**
+     * Called when D-pad selection comes within [PAGE_PREFETCH_DISTANCE] items of the
+     * grid end and more pages remain. Subclasses override to fetch + append the next page.
+     */
+    protected open fun loadNextPage() {}
+
+    /** Appends a page of items without disturbing existing cards or focus. */
+    protected fun appendItems(items: List<Any>) {
+        if (items.isEmpty()) return
+        gridAdapter.addAll(gridAdapter.size(), items)
+    }
+
+    private fun installPagingTrigger() {
+        setOnItemViewSelectedListener { _, item, _, _ ->
+            if (item == null || isPageLoading || endReached) return@setOnItemViewSelectedListener
+            val index = gridAdapter.indexOf(item)
+            if (index >= 0 && index >= gridAdapter.size() - PAGE_PREFETCH_DISTANCE) {
+                loadNextPage()
+            }
+        }
+    }
+
     protected abstract fun createItemPresenter(): Presenter
 
     protected fun setupGrid() {
@@ -42,6 +72,7 @@ abstract class BaseGridFragment : VerticalGridSupportFragment() {
         setGridPresenter(gridPresenter)
         gridAdapter = ArrayObjectAdapter(createItemPresenter())
         adapter = gridAdapter
+        installPagingTrigger()
     }
 
     protected fun resolveGridColumnCount(): Int {
@@ -124,6 +155,9 @@ abstract class BaseGridFragment : VerticalGridSupportFragment() {
         get() = arguments?.getString(NavigationExtras.CHAT_TITLE) ?: ""
 
     companion object {
+        /** Trigger next page when selection is within this many items of the end. */
+        private const val PAGE_PREFETCH_DISTANCE = 10
+
         fun buildChatArgs(chatId: Long, chatTitle: String): Bundle =
             Bundle().apply {
                 putLong(NavigationExtras.CHAT_ID, chatId)
