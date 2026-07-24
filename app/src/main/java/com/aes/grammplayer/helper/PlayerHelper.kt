@@ -9,14 +9,19 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.aes.grammplayer.R
+import java.io.File
 
 object PlayerHelper {
 
     private const val TAG = "PlayerHelper"
     const val VLC_PACKAGE = "org.videolan.vlc"
+    /** Public VIEW entry point — handles content/file/http video schemes. */
+    private const val VLC_START_ACTIVITY = "org.videolan.vlc.StartActivity"
+    /** Internal player; not registered for external ACTION_VIEW + content URIs. */
     private const val VLC_PLAYER_ACTIVITY = "org.videolan.vlc.gui.video.VideoPlayerActivity"
     private const val VLC_STOP_ACTION = "org.videolan.vlc.remote.StopPlayback"
     private const val PLAY_STORE_PACKAGE = "com.android.vending"
@@ -29,18 +34,62 @@ object PlayerHelper {
     }
 
     fun isVlcInstalled(context: Context): Boolean {
+        val pm = context.packageManager
+        val installed = hasPackage(pm, VLC_PACKAGE) ||
+            canResolveVlcView(pm) ||
+            canResolveVlcComponent(pm, VLC_START_ACTIVITY) ||
+            canResolveVlcComponent(pm, VLC_PLAYER_ACTIVITY)
+
+        Log.i(TAG, "isVlcInstalled=$installed (package=${hasPackage(pm, VLC_PACKAGE)}, view=${canResolveVlcView(pm)})")
+        return installed
+    }
+
+    private fun hasPackage(pm: PackageManager, packageName: String): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getPackageInfo(
-                    VLC_PACKAGE,
-                    PackageManager.PackageInfoFlags.of(0)
-                )
+                pm.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
             } else {
                 @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(VLC_PACKAGE, 0)
+                pm.getPackageInfo(packageName, 0)
             }
             true
-        } catch (_: PackageManager.NameNotFoundException) {
+        } catch (e: PackageManager.NameNotFoundException) {
+            Log.d(TAG, "getPackageInfo($packageName) not found — check <queries> visibility", e)
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "getPackageInfo($packageName) failed", e)
+            false
+        }
+    }
+
+    private fun canResolveVlcView(pm: PackageManager): Boolean {
+        val probe = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse("content://org.videolan.vlc.probe/sample.mp4"), "video/*")
+            setPackage(VLC_PACKAGE)
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.queryIntentActivities(
+                    probe,
+                    PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong())
+                ).isNotEmpty()
+            } else {
+                @Suppress("DEPRECATION")
+                pm.queryIntentActivities(probe, PackageManager.MATCH_DEFAULT_ONLY).isNotEmpty()
+            } || probe.resolveActivity(pm) != null
+        } catch (e: Exception) {
+            Log.w(TAG, "canResolveVlcView failed", e)
+            false
+        }
+    }
+
+    private fun canResolveVlcComponent(pm: PackageManager, activityClass: String): Boolean {
+        return try {
+            val intent = Intent().setComponent(ComponentName(VLC_PACKAGE, activityClass))
+            intent.resolveActivity(pm) != null
+        } catch (e: Exception) {
+            Log.w(TAG, "canResolveVlcComponent($activityClass) failed", e)
             false
         }
     }
@@ -64,16 +113,32 @@ object PlayerHelper {
                 "${context.packageName}.provider",
                 file
             )
-            val intent = buildVlcPlayIntent(context, contentUri)
+            val mimeType = mimeTypeFor(file)
+            val intent = buildVlcPlayIntent(context, contentUri, mimeType)
             grantVlcUriPermission(context, contentUri)
+            Log.i(TAG, "Launching VLC component=${intent.component} package=${intent.`package`} uri=$contentUri mime=$mimeType")
             context.startActivity(intent)
             PlayResult.Started(fileId, file.absolutePath)
+        } catch (e: ActivityNotFoundException) {
+            Log.e(TAG, "No activity to handle VLC play intent for ${file.absolutePath}", e)
+            PlayResult.Failed("VLC Media Player is not installed or cannot open this file")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException launching VLC for ${file.absolutePath}", e)
+            PlayResult.Failed("Permission denied launching VLC: ${e.message}")
         } catch (e: Exception) {
             Log.e(TAG, "Error launching VLC for ${file.absolutePath}", e)
             PlayResult.Failed(
                 "Error while launching VLC Media Player for ${file.absolutePath}: ${e.message}"
             )
         }
+    }
+
+    private fun mimeTypeFor(file: File): String {
+        val ext = file.extension.lowercase()
+        if (ext.isNotEmpty()) {
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)?.let { return it }
+        }
+        return "video/*"
     }
 
     private fun grantVlcUriPermission(context: Context, contentUri: Uri) {
@@ -89,39 +154,51 @@ object PlayerHelper {
     }
 
     /**
-     * Updated with better compatibility for Realtek devices
+     * Prefer VLC's public StartActivity (registered for ACTION_VIEW + content/file).
+     * VideoPlayerActivity is internal and only exposes Samsung REMOTE_ACTION on modern builds.
      */
-    private fun buildVlcPlayIntent(context: Context, contentUri: Uri): Intent {
+    private fun buildVlcPlayIntent(context: Context, contentUri: Uri, mimeType: String): Intent {
         fun baseIntent(): Intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(contentUri, "video/*")
+            setDataAndType(contentUri, mimeType)
             clipData = ClipData.newRawUri("media", contentUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            addCategory(Intent.CATEGORY_DEFAULT)
 
             putExtra("title", "GrammPlayer")
             putExtra("from_start", true)
             putExtra("fullscreen", true)
             putExtra("start_paused", false)
 
-            // === Fixes for Realtek + "unknown output format" issues ===
-            putExtra("hw", false)                    // Disable hardware decoding (most stable)
-            putExtra("avcodec-hw", "none")           // Force software decoding
+            // Stable decoding on Realtek / low-end TV SoCs
+            putExtra("hw", false)
+            putExtra("avcodec-hw", "none")
             putExtra("android-mediacodec", false)
             putExtra("deinterlace", false)
             putExtra("vout", "android-opaque")
         }
 
-        // Prefer explicit component for better reliability on TV boxes
-        val explicitIntent = baseIntent().apply {
-            component = ComponentName(VLC_PACKAGE, VLC_PLAYER_ACTIVITY)
+        val pm = context.packageManager
+
+        val startIntent = baseIntent().apply {
+            component = ComponentName(VLC_PACKAGE, VLC_START_ACTIVITY)
+        }
+        if (startIntent.resolveActivity(pm) != null) {
+            Log.d(TAG, "Using VLC StartActivity for VIEW")
+            return startIntent
         }
 
-        if (explicitIntent.resolveActivity(context.packageManager) != null) {
-            return explicitIntent
-        }
-
-        Log.d(TAG, "Explicit VLC intent not resolved, falling back to package intent")
-        return baseIntent().apply {
+        val packageIntent = baseIntent().apply {
             setPackage(VLC_PACKAGE)
+        }
+        if (packageIntent.resolveActivity(pm) != null) {
+            Log.d(TAG, "Using package-scoped VIEW intent for VLC")
+            return packageIntent
+        }
+
+        // Last resort: older VLC builds routed VIEW into VideoPlayerActivity
+        Log.w(TAG, "Falling back to VideoPlayerActivity")
+        return baseIntent().apply {
+            component = ComponentName(VLC_PACKAGE, VLC_PLAYER_ACTIVITY)
         }
     }
 
@@ -180,6 +257,7 @@ object PlayerHelper {
         return listOf(
             playStoreIntent("market://details?id=$VLC_PACKAGE"),
             browserIntent("https://play.google.com/store/apps/details?id=$VLC_PACKAGE"),
+            browserIntent("https://www.videolan.org/vlc/download-android.html"),
         )
     }
 
