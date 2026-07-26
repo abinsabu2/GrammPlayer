@@ -76,8 +76,6 @@ object TelegramClientManager {
         client?.send(parameters, TdLibUpdateHandler)
     }
 
-    fun getBestAvailableStoragePath(): String = ApplicationHelper.getBestAvailableStoragePath()
-
     /**
      * Clears downloaded media cache safely: asks TDLib to drop completed downloads,
      * deletes local files off the main thread, and resets download flags in Room.
@@ -116,8 +114,6 @@ object TelegramClientManager {
             }
         }
     }
-
-    fun getDirectorySize(): Double = ApplicationHelper.getDirectorySize(activeFileDirectory)
 
     fun sendPhoneNumber(phone: String) {
         client?.send(TdApi.SetAuthenticationPhoneNumber(phone, null), TdLibUpdateHandler)
@@ -330,34 +326,6 @@ object TelegramClientManager {
 
             else ->
                 MediaMessageMapper.unsupported(chatId, content.hashCode().toLong())
-        }
-    }
-
-    /**
-     * Closes the TDLib client WITHOUT logging out (session persists server-side).
-     * Waits for AuthorizationStateClosed before nulling the client reference, so a
-     * subsequent initialize() can't race a still-finalizing native Client instance.
-     * Falls back to nulling after a timeout if TDLib never reports Closed (shouldn't
-     * normally happen, but avoids hanging forever if something goes wrong).
-     */
-    suspend fun close() {
-        if (client == null) return
-        isLoggingOut = true
-        try {
-            client?.send(TdApi.Close(), TdLibUpdateHandler)
-
-            val closed = withTimeoutOrNull(LOGOUT_TIMEOUT_MS.milliseconds) {
-                TdLibUpdateHandler.authorizationState
-                    .filterIsInstance<TdApi.AuthorizationStateClosed>()
-                    .first()
-            }
-
-            if (closed == null) {
-                Log.w("TelegramClientManager", "Timed out waiting for AuthorizationStateClosed during close()")
-            }
-        } finally {
-            client = null
-            isLoggingOut = false
         }
     }
 

@@ -28,10 +28,27 @@ object PlayerHelper {
     private const val AMAZON_APPSTORE_PACKAGE = "com.amazon.venezia"
     private const val AMAZON_VLC_ASIN = "B00X4N8W2G"
 
+    /** VLC intent: when true, start at 0; when false, honor [EXTRA_START_TIME]. */
+    const val EXTRA_FROM_START = "from_start"
+    /** VLC intent: start position in milliseconds (PLAY_EXTRA_START_TIME). */
+    const val EXTRA_START_TIME = "position"
+    /** Returned by VLC VideoPlayerActivity on exit. */
+    const val RESULT_EXTRA_POSITION = "extra_position"
+    const val RESULT_EXTRA_DURATION = "extra_duration"
+    const val RESULT_EXTRA_URI = "extra_uri"
+
     sealed class PlayResult {
         data class Started(val fileId: Int, val path: String) : PlayResult()
         data class Failed(val reason: String) : PlayResult()
+        /** Intent ready for [androidx.activity.result.ActivityResultLauncher]; caller starts it. */
+        data class Ready(val intent: Intent, val fileId: Int, val path: String) : PlayResult()
     }
+
+    data class PlaybackExitPosition(
+        val positionMs: Long,
+        val durationMs: Long,
+        val uri: String?
+    )
 
     fun isVlcInstalled(context: Context): Boolean {
         val pm = context.packageManager
@@ -94,7 +111,20 @@ object PlayerHelper {
         }
     }
 
-    fun play(context: Context, filePath: String?, fileId: Int = 0): PlayResult {
+    /**
+     * Builds a VLC play intent without starting it.
+     * Use with Activity Result API so VLC can return [RESULT_EXTRA_POSITION].
+     *
+     * @param startPositionMs when > 0, resume at that offset; otherwise start from beginning.
+     * @param forActivityResult when true, omits FLAG_ACTIVITY_NEW_TASK so setResult is delivered.
+     */
+    fun preparePlay(
+        context: Context,
+        filePath: String?,
+        fileId: Int = 0,
+        startPositionMs: Long = 0L,
+        forActivityResult: Boolean = true
+    ): PlayResult {
         if (!isVlcInstalled(context)) {
             return PlayResult.Failed("VLC Media Player is not installed")
         }
@@ -114,23 +144,76 @@ object PlayerHelper {
                 file
             )
             val mimeType = mimeTypeFor(file)
-            val intent = buildVlcPlayIntent(context, contentUri, mimeType)
+            val intent = buildVlcPlayIntent(
+                context,
+                contentUri,
+                mimeType,
+                startPositionMs = startPositionMs,
+                forActivityResult = forActivityResult
+            )
             grantVlcUriPermission(context, contentUri)
-            Log.i(TAG, "Launching VLC component=${intent.component} package=${intent.`package`} uri=$contentUri mime=$mimeType")
-            context.startActivity(intent)
-            PlayResult.Started(fileId, file.absolutePath)
+            Log.i(
+                TAG,
+                "Prepared VLC component=${intent.component} package=${intent.`package`} " +
+                    "uri=$contentUri mime=$mimeType startMs=$startPositionMs forResult=$forActivityResult"
+            )
+            PlayResult.Ready(intent, fileId, file.absolutePath)
         } catch (e: ActivityNotFoundException) {
             Log.e(TAG, "No activity to handle VLC play intent for ${file.absolutePath}", e)
             PlayResult.Failed("VLC Media Player is not installed or cannot open this file")
         } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException launching VLC for ${file.absolutePath}", e)
+            Log.e(TAG, "SecurityException preparing VLC for ${file.absolutePath}", e)
             PlayResult.Failed("Permission denied launching VLC: ${e.message}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error launching VLC for ${file.absolutePath}", e)
+            Log.e(TAG, "Error preparing VLC for ${file.absolutePath}", e)
             PlayResult.Failed(
                 "Error while launching VLC Media Player for ${file.absolutePath}: ${e.message}"
             )
         }
+    }
+
+    fun play(
+        context: Context,
+        filePath: String?,
+        fileId: Int = 0,
+        startPositionMs: Long = 0L
+    ): PlayResult {
+        return when (val prepared = preparePlay(
+            context,
+            filePath,
+            fileId,
+            startPositionMs = startPositionMs,
+            forActivityResult = false
+        )) {
+            is PlayResult.Ready -> {
+                try {
+                    context.startActivity(prepared.intent)
+                    PlayResult.Started(prepared.fileId, prepared.path)
+                } catch (e: ActivityNotFoundException) {
+                    Log.e(TAG, "No activity to handle VLC play intent for ${prepared.path}", e)
+                    PlayResult.Failed("VLC Media Player is not installed or cannot open this file")
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "SecurityException launching VLC for ${prepared.path}", e)
+                    PlayResult.Failed("Permission denied launching VLC: ${e.message}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error launching VLC for ${prepared.path}", e)
+                    PlayResult.Failed(
+                        "Error while launching VLC Media Player for ${prepared.path}: ${e.message}"
+                    )
+                }
+            }
+            else -> prepared
+        }
+    }
+
+    fun parseExitPosition(data: Intent?): PlaybackExitPosition? {
+        if (data == null) return null
+        if (!data.hasExtra(RESULT_EXTRA_POSITION)) return null
+        val positionMs = data.getLongExtra(RESULT_EXTRA_POSITION, -1L)
+        if (positionMs < 0L) return null
+        val durationMs = data.getLongExtra(RESULT_EXTRA_DURATION, 0L).coerceAtLeast(0L)
+        val uri = data.getStringExtra(RESULT_EXTRA_URI)
+        return PlaybackExitPosition(positionMs = positionMs, durationMs = durationMs, uri = uri)
     }
 
     private fun mimeTypeFor(file: File): String {
@@ -156,16 +239,33 @@ object PlayerHelper {
     /**
      * Prefer VLC's public StartActivity (registered for ACTION_VIEW + content/file).
      * VideoPlayerActivity is internal and only exposes Samsung REMOTE_ACTION on modern builds.
+     *
+     * @param startPositionMs VLC start offset in ms; 0 starts from beginning.
+     * @param forActivityResult omit NEW_TASK so the caller receives VLC exit extras.
      */
-    private fun buildVlcPlayIntent(context: Context, contentUri: Uri, mimeType: String): Intent {
+    private fun buildVlcPlayIntent(
+        context: Context,
+        contentUri: Uri,
+        mimeType: String,
+        startPositionMs: Long = 0L,
+        forActivityResult: Boolean = false
+    ): Intent {
+        val resumeFrom = startPositionMs > 0L
         fun baseIntent(): Intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(contentUri, mimeType)
             clipData = ClipData.newRawUri("media", contentUri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            var flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            if (!forActivityResult) {
+                flags = flags or Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            addFlags(flags)
             addCategory(Intent.CATEGORY_DEFAULT)
 
             putExtra("title", "GrammPlayer")
-            putExtra("from_start", true)
+            putExtra(EXTRA_FROM_START, !resumeFrom)
+            if (resumeFrom) {
+                putExtra(EXTRA_START_TIME, startPositionMs)
+            }
             putExtra("fullscreen", true)
             putExtra("start_paused", false)
 

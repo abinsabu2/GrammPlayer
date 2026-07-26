@@ -9,26 +9,11 @@ interface MediaMessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(mediaMessage: MediaMessage): Long
 
-    @Update
-    suspend fun update(mediaMessage: MediaMessage)
-
-    @Delete
-    suspend fun delete(mediaMessage: MediaMessage)
-
-    @Query("SELECT * FROM MediaMessage")
-    fun getAll(): Flow<List<MediaMessage>>
-
     @Query("SELECT * FROM MediaMessage WHERE id = :id")
     fun getById(id: Long): Flow<MediaMessage?>
 
-    @Query("SELECT * FROM MediaMessage WHERE chat = :chatId ORDER BY id DESC")
-    fun getByChatId(chatId: Int): Flow<List<MediaMessage>>
-
     @Query("SELECT * FROM MediaMessage WHERE chat = :chatId ORDER BY id DESC LIMIT :limit OFFSET :offset")
     suspend fun getByChatIdPaged(chatId: Int, limit: Int, offset: Int): List<MediaMessage>
-
-    @Query("SELECT * FROM MediaMessage WHERE isDownloaded = 1 ORDER BY id DESC")
-    fun getDownloadedMedia(): Flow<List<MediaMessage>>
 
     @Query("SELECT COUNT(*) FROM MediaMessage")
     suspend fun count(): Int

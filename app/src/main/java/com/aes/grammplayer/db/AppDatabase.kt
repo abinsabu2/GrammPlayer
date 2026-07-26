@@ -16,10 +16,9 @@ import kotlinx.coroutines.launch
         Settings::class,
         User::class,
         Chat::class,
-        MediaMessage::class,
-        History::class
+        MediaMessage::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,7 +27,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun chatDao(): ChatDao
     abstract fun mediaMessageDao(): MediaMessageDao
-    abstract fun historyDao(): HistoryDao
 
     companion object {
         @Volatile

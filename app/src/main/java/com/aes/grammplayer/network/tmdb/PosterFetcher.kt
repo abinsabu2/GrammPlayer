@@ -73,14 +73,6 @@ object PosterFetcher {
         return year?.let { "${details.title} ($it)" } ?: details.title
     }
 
-    fun crewNames(details: TmdbMovieDetails, job: String, limit: Int = 2): List<String> =
-        details.credits?.crew
-            ?.filter { it.job.equals(job, ignoreCase = true) }
-            ?.map { it.name }
-            ?.distinct()
-            ?.take(limit)
-            ?: emptyList()
-
     fun trailerLabel(details: TmdbMovieDetails): String? =
         details.videos?.results
             ?.firstOrNull { it.site.equals("YouTube", ignoreCase = true) && it.type.equals("Trailer", ignoreCase = true) }

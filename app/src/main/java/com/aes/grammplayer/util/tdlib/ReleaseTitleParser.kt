@@ -1,8 +1,5 @@
 package com.aes.grammplayer.util.tdlib
 
-import com.aes.grammplayer.BuildConfig
-import com.aes.grammplayer.network.tmdb.TmdbClient
-
 data class ReleaseInfo(
     val groupTag: String?,      // "KC"
     val title: String,          // "Blast"
@@ -17,19 +14,9 @@ data class ReleaseInfo(
 ) {
     val displayTitle: String
         get() = year?.let { "$title ($it)" } ?: title
-
-    /**
-     * Cached poster URL, populated after a successful [ReleaseTitleParser.fetchPosterUrl]
-     * call for this instance. Null until fetched (or if the lookup found nothing).
-     */
-    var posterUrl: String? = null
-        internal set
 }
 
 object ReleaseTitleParser {
-
-    private const val TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
-    private const val TMDB_API_KEY = BuildConfig.TMDB_API_KEY//Love to BuildConfig, do not hardcode in real builds
 
     private val CONTAINER = Regex("""\b(mkv|mp4|avi|mov|ts|m4v)\b$""", RegexOption.IGNORE_CASE)
     private val BRACKET_TAG = Regex("""^\[([^]]+)]\s*""")
@@ -40,10 +27,6 @@ object ReleaseTitleParser {
     private val SOURCE = Regex("""\bWEB[\s-]?DL\b|\bWEBRip\b|\bBluRay\b|\bBDRip\b|\bHDTV\b|\bDVDRip\b""", RegexOption.IGNORE_CASE)
     private val AUDIO = Regex("""\b(AAC\d(?:[\s.]\d)?|DTS(?:-HD)?|E?AC3|FLAC|MP3)\b""", RegexOption.IGNORE_CASE)
     private val VIDEO_CODEC = Regex("""\bH[\s.]?26[45]\b|\bx26[45]\b|\bHEVC\b""", RegexOption.IGNORE_CASE)
-
-    // In-memory cache so we don't hit TMDb repeatedly for the same title/year
-    // while scrolling through a Leanback row that recycles/rebinds views.
-    private val posterCache = mutableMapOf<String, String?>()
 
     private fun String.trimSeparators(): String =
         trim().trim('.', '-', '_', ' ', '(', ')')

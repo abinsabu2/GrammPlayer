@@ -12,20 +12,11 @@ interface UserDao {
     @Update
     suspend fun update(user: User)
 
-    @Delete
-    suspend fun delete(user: User)
-
     @Query("SELECT * FROM Users")
     fun getAll(): Flow<List<User>>
 
-    @Query("SELECT * FROM Users WHERE id = :id")
-    fun getById(id: Int): Flow<User?>
-
     @Query("SELECT * FROM Users WHERE phone = :phone")
     suspend fun getByPhone(phone: String): User?
-
-    @Query("SELECT * FROM Users WHERE isConnected = 1")
-    suspend fun getConnectedUsers(): List<User>
 
     @Query("SELECT COUNT(*) FROM Users")
     suspend fun count(): Int

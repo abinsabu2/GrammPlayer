@@ -137,12 +137,4 @@ object MediaDownloadDataProvider {
         // All URLs failed
         throw lastException ?: IOException("All test servers failed")
     }
-
-    private suspend fun downloadLocally(mediaMessage: MediaMessage): MediaMessage {
-        return mediaMessage.copy(isDownloaded = true)
-    }
-
-    fun cancelDownload(fileId: Int) {
-        TelegramClientManager.cancelDownloadAndDelete(mutableSetOf(fileId))
-    }
 }
