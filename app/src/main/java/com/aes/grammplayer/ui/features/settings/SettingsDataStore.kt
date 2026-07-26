@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -20,14 +21,19 @@ class SettingsDataStore(context: Context) {
 
     companion object {
         val AUTO_PLAY = booleanPreferencesKey("auto_play")
-        val START_POINT_TYPE = stringPreferencesKey("start_point_type")
-        val START_POINT_VALUE = intPreferencesKey("start_point_value")
-        val BUFFER_COUNTER = intPreferencesKey("buffer_counter")
         val PROGRESS_THRESHOLD = intPreferencesKey("progress_threshold")
         val BUFFER_SIZE_THRESHOLD = intPreferencesKey("buffer_size_threshold")
         val MESSAGES_PAGE_SIZE = intPreferencesKey("messages_page_size")
 
         const val DEFAULT_MESSAGES_PAGE_SIZE = 50
+
+        /** Temporary external-VLC playhead; cleared on cache/history clear or Play from start. */
+        val LAST_PLAYBACK_MESSAGE_ID = longPreferencesKey("last_playback_message_id")
+        val LAST_PLAYBACK_POSITION_MS = longPreferencesKey("last_playback_position_ms")
+        val LAST_PLAYBACK_DURATION_MS = longPreferencesKey("last_playback_duration_ms")
+
+        const val MIN_RESUME_POSITION_MS = 5_000L
+        const val END_RESUME_CLEAR_MS = 5_000L
 
         val IS_ONBOARDING_DONE = booleanPreferencesKey("is_onboarding_done")
 
@@ -79,36 +85,6 @@ class SettingsDataStore(context: Context) {
         }
     }
 
-    val startPointType: Flow<String> = appContext.dataStore.data.map { preferences ->
-        preferences[START_POINT_TYPE] ?: "progress"
-    }
-
-    suspend fun setStartPointType(type: String) {
-        appContext.dataStore.edit { preferences ->
-            preferences[START_POINT_TYPE] = type
-        }
-    }
-
-    val startPointValue: Flow<Int> = appContext.dataStore.data.map { preferences ->
-        preferences[START_POINT_VALUE] ?: 0
-    }
-
-    suspend fun setStartPointValue(value: Int) {
-        appContext.dataStore.edit { preferences ->
-            preferences[START_POINT_VALUE] = value
-        }
-    }
-
-    val bufferCounter: Flow<Int> = appContext.dataStore.data.map { preferences ->
-        preferences[BUFFER_COUNTER] ?: 5
-    }
-
-    suspend fun setBufferCounter(buffer: Int) {
-        appContext.dataStore.edit { preferences ->
-            preferences[BUFFER_COUNTER] = buffer
-        }
-    }
-
     val progressThreshold: Flow<Int> = appContext.dataStore.data.map { preferences ->
         preferences[PROGRESS_THRESHOLD] ?: 30
     }
@@ -151,4 +127,44 @@ class SettingsDataStore(context: Context) {
 
     suspend fun getActivePhone(): String? =
         appContext.dataStore.data.first()[ACTIVE_PHONE]?.takeIf { it.isNotBlank() }
+
+    /**
+     * Saves a temporary resume bookmark for [messageId].
+     * Positions near the start or end are treated as finished / not worth resuming and clear storage.
+     */
+    suspend fun savePlaybackPosition(messageId: Long, positionMs: Long, durationMs: Long = 0L) {
+        if (positionMs < MIN_RESUME_POSITION_MS) {
+            clearPlaybackPosition()
+            return
+        }
+        if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) {
+            clearPlaybackPosition()
+            return
+        }
+        appContext.dataStore.edit { preferences ->
+            preferences[LAST_PLAYBACK_MESSAGE_ID] = messageId
+            preferences[LAST_PLAYBACK_POSITION_MS] = positionMs
+            preferences[LAST_PLAYBACK_DURATION_MS] = durationMs.coerceAtLeast(0L)
+        }
+    }
+
+    /** Returns saved position ms for [messageId], or null if none / different title. */
+    suspend fun getPlaybackPosition(messageId: Long): Long? {
+        val prefs = appContext.dataStore.data.first()
+        val savedId = prefs[LAST_PLAYBACK_MESSAGE_ID] ?: return null
+        if (savedId != messageId) return null
+        val positionMs = prefs[LAST_PLAYBACK_POSITION_MS] ?: return null
+        if (positionMs < MIN_RESUME_POSITION_MS) return null
+        val durationMs = prefs[LAST_PLAYBACK_DURATION_MS] ?: 0L
+        if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) return null
+        return positionMs
+    }
+
+    suspend fun clearPlaybackPosition() {
+        appContext.dataStore.edit { preferences ->
+            preferences.remove(LAST_PLAYBACK_MESSAGE_ID)
+            preferences.remove(LAST_PLAYBACK_POSITION_MS)
+            preferences.remove(LAST_PLAYBACK_DURATION_MS)
+        }
+    }
 }

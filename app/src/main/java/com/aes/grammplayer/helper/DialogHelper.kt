@@ -61,11 +61,6 @@ class DialogHelper(private val fragmentManager: FragmentManager) {
     }
 
     /**
-     * Check if dialog is currently shown
-     */
-    fun isShowing(): Boolean = loadingDialog?.isAdded == true
-
-    /**
      * Shows the loading dialog, runs [block] (optionally updating the message), then dismisses.
      */
     suspend fun <T> runWithLoading(

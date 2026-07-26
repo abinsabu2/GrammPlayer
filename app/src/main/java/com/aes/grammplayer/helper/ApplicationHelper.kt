@@ -29,14 +29,11 @@ object ApplicationHelper {
     fun getFilesDirectory(storagePath: String = getBestAvailableStoragePath()): String =
         "$storagePath/files"
 
-    fun getActiveFileDirectory(): String =
-        getFilesDirectory(getBestAvailableStoragePath())
-
     /**
      * Deletes downloaded media files under TDLib's files directory.
      * Pass [filesDirectory] when TDLib has a pinned path from client initialization.
      */
-    fun clearDownloadedFiles(filesDirectory: String = getActiveFileDirectory()): Int {
+    fun clearDownloadedFiles(filesDirectory: String = getFilesDirectory()): Int {
         var deletedFilesCount = 0
         val subdirectoriesToClear = listOf("documents", "temp", "videos")
 
@@ -51,24 +48,6 @@ object ApplicationHelper {
             }
         }
         return deletedFilesCount
-    }
-
-    /**
-     * @return The total size in MB, or 0.0 if the directory does not exist.
-     */
-    fun getDirectorySize(filesDirectory: String = getActiveFileDirectory()): Double {
-        val directory = File(filesDirectory)
-        if (!directory.exists() || !directory.isDirectory) {
-            return 0.0
-        }
-
-        var totalSize = 0L
-        directory.walkTopDown().forEach { file ->
-            if (file.isFile) {
-                totalSize += file.length()
-            }
-        }
-        return totalSize / (1024.0 * 1024.0)
     }
 
     private fun getExternalStoragePath(): String? {

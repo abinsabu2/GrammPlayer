@@ -87,7 +87,6 @@ object ActiveDownloadManager {
                     localPath = ""
                 )
                 db.mediaMessageDao().insert(cleared)
-                HistoryHelper.clearDownloading(context, cleared)
             }
         }
         DownloadProgressTracker.clear(active.fileId)

@@ -8,8 +8,7 @@ object DatabaseSeeder {
         val userIds = seedUsers(db)
         seedSettings(db, userIds)
         val chatIds = seedChats(db, userIds)
-        val messageIds = seedMediaMessages(db, chatIds)
-        seedHistory(db, userIds, chatIds, messageIds)
+        seedMediaMessages(db, chatIds)
     }
 
     private suspend fun seedSettings(db: AppDatabase, userIds: List<Long>) {
@@ -176,14 +175,5 @@ object DatabaseSeeder {
         }
 
         return insertedIds
-    }
-
-    private suspend fun seedHistory(
-        db: AppDatabase,
-        userIds: List<Long>,
-        chatIds: List<Long>,
-        messageIds: List<Long>
-    ) {
-        // History is populated only from real user activity (detail page, downloads, playback).
     }
 }

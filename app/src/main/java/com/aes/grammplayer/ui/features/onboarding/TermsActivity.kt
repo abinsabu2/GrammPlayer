@@ -10,9 +10,6 @@ import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
 import android.content.Intent
-import androidx.activity.viewModels
-import com.aes.grammplayer.db.view.SettingsViewModel
-import kotlin.getValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.aes.grammplayer.ui.features.authentication.LoginActivity
@@ -21,14 +18,12 @@ import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.launch
 
-class TermsActivity : FragmentActivity() {// Or extend Activity if you prefer
+class TermsActivity : FragmentActivity() {
 
     private lateinit var checkBox: CheckBox
     private lateinit var proceedButton: Button
     private lateinit var termsText: TextView
     private lateinit var privacyText: TextView
-
-    private val viewModel: SettingsViewModel by viewModels()
 
     private lateinit var settingsDataStore: SettingsDataStore
 

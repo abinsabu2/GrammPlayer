@@ -53,6 +53,19 @@ object FormatHelper {
         }
     }
 
+    /** Formats a playback position for UI, e.g. `1:23:45` or `12:05`. */
+    fun formatPlaybackPosition(positionMs: Long): String {
+        val totalSeconds = (positionMs.coerceAtLeast(0L) / 1000L).toInt()
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0) {
+            String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format(Locale.US, "%d:%02d", minutes, seconds)
+        }
+    }
+
     fun formatRating(voteAverage: Double): String =
         String.format("★ %.1f", voteAverage)
 
@@ -65,7 +78,4 @@ object FormatHelper {
             isoDate
         }
     }
-
-    fun joinNames(names: List<String>, limit: Int = 2): String? =
-        names.filter { it.isNotBlank() }.take(limit).joinToString(", ").takeIf { it.isNotBlank() }
 }

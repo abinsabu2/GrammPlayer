@@ -465,7 +465,9 @@ class MainFragment : BrowseSupportFragment() {
                                 try {
                                     val deletedCount = loadingDialog.runWithLoading("Clearing cache...") {
                                         withContext(Dispatchers.IO) {
-                                            TelegramClientManager.clearDownloadCache(requireContext())
+                                            val count = TelegramClientManager.clearDownloadCache(requireContext())
+                                            SettingsDataStore(requireContext()).clearPlaybackPosition()
+                                            count
                                         }
                                     }
                                     if (!isAdded) return@launch
@@ -508,6 +510,9 @@ class MainFragment : BrowseSupportFragment() {
                             lifecycleScope.launch {
                                 try {
                                     loadingDialog.runWithLoading("Logging out") { update ->
+                                        // Delete this login's history file before leaving the session.
+                                        HistoryHelper.clear(requireContext())
+                                        update("Clearing history…")
                                         TelegramClientManager.logOut()
                                         update("Logged out")
                                         delay(500.milliseconds)

@@ -8,11 +8,15 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -25,9 +29,9 @@ import com.aes.grammplayer.helper.ActiveDownloadManager
 import com.aes.grammplayer.helper.DownloadProgressTracker
 import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
-import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
+import com.aes.grammplayer.history.HistoryStore
 import com.aes.grammplayer.network.tmdb.PosterFetcher
 import com.aes.grammplayer.network.tmdb.TmdbMovieDetails
 import com.aes.grammplayer.provider.MediaDownloadDataProvider
@@ -36,18 +40,15 @@ import com.aes.grammplayer.util.tdlib.ReleaseInfo
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import org.drinkless.tdlib.TdApi
-import android.widget.ImageView
-import android.widget.Toast
-import androidx.core.view.isVisible
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.drinkless.tdlib.TdApi
 
 class MediaDetailsActivity : AppCompatActivity() {
 
@@ -76,7 +77,10 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var backdropVideoHost: ViewGroup
     private lateinit var previewFullscreenButton: View
 
+    private lateinit var resumeButton: View
+    private lateinit var resumeButtonLabel: TextView
     private lateinit var playButton: View
+    private lateinit var playButtonLabel: TextView
     private lateinit var downloadButton: View
     private lateinit var cancelButton: View
     private lateinit var closeButton: View
@@ -105,8 +109,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private var autoPlayStarted = false
     private var lastPreviewPath: String? = null
     private var hasRecordedHistoryView = false
-    private var hasRecordedHistoryDownload = false
-    private var hasRecordedHistoryDownloading = false
+    /** Prevents re-entering [onDownloadComplete] UI path after a successful finish. */
+    private var downloadCompleteHandled = false
 
     // Reused from BottomSheet
     private var currentDownload: DownloadingFileInfo? = null
@@ -120,6 +124,15 @@ class MediaDetailsActivity : AppCompatActivity() {
     private var lastDownloadedBytes = 0L
     private var staticBackdropActive = false
     private var backgroundPreviewActive = false
+
+    /** Temporary resume offset for this message (Settings DataStore); 0 = none. */
+    private var savedPositionMs: Long = 0L
+
+    private val vlcPlaybackLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        handleVlcPlaybackResult(result.resultCode, result.data)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -166,7 +179,10 @@ class MediaDetailsActivity : AppCompatActivity() {
         backdropVideoHost = findViewById(R.id.detail_backdrop_video_host)
         previewFullscreenButton = findViewById(R.id.preview_fullscreen)
 
+        resumeButton = findViewById(R.id.action_resume)
+        resumeButtonLabel = findViewById(R.id.action_resume_label)
         playButton = findViewById(R.id.action_play)
+        playButtonLabel = findViewById(R.id.action_play_label)
         downloadButton = findViewById(R.id.action_download)
         cancelButton = findViewById(R.id.action_cancel)
         closeButton = findViewById(R.id.action_close)
@@ -218,6 +234,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun applyActionButtonState(state: ActionButtonState) {
         when (state) {
             ActionButtonState.FRESH -> {
+                hideResumeButton()
                 playButton.visibility = View.GONE
                 playButton.isEnabled = false
                 downloadButton.visibility = View.VISIBLE
@@ -226,6 +243,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 cancelButton.isEnabled = false
             }
             ActionButtonState.DOWNLOADING -> {
+                hideResumeButton()
                 playButton.visibility = View.GONE
                 playButton.isEnabled = false
                 downloadButton.visibility = View.GONE
@@ -241,9 +259,41 @@ class MediaDetailsActivity : AppCompatActivity() {
                 cancelButton.visibility = View.GONE
                 cancelButton.isEnabled = false
                 downloadProgressContainer.visibility = View.GONE
+                updateResumeButtonVisibility()
             }
         }
         updateActionFocusWiring()
+    }
+
+    private fun hideResumeButton() {
+        resumeButton.visibility = View.GONE
+        resumeButton.isEnabled = false
+        playButtonLabel.setText(R.string.play)
+    }
+
+    private fun updateResumeButtonVisibility() {
+        if (savedPositionMs > 0L) {
+            resumeButton.visibility = View.VISIBLE
+            resumeButton.isEnabled = true
+            resumeButtonLabel.text = getString(
+                R.string.resume_with_time,
+                FormatHelper.formatPlaybackPosition(savedPositionMs)
+            )
+            playButtonLabel.setText(R.string.play_from_start)
+        } else {
+            hideResumeButton()
+        }
+    }
+
+    private fun loadSavedPlaybackPosition(rebindButtons: Boolean = true) {
+        lifecycleScope.launch {
+            val position = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            savedPositionMs = position
+            if (rebindButtons && playButton.isVisible) {
+                updateResumeButtonVisibility()
+                updateActionFocusWiring()
+            }
+        }
     }
 
     private fun isLocalFilePlayable(path: String? = message.localPath): Boolean =
@@ -319,8 +369,11 @@ class MediaDetailsActivity : AppCompatActivity() {
      * Collects ALL listeners in a single function.
      */
     private fun setupListeners() {
-        bindActionButton(playButton) { openFullScreenPlayback() }
-        bindActionButton(previewFullscreenButton) { openFullScreenPlayback() }
+        bindActionButton(resumeButton) { openFullScreenPlayback(resume = true) }
+        bindActionButton(playButton) { openFullScreenPlayback(resume = false) }
+        bindActionButton(previewFullscreenButton) {
+            openFullScreenPlayback(resume = savedPositionMs > 0L)
+        }
         bindActionButton(downloadButton) { startDownload() }
         bindActionButton(cancelButton) { cancelCurrentDownload() }
         bindActionButton(closeButton) { handleClose() }
@@ -382,6 +435,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         listOf(
             closeButton,
             previewFullscreenButton,
+            resumeButton,
             playButton,
             downloadButton,
             cancelButton
@@ -412,7 +466,10 @@ class MediaDetailsActivity : AppCompatActivity() {
         val focusables = buildList {
             add(closeButton)
             if (previewFullscreenButton.isVisible) add(previewFullscreenButton)
-            addAll(listOf(playButton, secondButton).filter { it.isVisible && it.isEnabled })
+            addAll(
+                listOf(resumeButton, playButton, secondButton)
+                    .filter { it.isVisible && it.isEnabled }
+            )
         }
 
         focusables.forEachIndexed { index, button ->
@@ -427,7 +484,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     /**
      * Requests focus on the first button that is both visible and enabled,
-     * in order: Play → Download → Cancel. Posted so it runs after layout.
+     * in order: Resume → Play → Download → Cancel. Posted so it runs after layout.
      */
     private fun focusFirstUsableButton() {
         val root = findViewById<View>(android.R.id.content)
@@ -436,6 +493,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             // visibility keeps focus off the hidden second-slot button.
             buildList {
                 if (previewFullscreenButton.isVisible) add(previewFullscreenButton)
+                add(resumeButton)
                 add(playButton)
                 add(downloadButton)
                 add(cancelButton)
@@ -539,13 +597,23 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun openFullScreenPlayback() {
+    private fun openFullScreenPlayback(resume: Boolean = false) {
         val playablePath = resolvePlayablePath()
         if (playablePath == null) {
             Toast.makeText(this, R.string.playback_file_not_ready, Toast.LENGTH_SHORT).show()
             return
         }
-        startPlayback(playablePath)
+        if (!resume) {
+            // Play from start: clear temporary bookmark first.
+            savedPositionMs = 0L
+            updateResumeButtonVisibility()
+            lifecycleScope.launch {
+                settingsDataStore.clearPlaybackPosition()
+            }
+            startPlayback(playablePath, startPositionMs = 0L)
+        } else {
+            startPlayback(playablePath, startPositionMs = savedPositionMs)
+        }
     }
 
     private fun stopPreviewPlaybackOnly() {
@@ -557,6 +625,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             isAutoPlayEnabled = settingsDataStore.autoPlay.first()
             progressThreshold = settingsDataStore.progressThreshold.first()
             bufferSizeThresholdMB = settingsDataStore.bufferSizeThreshold.first()
+            savedPositionMs = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
             refreshLocalFileAndUpdateUI()
         }
     }
@@ -673,7 +742,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         activeDownloads.add(message.fileId)
         ActiveDownloadManager.begin(message)
         refreshBottomDownloadStatus(0)
-        recordHistoryDownloading()
 
         lifecycleScope.launch {
             try {
@@ -713,9 +781,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         DownloadProgressTracker.clear(message.fileId)
         currentDownload = null
         refreshBottomDownloadStatus()
-        lifecycleScope.launch {
-            HistoryHelper.clearDownloading(applicationContext, message)
-        }
         applyActionButtonState(ActionButtonState.FRESH)
         focusFirstUsableButton()
     }
@@ -777,7 +842,6 @@ class MediaDetailsActivity : AppCompatActivity() {
             if (!downloadComplete) {
                 isDownloading = true
                 updateDownloadProgress(progress, downloadedBytes, totalBytes)
-                recordHistoryDownloading()
                 applyDownloadingState(progress, downloadedBytes, downloadComplete = false)
             }
 
@@ -788,7 +852,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun onDownloadComplete(localPath: String) {
-        if (hasRecordedHistoryDownload && message.isDownloaded && isLocalFilePlayable(localPath)) {
+        if (downloadCompleteHandled && message.isDownloaded && isLocalFilePlayable(localPath)) {
             isDownloading = false
             activeDownloads.clear()
             ActiveDownloadManager.complete(message.fileId)
@@ -798,6 +862,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             updatePreviewIfAllowed(localPath, downloadComplete = true)
             return
         }
+        downloadCompleteHandled = true
         message.localPath = localPath
         message.isDownloaded = true
         isDownloading = false
@@ -805,7 +870,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         ActiveDownloadManager.complete(message.fileId)
         refreshBottomDownloadStatus()
         syncDownloadInfoFromPath(localPath)
-        recordHistoryDownloaded()
         checkLocalFileAndUpdateUI()
     }
 
@@ -821,8 +885,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun resetPlaybackSessionFlags() {
         hasRecordedHistoryView = false
-        hasRecordedHistoryDownload = false
-        hasRecordedHistoryDownloading = false
+        downloadCompleteHandled = false
         autoPlayStarted = false
         lastDownloadProgress = 0
         lastDownloadedBytes = 0L
@@ -832,49 +895,66 @@ class MediaDetailsActivity : AppCompatActivity() {
         if (hasRecordedHistoryView) return
         hasRecordedHistoryView = true
         lifecycleScope.launch {
-            HistoryHelper.recordDetailVisit(applicationContext, message)
+            HistoryStore.recordVisit(applicationContext, message)
         }
     }
 
-    private fun recordHistoryViewed() {
-        if (hasRecordedHistoryView) return
-        hasRecordedHistoryView = true
-        lifecycleScope.launch {
-            HistoryHelper.record(applicationContext, message, viewed = true)
-        }
-    }
-
-    private fun recordHistoryDownloaded() {
-        if (hasRecordedHistoryDownload) return
-        hasRecordedHistoryDownload = true
-        hasRecordedHistoryDownloading = true
-        lifecycleScope.launch {
-            HistoryHelper.record(applicationContext, message, downloaded = true)
-        }
-    }
-
-    private fun recordHistoryDownloading() {
-        if (hasRecordedHistoryDownloading) return
-        hasRecordedHistoryDownloading = true
-        lifecycleScope.launch {
-            HistoryHelper.record(
-                applicationContext,
-                message.copy(isDownloadActive = true),
-                downloading = true
-            )
-        }
-    }
-
-    private fun launchPlayback(filePath: String): PlayerHelper.PlayResult {
-        val fileId = currentDownload?.fileId?.takeIf { it != 0 } ?: message.fileId
-        return PlayerHelper.play(this, filePath, fileId)
-    }
-
-    private fun startPlayback(filePath: String) {
+    private fun startPlayback(filePath: String, startPositionMs: Long = 0L) {
         if (!ensureVlcInstalled()) return
-        when (val result = launchPlayback(filePath)) {
-            is PlayerHelper.PlayResult.Started -> recordHistoryViewed()
+        val fileId = currentDownload?.fileId?.takeIf { it != 0 } ?: message.fileId
+        // Prefer for-result so VLC can return extra_position when the user exits.
+        when (
+            val result = PlayerHelper.preparePlay(
+                this,
+                filePath,
+                fileId,
+                startPositionMs = startPositionMs,
+                forActivityResult = true
+            )
+        ) {
+            is PlayerHelper.PlayResult.Ready -> {
+                try {
+                    vlcPlaybackLauncher.launch(result.intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to launch VLC for result", e)
+                    // Fallback: fire-and-forget (no position capture)
+                    when (val fallback = PlayerHelper.play(this, filePath, fileId, startPositionMs)) {
+                        is PlayerHelper.PlayResult.Started -> { }
+                        is PlayerHelper.PlayResult.Failed -> handlePlaybackFailure(fallback, filePath)
+                        is PlayerHelper.PlayResult.Ready -> { }
+                    }
+                }
+            }
             is PlayerHelper.PlayResult.Failed -> handlePlaybackFailure(result, filePath)
+            is PlayerHelper.PlayResult.Started -> { }
+        }
+    }
+
+    private fun handleVlcPlaybackResult(resultCode: Int, data: Intent?) {
+        val exit = PlayerHelper.parseExitPosition(data)
+        if (exit == null) {
+            Log.d(TAG, "VLC returned no position (resultCode=$resultCode)")
+            loadSavedPlaybackPosition()
+            return
+        }
+        Log.i(
+            TAG,
+            "VLC exit position=${exit.positionMs}ms duration=${exit.durationMs}ms uri=${exit.uri}"
+        )
+        lifecycleScope.launch {
+            settingsDataStore.savePlaybackPosition(
+                messageId = message.id,
+                positionMs = exit.positionMs,
+                durationMs = exit.durationMs
+            )
+            savedPositionMs = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            if (playButton.isVisible) {
+                updateResumeButtonVisibility()
+                updateActionFocusWiring()
+                if (savedPositionMs > 0L) {
+                    focusFirstUsableButton()
+                }
+            }
         }
     }
 
@@ -989,10 +1069,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         DownloadProgressTracker.clear(message.fileId)
         currentDownload = null
         refreshBottomDownloadStatus()
-
-        lifecycleScope.launch {
-            HistoryHelper.clearDownloading(applicationContext, message)
-        }
 
         applyActionButtonState(ActionButtonState.FRESH)
         focusFirstUsableButton()
@@ -1125,7 +1201,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         message = message.copy(backgroundImageUrl = backdropUrl)
         lifecycleScope.launch(Dispatchers.IO) {
             AppDatabase.getDatabase(applicationContext).mediaMessageDao().insert(message)
-            HistoryHelper.record(applicationContext, message, viewed = true)
+            // Refresh history snapshot with backdrop so dashboard can use it.
+            HistoryStore.recordVisit(applicationContext, message)
         }
     }
 
@@ -1312,6 +1389,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         syncDownloadStateWithManager()
+        loadSavedPlaybackPosition(rebindButtons = true)
         if (isLocalFilePlayable(message.localPath)) {
             lastPreviewPath = null
             updatePreviewIfAllowed(message.localPath, downloadComplete = isFullyDownloaded())

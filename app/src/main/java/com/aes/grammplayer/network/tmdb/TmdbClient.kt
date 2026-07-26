@@ -29,8 +29,4 @@ object TmdbClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
-
-    val api: TmdbApi by lazy {
-        retrofit.create(TmdbApi::class.java)
-    }
 }

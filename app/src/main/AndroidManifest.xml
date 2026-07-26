@@ -7,13 +7,7 @@
         android:minSdkVersion="21"
         android:targetSdkVersion="34" />
 
-    <uses-permission android:name="android.permission.INTERNET"
-        tools:ignore="SelectedPhotoAccess" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"
-        tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -22,21 +16,31 @@
         android:name="android.software.leanback"
         android:required="false" />
 
-    <!-- ==================== VLC / STORE DETECTION ==================== -->
+    <!-- Android 11+ package visibility: required to detect/launch sideloaded VLC -->
     <queries>
         <package android:name="org.videolan.vlc" />
         <package android:name="com.amazon.venezia" />
         <package android:name="com.android.vending" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="amzn" />
+            <data android:mimeType="video/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="audio/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" />
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <intent>
+            <action android:name="org.videolan.vlc.remote.StopPlayback" />
+        </intent>
     </queries>
-    <!-- ============================================================== -->
 
     <application
         android:name=".GPlayerApplication"
