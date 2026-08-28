@@ -21,4 +21,26 @@
         android:layout_height="match_parent"
         android:background="@android:color/transparent"
         tools:ignore="MergeRootFrame" />
+
+    <TextView
+        android:id="@+id/welcome_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginTop="0dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginEnd="0dp"
+        android:background="@android:color/transparent"
+        android:padding="24dp"
+        android:textColor="@android:color/white"
+        android:textSize="22sp"
+        android:fontFamily="sans-serif-medium"
+        android:lineSpacingExtra="4dp"
+        android:elevation="2dp"
+        android:shadowColor="#FF000000"
+        android:shadowDx="2"
+        android:shadowDy="2"
+        android:shadowRadius="12"
+        tools:text="Good Evening Abin Sabu&#10;How are you?" />
+
 </FrameLayout>

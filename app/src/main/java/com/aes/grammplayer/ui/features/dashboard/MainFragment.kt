@@ -1,7 +1,10 @@
 package com.aes.grammplayer.ui.features.dashboard
 
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.view.LayoutInflater
 import androidx.leanback.app.BrowseSupportFragment
@@ -33,12 +36,13 @@ import com.aes.grammplayer.R
 import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.ActiveDownloadManager
+import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.helper.DashboardBackdropHelper
 import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.helper.DownloadProgressTracker
 import com.aes.grammplayer.helper.DownloadingDashboardHelper
-import com.aes.grammplayer.helper.HistoryHelper
 import com.aes.grammplayer.helper.GlideHelper
+import com.aes.grammplayer.helper.HistoryHelper
 
 import com.aes.grammplayer.helper.NavigationExtras
 import com.aes.grammplayer.ui.features.details.MediaDetailsActivity
@@ -52,7 +56,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.drinkless.tdlib.TdApi
+import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -66,6 +73,15 @@ class MainFragment : BrowseSupportFragment() {
 
     private lateinit var productLogo: ImageView
 
+    private var welcomeTextView: TextView? = null
+    private var welcomeSubtitleIndex = 0
+    private val welcomeSubtitles = listOf(
+        "How are you?",
+        "Whats your plan for today?",
+        "What are you going to watch today?",
+        "New movies are out there, Please check your chats."
+    )
+
     private var reviewMode = false
 
     private var rowsAdapter: ArrayObjectAdapter? = null
@@ -78,6 +94,9 @@ class MainFragment : BrowseSupportFragment() {
         shadowEnabled = false
     }
     private var downloadProgressJob: Job? = null
+    private var chatsAdapter: ArrayObjectAdapter? = null
+    private var storageReceiver: BroadcastReceiver? = null
+    private var storageDashboardItem: DashboardItem? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +106,9 @@ class MainFragment : BrowseSupportFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         makeBrowseChromeTransparent(view)
+        welcomeTextView = activity?.findViewById(R.id.welcome_message)
+        updateWelcomeMessage()
+        registerStorageReceiver()
     }
 
     @Deprecated("Deprecated in Java")
@@ -114,6 +136,7 @@ class MainFragment : BrowseSupportFragment() {
             HistoryHelper.prepareSession(requireContext())
             reviewMode = ReviewModeHelper.isReviewMode(requireContext())
             loadRows()
+            updateWelcomeMessage()
             observeDownloadProgress()
         }
     }
@@ -122,13 +145,63 @@ class MainFragment : BrowseSupportFragment() {
         super.onResume()
         refreshDashboardBackdrop()
         refreshDownloadingRow()
+        updateStorageCard()
+        updateWelcomeMessage()
     }
 
     override fun onDestroyView() {
         downloadProgressJob?.cancel()
         downloadProgressJob = null
         backdropImageView()?.let { GlideHelper.clear(it) }
+        unregisterStorageReceiver()
         super.onDestroyView()
+    }
+
+    private fun buildShortStorageDesc(): String {
+        val internalFree = ApplicationHelper.getInternalFreeBytes()
+        val externalFree = ApplicationHelper.getExternalFreeBytes()
+        val internalShort = ApplicationHelper.formatFreeBytes(internalFree)
+        val externalShort = if (ApplicationHelper.isExternalStorageAvailable()) ApplicationHelper.formatFreeBytes(externalFree) else "—"
+        return "Internal: $internalShort • External: $externalShort"
+        // ponytail: short single line for hero card; use icons if needed
+    }
+
+    private fun updateStorageCard() {
+        val adapter = chatsAdapter ?: return
+        val old = storageDashboardItem ?: return
+        val newDesc = buildShortStorageDesc()
+        if (old.description == newDesc) return
+        val updated = old.copy(description = newDesc)
+        storageDashboardItem = updated
+        val idx = adapter.indexOf(old)
+        if (idx >= 0) adapter.replace(idx, updated)
+    }
+
+    private fun registerStorageReceiver() {
+        if (storageReceiver != null) return
+        storageReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                updateStorageCard()
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_REMOVED)
+            addAction(Intent.ACTION_MEDIA_EJECT)
+            addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+            addDataScheme("file")
+        }
+        try {
+            requireContext().registerReceiver(storageReceiver, filter)
+        } catch (_: Exception) { }
+    }
+
+    private fun unregisterStorageReceiver() {
+        storageReceiver?.let {
+            try { requireContext().unregisterReceiver(it) } catch (_: Exception) { }
+        }
+        storageReceiver = null
     }
 
     private fun refreshDashboardBackdrop() {
@@ -183,6 +256,31 @@ class MainFragment : BrowseSupportFragment() {
         }
     }
 
+    private fun updateWelcomeMessage() {
+        val view = welcomeTextView ?: activity?.findViewById(R.id.welcome_message) ?: return
+        if (welcomeTextView == null) welcomeTextView = view
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val greeting = when (hour) {
+            in 5..11 -> "Good Morning"
+            in 12..16 -> "Good Afternoon"
+            in 17..20 -> "Good Evening"
+            else -> "Good Evening"
+        }
+        lifecycleScope.launch {
+            val telegramName = try {
+                suspendCancellableCoroutine<String?> { cont ->
+                    TelegramClientManager.client?.send(TdApi.GetMe()) { obj ->
+                        if (obj is TdApi.User) cont.resume("${obj.firstName} ${obj.lastName}".trim().ifEmpty { obj.usernames?.activeUsernames?.firstOrNull() ?: "User" })
+                        else cont.resume(null)
+                    } ?: cont.resume(null)
+                }
+            } catch (_: Exception) { null } ?: "User"
+            val subtitle = welcomeSubtitles[welcomeSubtitleIndex % welcomeSubtitles.size].also { welcomeSubtitleIndex++ }
+            view.text = "$greeting $telegramName,\n$subtitle"
+            view.visibility = View.VISIBLE
+        }
+    }
+
     override fun onCreateHeadersSupportFragment(): HeadersSupportFragment {
         return DashboardHeadersSupportFragment()
     }
@@ -225,11 +323,22 @@ class MainFragment : BrowseSupportFragment() {
                 isHero = true
             )
         )
+        val storageItem = DashboardItem(
+            id = "storage_manager",
+            iconRes = R.drawable.ic_storage,
+            eyebrow = "Storage",
+            title = "Storage Manager",
+            description = buildShortStorageDesc(),
+            actionLabel = "Clear Cache",
+            isHero = true
+        )
+        chatsAdapter.add(storageItem)
+        this.chatsAdapter = chatsAdapter
+        storageDashboardItem = storageItem
         rowsAdapter!!.add(ListRow(chatsHeader, chatsAdapter))
 
         // --- Preferences row: icon cards (trimmed for store review accounts) ---
         val preferenceItems = listOf(
-            DashboardItem("clear_cache", R.drawable.ic_clear_cache, "Clear Cache"),
             DashboardItem("clear_history", R.drawable.ic_history, "Clear History"),
             DashboardItem("settings", R.drawable.ic_settings, "Settings"),
             DashboardItem("close", R.drawable.ic_refresh, "Close"),
@@ -460,7 +569,7 @@ class MainFragment : BrowseSupportFragment() {
                         return
                     }
                     when (item.id) {
-                        "clear_cache" -> {
+                        "storage_manager" -> {
                             viewLifecycleOwner.lifecycleScope.launch {
                                 try {
                                     val deletedCount = loadingDialog.runWithLoading("Clearing cache...") {
@@ -475,6 +584,7 @@ class MainFragment : BrowseSupportFragment() {
                                         "Cleared $deletedCount downloaded files from cache"
                                     Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT)
                                         .show()
+                                    updateStorageCard()
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Clear cache failed", e)
                                     if (isAdded) {

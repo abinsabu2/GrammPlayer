@@ -4,6 +4,7 @@ kotlin = "2.2.10"
 coreKtx = "1.10.1"
 leanback = "1.2.0"
 glide = "4.11.0"
+glide-okhttp = "4.11.0"
 lifecycleRuntimeKtx = "2.6.1"
 lifecycleViewmodelKtx = "2.6.1"
 activityCompose = "1.8.0"
@@ -26,6 +27,7 @@ gsonConverter = "3.0.0"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-leanback = { group = "androidx.leanback", name = "leanback", version.ref = "leanback" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+glide-okhttp = { group = "com.github.bumptech.glide", name = "okhttp3-integration", version.ref = "glide-okhttp" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }

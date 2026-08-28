@@ -1,21 +1,12 @@
 package com.aes.grammplayer.db.model
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.io.Serializable
 
 @Entity(
     tableName = "MediaMessage",
-    foreignKeys = [
-        ForeignKey(
-            entity = Chat::class,
-            parentColumns = ["id"],
-            childColumns = ["chat"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
     indices = [Index("chat")]
 )
 data class MediaMessage(

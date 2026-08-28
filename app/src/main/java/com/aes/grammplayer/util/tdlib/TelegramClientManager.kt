@@ -55,12 +55,15 @@ object TelegramClientManager {
     fun initialize() {
         if (isInitialized) return
 
-        activeStoragePath = ApplicationHelper.getBestAvailableStoragePath()
-        Log.i("StorageManager", "Using storage path: $activeStoragePath")
+        // ponytail: keep DB on internal (reliable, not vfat), files on external when SD present
+        val internalPath = ApplicationHelper.getInternalStoragePath()
+        val filesPath = ApplicationHelper.getBestAvailableStoragePath() // external if mounted else internal
+        activeStoragePath = internalPath
+        activeFileDirectory = ApplicationHelper.getFilesDirectory(filesPath)
+        Log.i("StorageManager", "DB: $internalPath, Files: $activeFileDirectory (ext=${ApplicationHelper.isExternalStorageAvailable()} freeExt=${ApplicationHelper.formatFreeBytes(ApplicationHelper.getExternalFreeBytes())})")
 
         client = Client.create(TdLibUpdateHandler, null, null)
         Client.execute(TdApi.SetLogVerbosityLevel(1))
-        activeFileDirectory = ApplicationHelper.getFilesDirectory(activeStoragePath)
         val parameters = TdApi.SetTdlibParameters().apply {
             apiId = BuildConfig.API_ID
             apiHash = BuildConfig.API_HASH
@@ -68,7 +71,7 @@ object TelegramClientManager {
             deviceModel = "Android TV"
             systemVersion = "10"
             applicationVersion = "1.0"
-            databaseDirectory = activeStoragePath
+            databaseDirectory = internalPath
             useMessageDatabase = true
             useSecretChats = false
             filesDirectory = activeFileDirectory

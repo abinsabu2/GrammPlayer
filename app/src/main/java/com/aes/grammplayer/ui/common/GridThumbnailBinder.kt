@@ -3,6 +3,8 @@ package com.aes.grammplayer.ui.common
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ImageView
 import com.aes.grammplayer.GPlayerApplication
@@ -203,7 +205,8 @@ object GridThumbnailBinder {
                         isFirstResource: Boolean
                     ): Boolean {
                         Log.w(TAG, "Remote thumbnail failed: $url", e)
-                        onFailure()
+                        // ponytail: post to avoid Glide callback re-entrancy (SingleRequest.assertNotCallingCallbacks); Handler is cheaper than .error() chain for N-url fallback
+                        Handler(Looper.getMainLooper()).post { onFailure() }
                         return false
                     }
 

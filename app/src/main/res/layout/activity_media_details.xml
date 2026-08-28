@@ -435,6 +435,16 @@
                 </LinearLayout>
             </FrameLayout>
 
+            <TextView
+                android:id="@+id/storage_warning_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="Clear app cache to recover some space"
+                android:textColor="@color/detail_text_muted"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
             <HorizontalScrollView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -473,6 +483,7 @@
                         tools:ignore="ContentDescription" />
 
                     <TextView
+                        android:id="@+id/preview_fullscreen_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:ellipsize="end"

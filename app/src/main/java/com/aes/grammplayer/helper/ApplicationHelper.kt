@@ -1,6 +1,7 @@
 package com.aes.grammplayer.helper
 
 import android.os.Environment
+import android.os.StatFs
 import androidx.core.content.ContextCompat
 import com.aes.grammplayer.GPlayerApplication
 import java.io.File
@@ -26,6 +27,8 @@ object ApplicationHelper {
         return internalPath
     }
 
+    fun getInternalStoragePath(): String = GPlayerApplication.AppContext.filesDir.absolutePath + "/tdlib"
+
     fun getFilesDirectory(storagePath: String = getBestAvailableStoragePath()): String =
         "$storagePath/files"
 
@@ -50,7 +53,7 @@ object ApplicationHelper {
         return deletedFilesCount
     }
 
-    private fun getExternalStoragePath(): String? {
+    fun getExternalStorageFile(): File? {
         val context = GPlayerApplication.AppContext
         val externalStorageVolumes: Array<out File> =
             ContextCompat.getExternalFilesDirs(context, null)
@@ -60,6 +63,28 @@ object ApplicationHelper {
                 Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED
         }
 
-        return externalStorage?.let { it.absolutePath + "/tdlib" }
+        return externalStorage
     }
+
+    private fun getExternalStoragePath(): String? =
+        getExternalStorageFile()?.let { it.absolutePath + "/tdlib" }
+
+    fun isExternalStorageAvailable(): Boolean =
+        getExternalStorageFile()?.let { it.exists() && it.canWrite() } == true
+
+    fun getExternalFreeBytes(): Long = getExternalStorageFile()?.let { file ->
+        try {
+            StatFs(file.absolutePath).availableBytes
+        } catch (_: Exception) {
+            file.freeSpace
+        }
+    } ?: 0L
+
+    fun getInternalFreeBytes(): Long = try {
+        GPlayerApplication.AppContext.filesDir.run { StatFs(absolutePath).availableBytes }
+    } catch (_: Exception) {
+        0L
+    }
+
+    fun formatFreeBytes(bytes: Long): String = FormatHelper.formatBytes(bytes)
 }

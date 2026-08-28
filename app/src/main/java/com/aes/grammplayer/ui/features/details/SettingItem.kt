@@ -5,5 +5,6 @@ data class SettingItem(
     val value: String,
     val caption: String,
     val subCaption: String? = null,
-    val selected: Boolean = false
+    val selected: Boolean = false,
+    val enabled: Boolean = true
 )

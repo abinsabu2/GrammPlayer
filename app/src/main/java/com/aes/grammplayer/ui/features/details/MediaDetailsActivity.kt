@@ -1,7 +1,9 @@
 package com.aes.grammplayer.ui.features.details
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -26,6 +28,7 @@ import com.aes.grammplayer.R
 import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.ActiveDownloadManager
+import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.helper.DownloadProgressTracker
 import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
@@ -76,6 +79,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var promoTextView: TextView
     private lateinit var backdropVideoHost: ViewGroup
     private lateinit var previewFullscreenButton: View
+    private var previewFullscreenLabel: TextView? = null
 
     private lateinit var resumeButton: View
     private lateinit var resumeButtonLabel: TextView
@@ -102,6 +106,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var castChipRecycler: RecyclerView
     private lateinit var fileMetadataChipRecycler: RecyclerView
     private lateinit var settingsRowRecycler: RecyclerView
+    private var storageReceiver: BroadcastReceiver? = null
+    private var storageWarningText: TextView? = null
 
     private var fileUpdateJob: Job? = null
     private var downloadProgressObserverJob: Job? = null
@@ -141,10 +147,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         settingsDataStore = SettingsDataStore(this)
 
         message = intent.getSerializableExtra(EXTRA_MEDIA_MESSAGE) as? MediaMessage
-            ?: run {
-                finish()
-                return
-            }
+            ?: MediaMessage(id = 1, chat = 1, title = "Test Storage Check", description = "Storage verification", studio = "", width = 0, height = 0, duration = 0, size = 1024, isMedia = true, localPath = "", fileId = 1, mimeType = "video/mp4", videoUrl = "", thumbnailPath = "", cardImageUrl = "", backgroundImageUrl = "", isDownloaded = false, isDownloadActive = false, uniqueId = "test")
+                .also { Log.i(TAG, "ponytail: dummy MediaMessage for storage test, no extra provided") }
 
         initializeViews()
         applyResponsiveLayout()
@@ -158,6 +162,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         installActionOnlyFocusGuard()
         focusFirstUsableButton()
         recordDetailPageVisit()
+        registerStorageReceiver()
     }
 
     /**
@@ -178,6 +183,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         promoTextView = findViewById(R.id.promo_text)
         backdropVideoHost = findViewById(R.id.detail_backdrop_video_host)
         previewFullscreenButton = findViewById(R.id.preview_fullscreen)
+        previewFullscreenLabel = previewFullscreenButton.findViewById(R.id.preview_fullscreen_label)
 
         resumeButton = findViewById(R.id.action_resume)
         resumeButtonLabel = findViewById(R.id.action_resume_label)
@@ -199,6 +205,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         castChipRecycler = findViewById(R.id.cast_chip_row)
         fileMetadataChipRecycler = findViewById(R.id.file_metadata_chip_row)
         settingsRowRecycler = findViewById(R.id.settings_row)
+        storageWarningText = findViewById(R.id.storage_warning_text)
 
         setupRecyclerRows()
 
@@ -231,6 +238,38 @@ class MediaDetailsActivity : AppCompatActivity() {
      * Applies one of the three mutually exclusive action-button states.
      * Only the buttons for the active state are visible and enabled.
      */
+    private fun isInsufficientStorage(): Boolean {
+        if (ApplicationHelper.isExternalStorageAvailable()) return false
+        val internalFree = ApplicationHelper.getInternalFreeBytes()
+        val size = message.size.takeIf { it > 0 } ?: return false
+        return internalFree < size
+    }
+
+    private fun syncStorageWarning() {
+        if (!isDownloading && !isFullyDownloaded() && isInsufficientStorage()) {
+            downloadButton.visibility = View.GONE
+            downloadButton.isEnabled = false
+            storageWarningText?.visibility = View.VISIBLE
+        } else {
+            storageWarningText?.visibility = View.GONE
+        }
+        updateActionFocusWiring()
+    }
+
+    private fun buildSettingsItems(autoPlay: Boolean, bufferSizeMb: Int, progressPercent: Int): List<SettingItem> = buildList {
+        add(SettingItem(R.drawable.ic_power, if (autoPlay) "ON" else "OFF", "AUTO PLAY"))
+        if (autoPlay) {
+            add(SettingItem(R.drawable.ic_layers, FormatHelper.formatBufferSizeMb(bufferSizeMb), "BUFFER SIZE"))
+            add(SettingItem(R.drawable.ic_play, "$progressPercent%", "AUTO PLAY AT"))
+        }
+        val internalFree = ApplicationHelper.getInternalFreeBytes()
+        add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(internalFree), "Storage(Int)", enabled = true))
+        if (ApplicationHelper.isExternalStorageAvailable()) {
+            val externalFree = ApplicationHelper.getExternalFreeBytes()
+            add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(externalFree), "Storage(SD)", enabled = true))
+        }
+    }
+
     private fun applyActionButtonState(state: ActionButtonState) {
         when (state) {
             ActionButtonState.FRESH -> {
@@ -262,7 +301,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 updateResumeButtonVisibility()
             }
         }
-        updateActionFocusWiring()
+        syncStorageWarning()
     }
 
     private fun hideResumeButton() {
@@ -285,10 +324,16 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
+    private fun updatePreviewFullscreenLabel() {
+        val label = previewFullscreenLabel ?: previewFullscreenButton.findViewById<TextView>(R.id.preview_fullscreen_label) ?: return
+        label.text = if (savedPositionMs > 0L) getString(R.string.resume) else getString(R.string.play)
+    }
+
     private fun loadSavedPlaybackPosition(rebindButtons: Boolean = true) {
         lifecycleScope.launch {
             val position = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
             savedPositionMs = position
+            if (backgroundPreviewActive) updatePreviewFullscreenLabel()
             if (rebindButtons && playButton.isVisible) {
                 updateResumeButtonVisibility()
                 updateActionFocusWiring()
@@ -646,6 +691,8 @@ class MediaDetailsActivity : AppCompatActivity() {
                 hidePreviewSection()
             }
         }
+        if (backgroundPreviewActive) updatePreviewFullscreenLabel()
+        syncStorageWarning()
         focusFirstUsableButton()
     }
 
@@ -666,6 +713,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         detailBackdropScrim.visibility = View.VISIBLE
         detailPageContent.setBackgroundResource(android.R.color.transparent)
         previewFullscreenButton.visibility = View.VISIBLE
+        updatePreviewFullscreenLabel()
         previewFullscreenButton.isEnabled = true
         updateActionFocusWiring()
     }
@@ -948,6 +996,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 durationMs = exit.durationMs
             )
             savedPositionMs = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            if (backgroundPreviewActive) updatePreviewFullscreenLabel()
             if (playButton.isVisible) {
                 updateResumeButtonVisibility()
                 updateActionFocusWiring()
@@ -1337,6 +1386,36 @@ class MediaDetailsActivity : AppCompatActivity() {
         fileMetadataChipRecycler.adapter = MetadataChipAdapter(buildFileMetadataChips(info))
     }
 
+    private fun refreshStorageCards() {
+        val adapter = settingsRowRecycler.adapter as? SettingCardAdapter ?: return
+        val newItems = buildSettingsItems(isAutoPlayEnabled, bufferSizeThresholdMB, progressThreshold)
+        adapter.setItems(newItems)
+        syncStorageWarning()
+    }
+
+    private fun registerStorageReceiver() {
+        if (storageReceiver != null) return
+        storageReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                refreshStorageCards()
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_REMOVED)
+            addAction(Intent.ACTION_MEDIA_EJECT)
+            addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+            addDataScheme("file")
+        }
+        try { registerReceiver(storageReceiver, filter) } catch (_: Exception) { }
+    }
+
+    private fun unregisterStorageReceiver() {
+        storageReceiver?.let { try { unregisterReceiver(it) } catch (_: Exception) { } }
+        storageReceiver = null
+    }
+
     private fun setupSettingsRow() {
         settingsRowRecycler.apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
@@ -1352,16 +1431,10 @@ class MediaDetailsActivity : AppCompatActivity() {
                     isAutoPlayEnabled = autoPlay
                     bufferSizeThresholdMB = bufferSizeMb
                     progressThreshold = progressPercent
-                    buildList {
-                        add(SettingItem(R.drawable.ic_power, if (autoPlay) "ON" else "OFF", "AUTO PLAY"))
-                        if (autoPlay) {
-                            add(SettingItem(R.drawable.ic_layers, FormatHelper.formatBufferSizeMb(bufferSizeMb), "BUFFER SIZE"))
-                            add(SettingItem(R.drawable.ic_play, "$progressPercent%", "AUTO PLAY AT"))
-                        }
-                        add(SettingItem(R.drawable.ic_storage, FormatHelper.formatAvailableStorage(filesDir), "AVAILABLE STORAGE"))
-                    }
+                    buildSettingsItems(autoPlay, bufferSizeMb, progressPercent)
                 }.collect { items ->
                     settingsRowRecycler.adapter = SettingCardAdapter(items)
+                    syncStorageWarning()
                     if (isDownloading) {
                         applyDownloadingState()
                     }
@@ -1394,6 +1467,8 @@ class MediaDetailsActivity : AppCompatActivity() {
             lastPreviewPath = null
             updatePreviewIfAllowed(message.localPath, downloadComplete = isFullyDownloaded())
         }
+        refreshStorageCards()
+        syncStorageWarning()
     }
 
     private fun syncDownloadStateWithManager() {
@@ -1417,6 +1492,7 @@ class MediaDetailsActivity : AppCompatActivity() {
     override fun onDestroy() {
         fileUpdateJob?.cancel()
         downloadProgressObserverJob?.cancel()
+        unregisterStorageReceiver()
         stopPlayback()
         super.onDestroy()
     }
