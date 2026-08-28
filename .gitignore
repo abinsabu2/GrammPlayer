@@ -72,3 +72,6 @@ native/
 wrapper/
 .tmp/
 .kotlin/
+
+# opencode - local skills/agents/commands (project-specific AI config, not committed)
+.opencode/
