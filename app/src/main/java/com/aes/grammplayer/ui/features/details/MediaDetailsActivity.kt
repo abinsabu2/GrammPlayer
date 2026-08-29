@@ -597,11 +597,6 @@ class MediaDetailsActivity : AppCompatActivity() {
         downloadComplete: Boolean
     ): Boolean {
         if (!isLocalFilePlayable(resolvePlayablePath())) return false
-        // ponytail: mkv cues at end (732M) need full file; mp4 moov at head can preview at 30%/300MB
-        val mime = message.mimeType.lowercase()
-        val ext = message.localPath.substringAfterLast('.', "").lowercase().let { if (it.isEmpty()) currentDownload?.localPath?.substringAfterLast('.', "")?.lowercase() ?: "" else it }
-        val isMkv = mime == "video/x-matroska" || mime == "video/webm" || ext == "mkv" || ext == "webm"
-        if (isMkv && !downloadComplete) return false
         if (downloadComplete) return true
         if (!isAutoPlayEnabled) return false
 

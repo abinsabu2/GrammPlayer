@@ -269,22 +269,15 @@ object PlayerHelper {
             if (resumeFrom) {
                 putExtra(EXTRA_START_TIME, startPositionMs)
             }
+
             putExtra("fullscreen", true)
             putExtra("start_paused", false)
+            putExtra("hw", false)
+            putExtra("avcodec-hw", "none")
+            putExtra("android-mediacodec", false)
+            putExtra("deinterlace", false)
+            putExtra("vout", "android-opaque")
 
-            // ponytail: SW only for mkv where Realtek c2.realtek.video.avc.decoder kills in 0.27s; keep auto HW otherwise
-            val isMkv = mimeType == "video/x-matroska" || contentUri.toString().lowercase().endsWith(".mkv") || contentUri.lastPathSegment?.lowercase()?.endsWith(".mkv") == true
-            if (isMkv) {
-                putExtra("hw", false)
-                putExtra("avcodec-hw", "none")
-                putExtra("android-mediacodec", false)
-            } else if (isFireTv()) {
-                putExtra("hw", false)
-                putExtra("avcodec-hw", "none")
-                putExtra("android-mediacodec", false)
-                putExtra("deinterlace", false)
-                putExtra("vout", "android-opaque")
-            }
         }
 
         val pm = context.packageManager
