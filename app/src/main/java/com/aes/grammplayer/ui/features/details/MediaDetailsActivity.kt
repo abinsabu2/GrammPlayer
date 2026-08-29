@@ -38,6 +38,7 @@ import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
+import com.aes.grammplayer.helper.VlcPlaybackTracker
 import com.aes.grammplayer.history.HistoryStore
 import com.aes.grammplayer.network.tmdb.PosterFetcher
 import com.aes.grammplayer.network.tmdb.TmdbMovieDetails
@@ -1012,50 +1013,71 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun startPlayback(filePath: String, startPositionMs: Long = 0L) {
         if (!ensureVlcInstalled()) return
         val fileId = currentDownload?.fileId?.takeIf { it != 0 } ?: message.fileId
-        // Store fallback uri/mime for mkv quick-kill (<1.5s) -> system player
         try {
             val f = java.io.File(filePath)
             lastVlcContentUri = FileProvider.getUriForFile(this, "${packageName}.provider", f)
             val ext = f.extension.lowercase()
             lastVlcMime = if (ext.isNotEmpty()) MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "video/*" else "video/*"
-            // grant VLC permission preemptively mirrors PlayerHelper
-            try { grantUriPermission(PlayerHelper.VLC_PACKAGE, lastVlcContentUri!!, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION) } catch (_: Exception) {}
+            try {
+                grantUriPermission(
+                    PlayerHelper.VLC_PACKAGE,
+                    lastVlcContentUri!!,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+            }
         } catch (_: Exception) {
             lastVlcContentUri = null
             lastVlcMime = null
         }
-        // Prefer for-result so VLC can return extra_position when the user exits.
-        when (
-            val result = PlayerHelper.preparePlay(
-                this,
-                filePath,
-                fileId,
-                startPositionMs = startPositionMs,
-                forActivityResult = true
-            )
-        ) {
-            is PlayerHelper.PlayResult.Ready -> {
-                try {
-                    vlcLaunchMs = SystemClock.elapsedRealtime()
-                    vlcPlaybackLauncher.launch(result.intent)
-                } catch (e: IllegalArgumentException) {
-                    Log.e(TAG, "Failed to launch VLC (IllegalArgumentException) for $filePath", e)
-                    handlePlaybackFailure(PlayerHelper.PlayResult.Failed("Share failed: Failed to find configured root for $filePath"), filePath)
-                } catch (e: SecurityException) {
-                    Log.e(TAG, "SecurityException launching VLC for $filePath", e)
-                    handlePlaybackFailure(PlayerHelper.PlayResult.Failed("Permission denied launching VLC: ${e.message}"), filePath)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to launch VLC for result", e)
-                    // Fallback: fire-and-forget (no position capture)
-                    when (val fallback = PlayerHelper.play(this, filePath, fileId, startPositionMs)) {
-                        is PlayerHelper.PlayResult.Started -> { }
-                        is PlayerHelper.PlayResult.Failed -> handlePlaybackFailure(fallback, filePath)
-                        is PlayerHelper.PlayResult.Ready -> { }
-                    }
-                }
+        // VLC VideoPlayerActivity is singleTask and finish()es in onStop on TV.
+        // startActivityForResult keeps StartActivity in our task; when it yields
+        // we resume, VLC onStops, and playback dies after the first frame.
+        vlcLaunchMs = SystemClock.elapsedRealtime()
+        when (val result = PlayerHelper.play(this, filePath, fileId, startPositionMs)) {
+            is PlayerHelper.PlayResult.Started -> {
+                Log.i(TAG, "Started VLC for $filePath startMs=$startPositionMs")
+                VlcPlaybackTracker.begin(this, message.id, startPositionMs)
             }
             is PlayerHelper.PlayResult.Failed -> handlePlaybackFailure(result, filePath)
-            is PlayerHelper.PlayResult.Started -> { }
+            is PlayerHelper.PlayResult.Ready -> { }
+        }
+    }
+
+    private fun captureVlcResumePosition() {
+        if (!VlcPlaybackTracker.isTracking(message.id)) return
+        val fallbackDurationMs = message.duration.let { duration ->
+            when {
+                duration <= 0L -> 0L
+                duration > 86_400L -> duration
+                else -> duration * 1000L
+            }
+        }
+        val exit = VlcPlaybackTracker.snapshot(message.id, fallbackDurationMs)
+        VlcPlaybackTracker.end()
+        if (exit == null) {
+            loadSavedPlaybackPosition()
+            return
+        }
+        Log.i(
+            TAG,
+            "VLC session position=${exit.positionMs}ms duration=${exit.durationMs}ms"
+        )
+        lifecycleScope.launch {
+            settingsDataStore.savePlaybackPosition(
+                messageId = message.id,
+                positionMs = exit.positionMs,
+                durationMs = exit.durationMs
+            )
+            savedPositionMs = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            if (backgroundPreviewActive) updatePreviewFullscreenLabel()
+            if (playButton.isVisible) {
+                updateResumeButtonVisibility()
+                updateActionFocusWiring()
+                if (savedPositionMs > 0L) {
+                    focusFirstUsableButton()
+                }
+            }
         }
     }
 
@@ -1063,45 +1085,10 @@ class MediaDetailsActivity : AppCompatActivity() {
         val exit = PlayerHelper.parseExitPosition(data)
         if (exit == null) {
             val elapsed = SystemClock.elapsedRealtime() - vlcLaunchMs
-            if (resultCode == 0 && elapsed < 1500 && lastVlcContentUri != null) {
-                Log.w(TAG, "VLC quick kill ${elapsed}ms (resultCode=$resultCode), trying system player uri=$lastVlcContentUri mime=$lastVlcMime")
-                Toast.makeText(this, "Trying system player...", Toast.LENGTH_SHORT).show()
-                val contentUri = lastVlcContentUri
-                val mimeType = lastVlcMime ?: "video/*"
-                try {
-                    val sysIntent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(contentUri, mimeType)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
-                        addCategory(Intent.CATEGORY_DEFAULT)
-                    }
-                    val chooser = Intent.createChooser(sysIntent, "Play video").apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    startActivity(chooser)
-                    return
-                } catch (e: ActivityNotFoundException) {
-                    try {
-                        val sysIntent2 = Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(contentUri, mimeType)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                            addCategory(Intent.CATEGORY_DEFAULT)
-                        }
-                        startActivity(sysIntent2)
-                        return
-                    } catch (e2: Exception) {
-                        Log.e(TAG, "System player fallback failed", e2)
-                        showPlaybackError("Playback failed")
-                        loadSavedPlaybackPosition()
-                        return
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "System player fallback failed", e)
-                    showPlaybackError("Playback failed")
-                    loadSavedPlaybackPosition()
-                    return
-                }
-            }
-            Log.d(TAG, "VLC returned no position (resultCode=$resultCode)")
+            Log.d(
+                TAG,
+                "VLC returned no position (resultCode=$resultCode elapsed=${elapsed}ms uri=$lastVlcContentUri mime=$lastVlcMime)"
+            )
             loadSavedPlaybackPosition()
             return
         }
@@ -1591,8 +1578,12 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (VlcPlaybackTracker.isTracking(message.id)) {
+            captureVlcResumePosition()
+        } else {
+            loadSavedPlaybackPosition(rebindButtons = true)
+        }
         syncDownloadStateWithManager()
-        loadSavedPlaybackPosition(rebindButtons = true)
         if (isLocalFilePlayable(message.localPath)) {
             lastPreviewPath = null
             updatePreviewIfAllowed(message.localPath, downloadComplete = isFullyDownloaded())
@@ -1623,7 +1614,9 @@ class MediaDetailsActivity : AppCompatActivity() {
         fileUpdateJob?.cancel()
         downloadProgressObserverJob?.cancel()
         unregisterStorageReceiver()
-        stopPlayback()
+        // Do not broadcast VLC StopPlayback here: if this activity is reclaimed
+        // while VLC is in its own task, that would kill an in-progress movie.
+        stopPreviewPlaybackOnly()
         super.onDestroy()
     }
 }

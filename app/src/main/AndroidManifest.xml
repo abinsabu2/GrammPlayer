@@ -40,6 +40,9 @@
         <intent>
             <action android:name="org.videolan.vlc.remote.StopPlayback" />
         </intent>
+        <intent>
+            <action android:name="android.media.browse.MediaBrowserService" />
+        </intent>
     </queries>
 
     <application

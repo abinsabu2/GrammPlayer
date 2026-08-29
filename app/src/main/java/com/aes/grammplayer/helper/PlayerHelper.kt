@@ -8,12 +8,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.aes.grammplayer.R
 import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
 
 object PlayerHelper {
 
@@ -32,10 +35,21 @@ object PlayerHelper {
     const val EXTRA_FROM_START = "from_start"
     /** VLC intent: start position in milliseconds (PLAY_EXTRA_START_TIME). */
     const val EXTRA_START_TIME = "position"
+    /** VLC intent: media Uri (PLAY_EXTRA_ITEM_LOCATION). */
+    const val EXTRA_ITEM_LOCATION = "item_location"
+    /**
+     * VLC VideoPlayerActivity extra. Presence disables HW decode
+     * (`PLAY_DISABLE_HARDWARE`). `"hw"` / `"vout"` extras are ignored.
+     */
+    const val EXTRA_DISABLE_HARDWARE = "disable_hardware"
+    /** Tells VLC this launch came from another app so it won't reopen VLC's own UI on exit. */
+    const val EXTRA_FROM_EXTERNAL = "from_external"
     /** Returned by VLC VideoPlayerActivity on exit. */
     const val RESULT_EXTRA_POSITION = "extra_position"
     const val RESULT_EXTRA_DURATION = "extra_duration"
     const val RESULT_EXTRA_URI = "extra_uri"
+    private const val FILE_READY_TIMEOUT_MS = 800L
+    private const val FILE_READY_RETRY_MS = 80L
 
     sealed class PlayResult {
         data class Started(val fileId: Int, val path: String) : PlayResult()
@@ -136,6 +150,9 @@ object PlayerHelper {
                 "Cannot play: File path invalid, does not exist, or too small: $path"
             )
         }
+        if (!waitUntilReadable(file)) {
+            Log.w(TAG, "File not readable yet: ${file.absolutePath} len=${file.length()}")
+        }
 
         return try {
             val contentUri: Uri = FileProvider.getUriForFile(
@@ -219,12 +236,55 @@ object PlayerHelper {
         return PlaybackExitPosition(positionMs = positionMs, durationMs = durationMs, uri = uri)
     }
 
+    /**
+     * MIME must start with `video/` so VLC StartActivity routes to VideoPlayerActivity.
+     * A non-video type (or null mkv mapping) makes StartActivity call finish() immediately.
+     */
     private fun mimeTypeFor(file: File): String {
         val ext = file.extension.lowercase()
-        if (ext.isNotEmpty()) {
-            MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)?.let { return it }
+        val mapped = when (ext) {
+            "mkv", "mk3d" -> "video/x-matroska"
+            "webm" -> "video/webm"
+            "mp4", "m4v", "mov" -> "video/mp4"
+            "avi" -> "video/avi"
+            "ts", "m2ts", "mts" -> "video/mp2t"
+            else -> if (ext.isNotEmpty()) {
+                MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+            } else {
+                null
+            }
         }
-        return "video/*"
+        return mapped?.takeIf { it.startsWith("video/") || it.startsWith("audio/") } ?: "video/*"
+    }
+
+    /**
+     * TDLib may still be renaming/flushing the file when `isDownloadingCompleted` flips.
+     * VLC StartActivity probes the URI on the main thread; a closed/missing fd makes it
+     * finish() immediately — the "starts then stops" race that debugger stepping hides.
+     */
+    private fun waitUntilReadable(file: File): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + FILE_READY_TIMEOUT_MS
+        var lastError: IOException? = null
+        while (true) {
+            try {
+                FileInputStream(file).use { stream ->
+                    val ignored = ByteArray(1)
+                    stream.read(ignored)
+                }
+                return true
+            } catch (e: IOException) {
+                lastError = e
+                if (SystemClock.elapsedRealtime() >= deadline) break
+                try {
+                    Thread.sleep(FILE_READY_RETRY_MS)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    break
+                }
+            }
+        }
+        Log.w(TAG, "waitUntilReadable timed out for ${file.absolutePath}", lastError)
+        return false
     }
 
     private fun grantVlcUriPermission(context: Context, contentUri: Uri) {
@@ -232,7 +292,7 @@ object PlayerHelper {
             context.grantUriPermission(
                 VLC_PACKAGE,
                 contentUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (e: Exception) {
             Log.w(TAG, "Could not pre-grant URI permission to VLC", e)
@@ -257,27 +317,31 @@ object PlayerHelper {
         fun baseIntent(): Intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(contentUri, mimeType)
             clipData = ClipData.newRawUri("media", contentUri)
-            var flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+            var flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             if (!forActivityResult) {
+                // VideoPlayerActivity is singleTask + finishOnTaskLaunch. On TV it
+                // finish()es in onStop, so it must not share our task: for-result
+                // without NEW_TASK brings us back to front and kills playback.
                 flags = flags or Intent.FLAG_ACTIVITY_NEW_TASK
             }
             addFlags(flags)
             addCategory(Intent.CATEGORY_DEFAULT)
 
             putExtra("title", "GrammPlayer")
+            putExtra(EXTRA_ITEM_LOCATION, contentUri)
             putExtra(EXTRA_FROM_START, !resumeFrom)
             if (resumeFrom) {
                 putExtra(EXTRA_START_TIME, startPositionMs)
             }
+            putExtra(EXTRA_FROM_EXTERNAL, true)
 
             putExtra("fullscreen", true)
             putExtra("start_paused", false)
-            putExtra("hw", false)
-            putExtra("avcodec-hw", "none")
-            putExtra("android-mediacodec", false)
-            putExtra("deinterlace", false)
-            putExtra("vout", "android-opaque")
-
+            // VLC 3.x only honors PLAY_DISABLE_HARDWARE ("disable_hardware"), not "hw"/"vout".
+            // Realtek TV SoCs abort instantly on HW decode of complete mkv.
+            if (needsSoftwareDecode(context)) {
+                putExtra(EXTRA_DISABLE_HARDWARE, true)
+            }
         }
 
         val pm = context.packageManager
@@ -320,6 +384,13 @@ object PlayerHelper {
     fun isFireTv(): Boolean =
         Build.MANUFACTURER.equals("Amazon", ignoreCase = true) ||
                 Build.MODEL.startsWith("AFT", ignoreCase = true)
+
+    fun needsSoftwareDecode(context: Context): Boolean {
+        val pm = context.packageManager
+        return isFireTv() ||
+            pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            pm.hasSystemFeature(PackageManager.FEATURE_TELEVISION)
+    }
 
     fun vlcRequiredMessage(context: Context): String =
         if (isFireTv()) {
