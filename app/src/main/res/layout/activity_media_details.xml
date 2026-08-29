@@ -398,6 +398,43 @@
                 android:src="@drawable/ic_cancel"
                 tools:ignore="ContentDescription" />
 
+            <LinearLayout
+                android:id="@+id/action_trailer"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/detail_action_button_height"
+                android:layout_marginStart="@dimen/detail_button_gap"
+                android:background="@drawable/detail_button_outlined"
+                android:clickable="true"
+                android:defaultFocusHighlightEnabled="false"
+                android:descendantFocusability="blocksDescendants"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingStart="@dimen/detail_button_padding_start"
+                android:paddingEnd="@dimen/detail_button_padding_end"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <ImageView
+                    android:layout_width="@dimen/detail_button_icon_size"
+                    android:layout_height="@dimen/detail_button_icon_size"
+                    android:layout_marginEnd="@dimen/detail_section_gap"
+                    android:src="@drawable/ic_play_arrow"
+                    tools:ignore="ContentDescription" />
+
+                <TextView
+                    android:id="@+id/action_trailer_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/trailer"
+                    android:textColor="@color/detail_text_primary"
+                    android:textSize="@dimen/detail_button_text"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"

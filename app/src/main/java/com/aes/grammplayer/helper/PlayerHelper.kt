@@ -158,6 +158,9 @@ object PlayerHelper {
                     "uri=$contentUri mime=$mimeType startMs=$startPositionMs forResult=$forActivityResult"
             )
             PlayResult.Ready(intent, fileId, file.absolutePath)
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "FileProvider failed for ${file.absolutePath}", e)
+            PlayResult.Failed("Share failed: Failed to find configured root for ${file.absolutePath}")
         } catch (e: ActivityNotFoundException) {
             Log.e(TAG, "No activity to handle VLC play intent for ${file.absolutePath}", e)
             PlayResult.Failed("VLC Media Player is not installed or cannot open this file")
@@ -229,7 +232,7 @@ object PlayerHelper {
             context.grantUriPermission(
                 VLC_PACKAGE,
                 contentUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
             )
         } catch (e: Exception) {
             Log.w(TAG, "Could not pre-grant URI permission to VLC", e)
@@ -254,7 +257,7 @@ object PlayerHelper {
         fun baseIntent(): Intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(contentUri, mimeType)
             clipData = ClipData.newRawUri("media", contentUri)
-            var flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            var flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
             if (!forActivityResult) {
                 flags = flags or Intent.FLAG_ACTIVITY_NEW_TASK
             }
@@ -269,12 +272,19 @@ object PlayerHelper {
             putExtra("fullscreen", true)
             putExtra("start_paused", false)
 
-            // Stable decoding on Realtek / low-end TV SoCs
-            putExtra("hw", false)
-            putExtra("avcodec-hw", "none")
-            putExtra("android-mediacodec", false)
-            putExtra("deinterlace", false)
-            putExtra("vout", "android-opaque")
+            // ponytail: SW only for mkv where Realtek c2.realtek.video.avc.decoder kills in 0.27s; keep auto HW otherwise
+            val isMkv = mimeType == "video/x-matroska" || contentUri.toString().lowercase().endsWith(".mkv") || contentUri.lastPathSegment?.lowercase()?.endsWith(".mkv") == true
+            if (isMkv) {
+                putExtra("hw", false)
+                putExtra("avcodec-hw", "none")
+                putExtra("android-mediacodec", false)
+            } else if (isFireTv()) {
+                putExtra("hw", false)
+                putExtra("avcodec-hw", "none")
+                putExtra("android-mediacodec", false)
+                putExtra("deinterlace", false)
+                putExtra("vout", "android-opaque")
+            }
         }
 
         val pm = context.packageManager

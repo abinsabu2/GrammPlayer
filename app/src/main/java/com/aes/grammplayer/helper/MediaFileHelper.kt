@@ -1,16 +1,25 @@
 package com.aes.grammplayer.helper
 
+import android.util.Log
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.ui.features.details.DownloadingFileInfo
 import java.io.File
 
 object MediaFileHelper {
 
+    private const val TAG = "MediaFileHelper"
+
     /** Returns the on-disk file when [path] points to a real, non-empty file. */
     fun resolveFile(path: String?): File? {
-        if (path.isNullOrBlank()) return null
+        if (path.isNullOrBlank()) {
+            Log.d(TAG, "resolveFile: null or blank path")
+            return null
+        }
         val file = File(path)
-        return if (file.isFile && file.exists() && file.length() > 0L) file else null
+        return if (file.isFile && file.exists() && file.length() > 0L) file else {
+            Log.w(TAG, "resolveFile: not playable path=$path exists=${file.exists()} isFile=${file.isFile} len=${if (file.exists()) file.length() else -1}")
+            null
+        }
     }
 
     /** True when a file exists at [path] (including empty/partial files). */

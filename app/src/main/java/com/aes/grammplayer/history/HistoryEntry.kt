@@ -20,7 +20,8 @@ data class HistoryEntry(
     val backgroundImageUrl: String = "",
     val mimeType: String = "",
     val uniqueId: String = "",
-    val visitedAt: Long = System.currentTimeMillis()
+    val visitedAt: Long = System.currentTimeMillis(),
+    val duration: Long = 0L
 ) {
     fun toMediaMessage(): MediaMessage {
         val onDisk = MediaFileHelper.existsOnDisk(localPath)

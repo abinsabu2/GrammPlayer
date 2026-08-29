@@ -41,6 +41,10 @@ class SettingsDataStore(context: Context) {
 
         val IS_TEST_MODE = booleanPreferencesKey("is_test_mode")
         val ACTIVE_PHONE = stringPreferencesKey("active_phone")
+
+        val STORAGE_AUTO_DELETE = booleanPreferencesKey("storage_auto_delete")
+        val STORAGE_MOVE_TO_SD = booleanPreferencesKey("storage_move_to_sd")
+        val STORAGE_THRESHOLD_MB = intPreferencesKey("storage_threshold_mb")
     }
 
 
@@ -160,11 +164,65 @@ class SettingsDataStore(context: Context) {
         return positionMs
     }
 
+    data class PlaybackInfo(val messageId: Long, val positionMs: Long, val durationMs: Long)
+
+    // ponytail: single bookmark only; switch to map keys playback_${id}_pos when >1 resume needed
+    suspend fun getLastPlaybackInfo(): PlaybackInfo? {
+        val prefs = appContext.dataStore.data.first()
+        val savedId = prefs[LAST_PLAYBACK_MESSAGE_ID] ?: return null
+        val positionMs = prefs[LAST_PLAYBACK_POSITION_MS] ?: return null
+        val durationMs = prefs[LAST_PLAYBACK_DURATION_MS] ?: 0L
+        if (positionMs < MIN_RESUME_POSITION_MS) return null
+        if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) return null
+        return PlaybackInfo(savedId, positionMs, durationMs)
+    }
+
+    suspend fun getPlaybackProgress(messageId: Long): Pair<Long, Long>? {
+        val prefs = appContext.dataStore.data.first()
+        val savedId = prefs[LAST_PLAYBACK_MESSAGE_ID] ?: return null
+        if (savedId != messageId) return null
+        val positionMs = prefs[LAST_PLAYBACK_POSITION_MS] ?: return null
+        val durationMs = prefs[LAST_PLAYBACK_DURATION_MS] ?: 0L
+        if (positionMs < MIN_RESUME_POSITION_MS) return null
+        if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) return null
+        return positionMs to durationMs
+    }
+
     suspend fun clearPlaybackPosition() {
         appContext.dataStore.edit { preferences ->
             preferences.remove(LAST_PLAYBACK_MESSAGE_ID)
             preferences.remove(LAST_PLAYBACK_POSITION_MS)
             preferences.remove(LAST_PLAYBACK_DURATION_MS)
+        }
+    }
+
+    val storageAutoDelete: Flow<Boolean> = appContext.dataStore.data.map { preferences ->
+        preferences[STORAGE_AUTO_DELETE] ?: true
+    }
+
+    val storageMoveToSd: Flow<Boolean> = appContext.dataStore.data.map { preferences ->
+        preferences[STORAGE_MOVE_TO_SD] ?: false
+    }
+
+    val storageThresholdMb: Flow<Int> = appContext.dataStore.data.map { preferences ->
+        preferences[STORAGE_THRESHOLD_MB] ?: 500
+    }
+
+    suspend fun setStorageAutoDelete(value: Boolean) {
+        appContext.dataStore.edit { preferences ->
+            preferences[STORAGE_AUTO_DELETE] = value
+        }
+    }
+
+    suspend fun setStorageMoveToSd(value: Boolean) {
+        appContext.dataStore.edit { preferences ->
+            preferences[STORAGE_MOVE_TO_SD] = value
+        }
+    }
+
+    suspend fun setStorageThresholdMb(value: Int) {
+        appContext.dataStore.edit { preferences ->
+            preferences[STORAGE_THRESHOLD_MB] = value.coerceIn(200, 2000)
         }
     }
 }

@@ -1,11 +1,13 @@
 package com.aes.grammplayer.ui.features.details
 
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
@@ -25,6 +27,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
+import androidx.core.content.FileProvider
+import android.webkit.MimeTypeMap
 import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.ActiveDownloadManager
@@ -80,6 +84,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var backdropVideoHost: ViewGroup
     private lateinit var previewFullscreenButton: View
     private var previewFullscreenLabel: TextView? = null
+    private lateinit var trailerButton: View
+    private var trailerKey: String? = null
 
     private lateinit var resumeButton: View
     private lateinit var resumeButtonLabel: TextView
@@ -133,6 +139,9 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     /** Temporary resume offset for this message (Settings DataStore); 0 = none. */
     private var savedPositionMs: Long = 0L
+    private var vlcLaunchMs: Long = 0L
+    private var lastVlcContentUri: Uri? = null
+    private var lastVlcMime: String? = null
 
     private val vlcPlaybackLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -184,6 +193,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         backdropVideoHost = findViewById(R.id.detail_backdrop_video_host)
         previewFullscreenButton = findViewById(R.id.preview_fullscreen)
         previewFullscreenLabel = previewFullscreenButton.findViewById(R.id.preview_fullscreen_label)
+        trailerButton = findViewById(R.id.action_trailer)
 
         resumeButton = findViewById(R.id.action_resume)
         resumeButtonLabel = findViewById(R.id.action_resume_label)
@@ -419,6 +429,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         bindActionButton(previewFullscreenButton) {
             openFullScreenPlayback(resume = savedPositionMs > 0L)
         }
+        bindActionButton(trailerButton) { openTrailer() }
         bindActionButton(downloadButton) { startDownload() }
         bindActionButton(cancelButton) { cancelCurrentDownload() }
         bindActionButton(closeButton) { handleClose() }
@@ -479,6 +490,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         listOf(
             closeButton,
+            trailerButton,
             previewFullscreenButton,
             resumeButton,
             playButton,
@@ -510,6 +522,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         val secondButton = if (cancelButton.visibility == View.VISIBLE) cancelButton else downloadButton
         val focusables = buildList {
             add(closeButton)
+            if (trailerButton.isVisible) add(trailerButton)
             if (previewFullscreenButton.isVisible) add(previewFullscreenButton)
             addAll(
                 listOf(resumeButton, playButton, secondButton)
@@ -543,6 +556,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 add(downloadButton)
                 add(cancelButton)
                 add(closeButton)
+                if (trailerButton.isVisible) add(trailerButton)
             }.firstOrNull { it.isVisible && it.isEnabled }
                 ?.requestFocus()
         }
@@ -583,6 +597,11 @@ class MediaDetailsActivity : AppCompatActivity() {
         downloadComplete: Boolean
     ): Boolean {
         if (!isLocalFilePlayable(resolvePlayablePath())) return false
+        // ponytail: mkv cues at end (732M) need full file; mp4 moov at head can preview at 30%/300MB
+        val mime = message.mimeType.lowercase()
+        val ext = message.localPath.substringAfterLast('.', "").lowercase().let { if (it.isEmpty()) currentDownload?.localPath?.substringAfterLast('.', "")?.lowercase() ?: "" else it }
+        val isMkv = mime == "video/x-matroska" || mime == "video/webm" || ext == "mkv" || ext == "webm"
+        if (isMkv && !downloadComplete) return false
         if (downloadComplete) return true
         if (!isAutoPlayEnabled) return false
 
@@ -648,6 +667,14 @@ class MediaDetailsActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.playback_file_not_ready, Toast.LENGTH_SHORT).show()
             return
         }
+        val freshFile = MediaFileHelper.resolveFile(playablePath)
+        if (freshFile == null) {
+            Log.w(TAG, "playablePath stale, refresh: $playablePath")
+            refreshLocalFileAndUpdateUI()
+            Toast.makeText(this, R.string.playback_file_not_ready, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val playbackPath = freshFile.absolutePath
         if (!resume) {
             // Play from start: clear temporary bookmark first.
             savedPositionMs = 0L
@@ -655,10 +682,48 @@ class MediaDetailsActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 settingsDataStore.clearPlaybackPosition()
             }
-            startPlayback(playablePath, startPositionMs = 0L)
+            startPlayback(playbackPath, startPositionMs = 0L)
         } else {
-            startPlayback(playablePath, startPositionMs = savedPositionMs)
+            var effectiveStart = savedPositionMs.coerceAtLeast(0L)
+            // ponytail: no duration here; avoid clamping tiny files (<1MB) where length check is unreliable
+            if (effectiveStart > 0 && freshFile.length() < 1024 * 1024) {
+                // keep as is for tiny/partial files
+            }
+            startPlayback(playbackPath, startPositionMs = effectiveStart)
         }
+    }
+
+    private fun openTrailer() {
+        val key = trailerKey
+        if (key.isNullOrBlank()) {
+            Toast.makeText(this, R.string.trailer_not_available, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val primary = Intent(Intent.ACTION_VIEW, Uri.parse(PosterFetcher.trailerUrl(key))).apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(primary)
+            return
+        } catch (_: ActivityNotFoundException) {
+        }
+        // ponytail: reuse bundled videos, no new OkHttp client, fallback to browser intents
+        val browserUrls = listOf(
+            "https://www.youtube.com/watch?v=$key",
+            "https://youtu.be/$key"
+        )
+        for (url in browserUrls) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                    addCategory(Intent.CATEGORY_DEFAULT)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+                return
+            } catch (_: ActivityNotFoundException) {
+            }
+        }
+        Toast.makeText(this, R.string.trailer_not_available, Toast.LENGTH_SHORT).show()
     }
 
     private fun stopPreviewPlaybackOnly() {
@@ -684,7 +749,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             }
             isFullyDownloaded() && isLocalFilePlayable() -> {
                 applyActionButtonState(ActionButtonState.READY)
-                updatePreviewIfAllowed(message.localPath, downloadComplete = true)
+                hidePreviewSection() // ponytail: preview only for downloading autoplay, READY uses Resume/Play in action bar
             }
             else -> {
                 applyActionButtonState(ActionButtonState.FRESH)
@@ -707,6 +772,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun showBackgroundPreview() {
+        if (!isDownloading) return // ponytail: preview only for downloading autoplay, READY uses Resume/Play in action bar
+        if (isFullyDownloaded()) return
         backgroundPreviewActive = true
         backdropVideoHost.visibility = View.GONE
         detailBackdropImage.visibility = View.VISIBLE
@@ -907,7 +974,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             refreshBottomDownloadStatus()
             syncDownloadInfoFromPath(localPath)
             applyActionButtonState(ActionButtonState.READY)
-            updatePreviewIfAllowed(localPath, downloadComplete = true)
+            hidePreviewSection() // ponytail: preview only for downloading autoplay, READY uses Resume/Play in action bar
             return
         }
         downloadCompleteHandled = true
@@ -950,6 +1017,18 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun startPlayback(filePath: String, startPositionMs: Long = 0L) {
         if (!ensureVlcInstalled()) return
         val fileId = currentDownload?.fileId?.takeIf { it != 0 } ?: message.fileId
+        // Store fallback uri/mime for mkv quick-kill (<1.5s) -> system player
+        try {
+            val f = java.io.File(filePath)
+            lastVlcContentUri = FileProvider.getUriForFile(this, "${packageName}.provider", f)
+            val ext = f.extension.lowercase()
+            lastVlcMime = if (ext.isNotEmpty()) MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "video/*" else "video/*"
+            // grant VLC permission preemptively mirrors PlayerHelper
+            try { grantUriPermission(PlayerHelper.VLC_PACKAGE, lastVlcContentUri!!, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION) } catch (_: Exception) {}
+        } catch (_: Exception) {
+            lastVlcContentUri = null
+            lastVlcMime = null
+        }
         // Prefer for-result so VLC can return extra_position when the user exits.
         when (
             val result = PlayerHelper.preparePlay(
@@ -962,7 +1041,14 @@ class MediaDetailsActivity : AppCompatActivity() {
         ) {
             is PlayerHelper.PlayResult.Ready -> {
                 try {
+                    vlcLaunchMs = SystemClock.elapsedRealtime()
                     vlcPlaybackLauncher.launch(result.intent)
+                } catch (e: IllegalArgumentException) {
+                    Log.e(TAG, "Failed to launch VLC (IllegalArgumentException) for $filePath", e)
+                    handlePlaybackFailure(PlayerHelper.PlayResult.Failed("Share failed: Failed to find configured root for $filePath"), filePath)
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "SecurityException launching VLC for $filePath", e)
+                    handlePlaybackFailure(PlayerHelper.PlayResult.Failed("Permission denied launching VLC: ${e.message}"), filePath)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to launch VLC for result", e)
                     // Fallback: fire-and-forget (no position capture)
@@ -981,6 +1067,45 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun handleVlcPlaybackResult(resultCode: Int, data: Intent?) {
         val exit = PlayerHelper.parseExitPosition(data)
         if (exit == null) {
+            val elapsed = SystemClock.elapsedRealtime() - vlcLaunchMs
+            if (resultCode == 0 && elapsed < 1500 && lastVlcContentUri != null) {
+                Log.w(TAG, "VLC quick kill ${elapsed}ms (resultCode=$resultCode), trying system player uri=$lastVlcContentUri mime=$lastVlcMime")
+                Toast.makeText(this, "Trying system player...", Toast.LENGTH_SHORT).show()
+                val contentUri = lastVlcContentUri
+                val mimeType = lastVlcMime ?: "video/*"
+                try {
+                    val sysIntent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(contentUri, mimeType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+                        addCategory(Intent.CATEGORY_DEFAULT)
+                    }
+                    val chooser = Intent.createChooser(sysIntent, "Play video").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(chooser)
+                    return
+                } catch (e: ActivityNotFoundException) {
+                    try {
+                        val sysIntent2 = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(contentUri, mimeType)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addCategory(Intent.CATEGORY_DEFAULT)
+                        }
+                        startActivity(sysIntent2)
+                        return
+                    } catch (e2: Exception) {
+                        Log.e(TAG, "System player fallback failed", e2)
+                        showPlaybackError("Playback failed")
+                        loadSavedPlaybackPosition()
+                        return
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "System player fallback failed", e)
+                    showPlaybackError("Playback failed")
+                    loadSavedPlaybackPosition()
+                    return
+                }
+            }
             Log.d(TAG, "VLC returned no position (resultCode=$resultCode)")
             loadSavedPlaybackPosition()
             return
@@ -1159,12 +1284,19 @@ class MediaDetailsActivity : AppCompatActivity() {
                         applyPosterFallback()
                         clearDetailBackdrop()
                         clearMovieSections()
+                        trailerKey = null
+                        trailerButton.isVisible = false
+                        updateActionFocusWiring()
                         return@withContext
                     }
                     bindTmdbHeader(details)
                     bindDetailBackdrop(details)
                     bindMovieSections(details, info)
                     bindPromoBanner(details)
+                    val key = PosterFetcher.trailerKey(details)
+                    trailerKey = key
+                    trailerButton.isVisible = !key.isNullOrBlank()
+                    updateActionFocusWiring()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading TMDB metadata", e)
@@ -1172,6 +1304,9 @@ class MediaDetailsActivity : AppCompatActivity() {
                     applyPosterFallback()
                     clearDetailBackdrop()
                     clearMovieSections()
+                    trailerKey = null
+                    trailerButton.isVisible = false
+                    updateActionFocusWiring()
                 }
             }
         }

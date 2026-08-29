@@ -26,6 +26,18 @@ interface TmdbApi {
         @Query("api_key") apiKey: String,
         @Query("append_to_response") appendToResponse: String = "credits,images,videos"
     ): TmdbMovieDetails
+
+    @GET("movie/{movie_id}/videos")
+    suspend fun getMovieVideos(
+        @Path("movie_id") movieId: Int,
+        @Query("api_key") apiKey: String
+    ): Videos
+
+    @GET("tv/{tv_id}/videos")
+    suspend fun getTvVideos(
+        @Path("tv_id") tvId: Int,
+        @Query("api_key") apiKey: String
+    ): Videos
 }
 
 data class TmdbSearchResponse(

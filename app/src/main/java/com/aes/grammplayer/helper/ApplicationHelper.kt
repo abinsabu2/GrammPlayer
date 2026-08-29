@@ -32,26 +32,36 @@ object ApplicationHelper {
     fun getFilesDirectory(storagePath: String = getBestAvailableStoragePath()): String =
         "$storagePath/files"
 
-    /**
-     * Deletes downloaded media files under TDLib's files directory.
-     * Pass [filesDirectory] when TDLib has a pinned path from client initialization.
-     */
-    fun clearDownloadedFiles(filesDirectory: String = getFilesDirectory()): Int {
+    data class ClearResult(val count: Int, val bytes: Long)
+
+    fun clearDownloadedFilesWithStats(filesDirectory: String = getFilesDirectory()): ClearResult {
         var deletedFilesCount = 0
-        val subdirectoriesToClear = listOf("documents", "temp", "videos")
+        var freedBytes = 0L
+        val subdirectoriesToClear = listOf("documents", "temp", "videos", "test_videos")
 
         subdirectoriesToClear.forEach { subdir ->
             val directory = File(filesDirectory, subdir)
             if (directory.exists() && directory.isDirectory) {
                 directory.walkTopDown().forEach { file ->
-                    if (file.isFile && file.delete()) {
-                        deletedFilesCount++
+                    if (file.isFile) {
+                        val len = file.length()
+                        if (file.delete()) {
+                            deletedFilesCount++
+                            freedBytes += len
+                        }
                     }
                 }
             }
         }
-        return deletedFilesCount
+        return ClearResult(deletedFilesCount, freedBytes)
     }
+
+    /**
+     * Deletes downloaded media files under TDLib's files directory.
+     * Pass [filesDirectory] when TDLib has a pinned path from client initialization.
+     */
+    fun clearDownloadedFiles(filesDirectory: String = getFilesDirectory()): Int =
+        clearDownloadedFilesWithStats(filesDirectory).count
 
     fun getExternalStorageFile(): File? {
         val context = GPlayerApplication.AppContext

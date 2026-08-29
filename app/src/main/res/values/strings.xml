@@ -72,6 +72,9 @@
     <string name="detail_bottom_download_status">%1$s (%2$d) : %3$d%%</string>
     <string name="dashboard_downloading_row_title">In progress</string>
     <string name="dashboard_downloading_row_ready">Ready</string>
+    <string name="in_progress_continue_watching">Continue Watching</string>
+    <string name="in_progress_combined">In Progress</string>
+    <string name="continue_watching_banner">Resume • %1$s</string>
     <string name="grid_label_ready">Ready</string>
     <string name="loading_messages_progress">Loading messages: %1$d</string>
     <string name="preview_label">PREVIEW</string>
@@ -145,4 +148,6 @@
     <string name="detail_crew_producer">Producer: %1$s</string>
     <string name="detail_cast_role_unknown">Cast</string>
     <string name="detail_no_synopsis">No synopsis available.</string>
+    <string name="trailer">Trailer</string>
+    <string name="trailer_not_available">No trailer available</string>
 </resources>
