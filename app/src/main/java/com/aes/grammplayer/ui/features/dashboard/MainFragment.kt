@@ -555,14 +555,8 @@ class MainFragment : BrowseSupportFragment() {
         var hist = page.items.find { it.message.id == info.messageId }
         if (hist == null) {
             // Try to resolve from DB if not in history yet
-            try {
-                val dao = com.aes.grammplayer.db.AppDatabase.getDatabase(requireContext()).mediaMessageDao()
-                val msg = dao.getById(info.messageId).first()
-                if (msg != null) {
-                    hist = com.aes.grammplayer.ui.features.history.HistoryItem(msg, isViewed = true, isDownloaded = msg.isDownloaded, isDownloading = false)
-                }
-            } catch (_: Exception) { }
-        }
+            // ponytail: DB removed — fallback to HistoryStore only; live TMDB fetch not needed for continue
+}
         val target = hist ?: run {
             cachedPlaybackInfo = null
             cachedContinueItem = null

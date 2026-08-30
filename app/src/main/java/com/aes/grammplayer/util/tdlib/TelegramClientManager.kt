@@ -3,7 +3,6 @@ package com.aes.grammplayer.util.tdlib
 import android.content.Context
 import android.util.Log
 import com.aes.grammplayer.BuildConfig
-import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.db.model.MediaMessage
@@ -81,7 +80,7 @@ object TelegramClientManager {
 
     /**
      * Clears downloaded media cache safely: asks TDLib to drop completed downloads,
-     * deletes local files off the main thread, and resets download flags in Room.
+     * deletes local files off the main thread.
      */
     suspend fun clearDownloadCache(context: Context): ApplicationHelper.ClearResult = withContext(Dispatchers.IO) {
         var totalCount = 0
@@ -122,7 +121,7 @@ object TelegramClientManager {
                 }
             } catch (_: Exception) {}
         }
-        AppDatabase.getDatabase(context).mediaMessageDao().clearAllDownloadState()
+        // ponytail: DB removed — file delete suffices
         requestTdLibRemoveCompletedDownloads()
         ApplicationHelper.ClearResult(totalCount, totalBytes)
     }

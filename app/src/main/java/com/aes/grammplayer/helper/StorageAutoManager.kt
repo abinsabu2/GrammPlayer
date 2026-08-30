@@ -2,7 +2,6 @@ package com.aes.grammplayer.helper
 
 import android.content.Context
 import android.util.Log
-import com.aes.grammplayer.db.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -70,12 +69,8 @@ object StorageAutoManager {
             }
         }
         if (deleted > 0) {
-            try {
-                AppDatabase.getDatabase(ctx).mediaMessageDao().clearAllDownloadState()
-            } catch (e: Exception) {
-                Log.w(TAG, "clearAllDownloadState failed: $e")
-            }
-            // Try TDLib remove equivalent
+            // ponytail: DB removed — file delete suffices
+// Try TDLib remove equivalent
             try {
                 val client = com.aes.grammplayer.util.tdlib.TelegramClientManager.client
                 if (client != null) {

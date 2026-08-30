@@ -1,15 +1,9 @@
 package com.aes.grammplayer.db.model
 
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import java.io.Serializable
 
-@Entity(
-    tableName = "Chats",
-    indices = [Index("userId")]
-)
 data class Chat(
-    @PrimaryKey val id: Long,
+    val id: Long,
     val type: Int,
     val title: String,
     val photoId: String,
@@ -33,4 +27,4 @@ data class Chat(
     val draftMessageText: String,
     val clientData: String,
     val userId: Int
-)
+) : Serializable

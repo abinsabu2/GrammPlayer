@@ -29,7 +29,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
 import androidx.core.content.FileProvider
 import android.webkit.MimeTypeMap
-import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.ActiveDownloadManager
 import com.aes.grammplayer.helper.ApplicationHelper
@@ -1366,7 +1365,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         if (backdropUrl.isBlank() || message.backgroundImageUrl == backdropUrl) return
         message = message.copy(backgroundImageUrl = backdropUrl)
         lifecycleScope.launch(Dispatchers.IO) {
-            AppDatabase.getDatabase(applicationContext).mediaMessageDao().insert(message)
+            // ponytail: DB removed — no persist needed, HistoryStore handles history
             // Refresh history snapshot with backdrop so dashboard can use it.
             HistoryStore.recordVisit(applicationContext, message)
         }

@@ -3,11 +3,11 @@ package com.aes.grammplayer.provider
 import android.annotation.SuppressLint
 import android.util.Log
 import com.aes.grammplayer.GPlayerApplication
-import com.aes.grammplayer.db.AppDatabase
+import com.aes.grammplayer.db.model.MediaMessage
+import com.aes.grammplayer.provider.JsonSeedStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 
 object MediaMessageDataProvider {
@@ -30,13 +30,11 @@ object MediaMessageDataProvider {
         pageSize: Int = PAGE_SIZE,
     ): Page<MediaMessage> {
         val context = GPlayerApplication.Companion.AppContext
-        val database = AppDatabase.getDatabase(context)
 
         return withContext(Dispatchers.IO) {
             try {
                 if (mode) {
-                    val items = database.mediaMessageDao()
-                        .getByChatIdPaged(chatId.toInt(), pageSize, offset)
+                    val items = JsonSeedStore.getMessagesPaged(chatId.toInt(), pageSize, offset)
                     Page(
                         items = items,
                         nextOffset = offset + items.size,

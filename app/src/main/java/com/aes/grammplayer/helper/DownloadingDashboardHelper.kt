@@ -2,10 +2,8 @@ package com.aes.grammplayer.helper
 
 import android.content.Context
 import android.util.Log
-import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 object DownloadingDashboardHelper {
@@ -19,51 +17,47 @@ object DownloadingDashboardHelper {
 
     suspend fun loadDashboardDownloadItem(context: Context): DashboardDownloadItem? =
         withContext(Dispatchers.IO) {
-            ActiveDownloadManager.currentSession()?.let { session ->
-                val message = loadFreshMessage(context, session, markActive = true) ?: return@withContext null
-                Log.d(TAG, "Active download fileId=${message.fileId} path=${message.localPath}")
-                return@withContext DashboardDownloadItem.InProgress(message)
-            }
-
-            ActiveDownloadManager.peekCompletedSession()?.let { session ->
-                val message = loadFreshMessage(context, session, markActive = false) ?: return@withContext null
-                Log.d(TAG, "Completed download fileId=${message.fileId} downloaded=${message.isDownloaded}")
-                return@withContext DashboardDownloadItem.Ready(message)
-            }
-
-            null
+            val session = ActiveDownloadManager.currentSession() ?: return@withContext null
+            val message = loadFreshMessage(session, markActive = true) ?: return@withContext null
+            Log.d(TAG, "Active download fileId=${message.fileId} path=${message.localPath}")
+            return@withContext DashboardDownloadItem.InProgress(message)
         }
 
-    private suspend fun loadFreshMessage(
-        context: Context,
+    private fun loadFreshMessage(
         session: ActiveDownloadManager.Session,
         markActive: Boolean
     ): MediaMessage? {
-        val stored = AppDatabase.getDatabase(context)
-            .mediaMessageDao()
-            .getById(session.messageId)
-            .first()
-            ?: return null
-
-        val merged = stored.copy(
-            title = session.title.ifBlank { stored.title },
-            localPath = session.localPath?.takeIf { it.isNotBlank() } ?: stored.localPath,
-            isDownloadActive = markActive
+        // ponytail: DB removed — construct from active session only; file check decides complete
+        val merged = MediaMessage(
+            id = session.messageId,
+            chat = 0,
+            title = session.title,
+            description = "",
+            studio = "",
+            width = 0,
+            height = 0,
+            duration = 0,
+            size = 0,
+            isMedia = true,
+            localPath = session.localPath ?: "",
+            fileId = session.fileId,
+            mimeType = "video/mp4",
+            videoUrl = "",
+            thumbnailPath = "",
+            cardImageUrl = "",
+            backgroundImageUrl = "",
+            isDownloaded = false,
+            isDownloadActive = markActive,
+            uniqueId = ""
         )
-        val synced = merged.copy()
-        MediaFileHelper.syncMessageFromFile(synced)
-        val complete = isCompleteOnDisk(synced)
-        if (complete) {
-            synced.isDownloaded = true
-        }
-        return synced.copy(isDownloadActive = markActive && !complete)
+        val complete = isCompleteOnDisk(merged)
+        if (complete) merged.isDownloaded = true
+        return merged.copy(isDownloadActive = markActive && !complete)
     }
 
     private fun isCompleteOnDisk(message: MediaMessage): Boolean {
         if (message.isDownloaded) return true
-        if (message.size <= 0L) {
-            return MediaFileHelper.isPlayable(message.localPath)
-        }
+        if (message.size <= 0L) return MediaFileHelper.isPlayable(message.localPath)
         val file = MediaFileHelper.resolveFile(message.localPath) ?: return false
         return file.length() >= message.size
     }
