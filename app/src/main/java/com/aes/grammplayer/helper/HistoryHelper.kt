@@ -3,9 +3,6 @@ package com.aes.grammplayer.helper
 import android.content.Context
 import android.util.Log
 import com.aes.grammplayer.config.TestUserConfig
-import com.aes.grammplayer.db.AppDatabase
-import com.aes.grammplayer.db.model.Settings
-import com.aes.grammplayer.db.model.User
 import com.aes.grammplayer.db.model.model.UserType
 import com.aes.grammplayer.history.HistoryStore
 import com.aes.grammplayer.session.UserSession
@@ -51,48 +48,5 @@ object HistoryHelper {
         val phone = UserSession.phoneNumber.trim()
         if (phone.isEmpty()) return
         persistActivePhone(context, phone)
-        withContext(Dispatchers.IO) {
-            try {
-                val db = AppDatabase.getDatabase(context)
-                var user = db.userDao().getByPhone(phone)
-                if (user == null) {
-                    val nextId = db.userDao().getAll().first().maxOfOrNull { it.id }?.plus(1L) ?: 1L
-                    user = User(
-                        id = nextId,
-                        phone = phone,
-                        isTestUser = UserSession.isTestUser(),
-                        isConnected = true
-                    )
-                    db.userDao().insert(user)
-                } else {
-                    user = user.copy(isConnected = true)
-                    db.userDao().update(user)
-                }
-
-                db.userDao().getAll().first().forEach { other ->
-                    if (other.id != user.id && other.isConnected) {
-                        db.userDao().update(other.copy(isConnected = false))
-                    }
-                }
-
-                val userId = user.id.toInt()
-                val settings = db.settingsDao().getAll().first().firstOrNull()
-                if (settings != null) {
-                    db.settingsDao().update(settings.copy(activeUserId = userId, userConnected = true))
-                } else {
-                    db.settingsDao().insert(
-                        Settings(
-                            id = 1,
-                            autoplay = true,
-                            activeUserId = userId,
-                            userConnected = true
-                        )
-                    )
-                }
-                Log.d(TAG, "Synced active user id=$userId phone=$phone")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to sync active user for phone=$phone", e)
-            }
-        }
     }
 }

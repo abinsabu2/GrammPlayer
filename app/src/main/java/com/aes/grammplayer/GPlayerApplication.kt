@@ -3,8 +3,6 @@ package com.aes.grammplayer
 import android.app.Application
 import android.content.Context
 import android.util.Log
-import com.aes.grammplayer.db.AppDatabase
-import com.aes.grammplayer.db.DatabaseSeeder
 import com.aes.grammplayer.network.tmdb.TlsHelper
 import com.aes.grammplayer.network.tmdb.TmdbClient
 import com.bumptech.glide.Glide
@@ -31,10 +29,7 @@ class GPlayerApplication : Application() {
         } catch (e: Exception) {
             Log.w("GlideHelper", "Failed to wire Glide OkHttp", e)
         }
-        CoroutineScope(Dispatchers.IO).launch {
-            val db = AppDatabase.getDatabase(applicationContext)
-            DatabaseSeeder.seed(db)
-        }
+        // Seed initialized from JSON asset; no DB seeding needed
     }
 
     companion object {

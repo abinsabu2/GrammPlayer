@@ -9,7 +9,6 @@ import android.view.View
 import android.widget.ImageView
 import com.aes.grammplayer.GPlayerApplication
 import com.aes.grammplayer.R
-import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.network.tmdb.PosterFetcher
@@ -165,7 +164,7 @@ object GridThumbnailBinder {
             url = url,
             cornerRadius = cornerRadius,
             placeholderColor = placeholderColor,
-            onSuccess = { persistPosterUrl(scope, message, url) },
+            onSuccess = {},
             onFailure = {
                 tryRemoteUrls(
                     thumbnailView = thumbnailView,
@@ -269,19 +268,9 @@ object GridThumbnailBinder {
         }
     }
 
+    // ponytail: poster URL persistence removed; PosterFetcher fetches live as needed
     private fun persistPosterUrl(scope: CoroutineScope, message: MediaMessage, url: String) {
-        if (message.cardImageUrl == url) return
-        scope.launch(Dispatchers.IO) {
-            try {
-                val db = AppDatabase.getDatabase(GPlayerApplication.AppContext)
-                val existing = db.mediaMessageDao().getById(message.id).first()
-                val base = existing ?: message
-                if (base.cardImageUrl == url) return@launch
-                db.mediaMessageDao().insert(base.copy(cardImageUrl = url))
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to persist poster url for message ${message.id}", e)
-            }
-        }
+        // No-op: poster URLs are fetched live by PosterFetcher; store to HistoryEntry if needed later
     }
 
     private fun isCurrentBind(thumbnailView: ImageView, key: String): Boolean =

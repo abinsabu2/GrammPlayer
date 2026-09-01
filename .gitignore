@@ -32,6 +32,8 @@ app/release/
 *.aab
 *.ap_
 *.json
+!app/src/main/assets/**/*.json
+!app/src/main/assets/*.json
 *.flat
 
 # =========================================

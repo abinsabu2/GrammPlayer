@@ -1,11 +1,6 @@
 # TDLib JNI requires the full binding surface at runtime.
 -keep class org.drinkless.tdlib.** { *; }
 
-# Room
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--dontwarn androidx.room.paging.**
-
 # Retrofit / Gson
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations

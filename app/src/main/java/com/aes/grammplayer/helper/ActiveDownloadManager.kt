@@ -1,12 +1,10 @@
 package com.aes.grammplayer.helper
 
 import android.content.Context
-import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 object ActiveDownloadManager {
@@ -77,19 +75,8 @@ object ActiveDownloadManager {
         withContext(Dispatchers.IO) {
             TelegramClientManager.cancelDownloadAndDelete(mutableSetOf(active.fileId))
             MediaFileHelper.deleteFiles(listOfNotNull(active.localPath))
-
-            val db = AppDatabase.getDatabase(context)
-            val existing = db.mediaMessageDao().getById(active.messageId).first()
-            if (existing != null) {
-                val cleared = existing.copy(
-                    isDownloadActive = false,
-                    isDownloaded = false,
-                    localPath = ""
-                )
-                db.mediaMessageDao().insert(cleared)
-            }
+            DownloadProgressTracker.clear(active.fileId)
         }
-        DownloadProgressTracker.clear(active.fileId)
         if (current?.fileId == active.fileId) {
             current = null
         }
