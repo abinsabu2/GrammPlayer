@@ -32,6 +32,8 @@ app/release/
 *.aab
 *.ap_
 *.json
+!app/src/main/assets/**/*.json
+!app/src/main/assets/*.json
 *.flat
 
 # =========================================
@@ -72,3 +74,6 @@ native/
 wrapper/
 .tmp/
 .kotlin/
+
+# opencode - local skills/agents/commands (project-specific AI config, not committed)
+.opencode/

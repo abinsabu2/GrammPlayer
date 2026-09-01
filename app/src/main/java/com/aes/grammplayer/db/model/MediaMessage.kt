@@ -1,25 +1,9 @@
 package com.aes.grammplayer.db.model
 
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
 import java.io.Serializable
 
-@Entity(
-    tableName = "MediaMessage",
-    foreignKeys = [
-        ForeignKey(
-            entity = Chat::class,
-            parentColumns = ["id"],
-            childColumns = ["chat"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("chat")]
-)
 data class MediaMessage(
-    @PrimaryKey val id: Long,
+    val id: Long,
     val chat: Int,
     val title: String,
     val description: String,
@@ -40,7 +24,5 @@ data class MediaMessage(
     val isDownloadActive: Boolean,
     val uniqueId: String
 ) : Serializable {
-    companion object {
-        internal const val serialVersionUID = 727566175075960653L
-    }
+    companion object { internal const val serialVersionUID = 727566175075960653L }
 }

@@ -1,7 +1,10 @@
 package com.aes.grammplayer.ui.features.dashboard
 
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.view.LayoutInflater
 import androidx.leanback.app.BrowseSupportFragment
@@ -33,12 +36,14 @@ import com.aes.grammplayer.R
 import com.aes.grammplayer.ui.common.makeFocusableForTv
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.ActiveDownloadManager
+import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.helper.DashboardBackdropHelper
 import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.helper.DownloadProgressTracker
 import com.aes.grammplayer.helper.DownloadingDashboardHelper
-import com.aes.grammplayer.helper.HistoryHelper
+import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
+import com.aes.grammplayer.helper.HistoryHelper
 
 import com.aes.grammplayer.helper.NavigationExtras
 import com.aes.grammplayer.ui.features.details.MediaDetailsActivity
@@ -50,9 +55,13 @@ import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.drinkless.tdlib.TdApi
+import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -66,18 +75,46 @@ class MainFragment : BrowseSupportFragment() {
 
     private lateinit var productLogo: ImageView
 
+    private var welcomeTextView: TextView? = null
+    private var welcomeSubtitleIndex = 0
+    private val welcomeSubtitles = listOf(
+        "How are you?",
+        "Whats your plan for today?",
+        "What are you going to watch today?",
+        "New movies are out there, Please check your chats."
+    )
+
     private var reviewMode = false
 
     private var rowsAdapter: ArrayObjectAdapter? = null
-    private var downloadingListRow: DownloadingListRow? = null
-    private var downloadingRowAdapter: ArrayObjectAdapter? = null
-    private var downloadingHeader: DashboardHeaderItem? = null
+    private var inProgressListRow: DownloadingListRow? = null
+    private var inProgressRowAdapter: ArrayObjectAdapter? = null
+    private var inProgressHeader: DashboardHeaderItem? = null
     private var downloadingShowReady = false
     private val downloadingCardPresenter = DownloadingCardPresenter()
-    private val downloadingRowPresenter = ListRowPresenter(FocusHighlight.ZOOM_FACTOR_NONE).apply {
+    private val continueWatchingCardPresenter = ContinueWatchingCardPresenter()
+    private val inProgressRowPresenter = ListRowPresenter(FocusHighlight.ZOOM_FACTOR_NONE).apply {
         shadowEnabled = false
     }
+    // Keep old names as aliases for minimal diff compat
+    private var downloadingListRow: DownloadingListRow?
+        get() = inProgressListRow
+        set(v) { inProgressListRow = v }
+    private var downloadingRowAdapter: ArrayObjectAdapter?
+        get() = inProgressRowAdapter
+        set(v) { inProgressRowAdapter = v }
+    private var downloadingHeader: DashboardHeaderItem?
+        get() = inProgressHeader
+        set(v) { inProgressHeader = v }
+    private val downloadingRowPresenter: ListRowPresenter
+        get() = inProgressRowPresenter
     private var downloadProgressJob: Job? = null
+    private var chatsAdapter: ArrayObjectAdapter? = null
+    private var storageReceiver: BroadcastReceiver? = null
+    private var storageDashboardItem: DashboardItem? = null
+    private var cachedContinueItem: ContinueWatchingItem? = null
+    private var cachedPlaybackInfo: SettingsDataStore.PlaybackInfo? = null
+    private var lastInProgressRefreshMs: Long = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +124,9 @@ class MainFragment : BrowseSupportFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         makeBrowseChromeTransparent(view)
+        welcomeTextView = activity?.findViewById(R.id.welcome_message)
+        updateWelcomeMessage()
+        registerStorageReceiver()
     }
 
     @Deprecated("Deprecated in Java")
@@ -114,6 +154,7 @@ class MainFragment : BrowseSupportFragment() {
             HistoryHelper.prepareSession(requireContext())
             reviewMode = ReviewModeHelper.isReviewMode(requireContext())
             loadRows()
+            updateWelcomeMessage()
             observeDownloadProgress()
         }
     }
@@ -121,14 +162,74 @@ class MainFragment : BrowseSupportFragment() {
     override fun onResume() {
         super.onResume()
         refreshDashboardBackdrop()
-        refreshDownloadingRow()
+        refreshInProgressRow()
+        updateStorageCard()
+        updateWelcomeMessage()
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val autoDelete = settingsDataStore.storageAutoDelete.first()
+                val threshold = settingsDataStore.storageThresholdMb.first()
+                if (autoDelete && ApplicationHelper.getInternalFreeBytes() < threshold.toLong() * 1024L * 1024L) {
+                    com.aes.grammplayer.helper.StorageAutoManager.ensureFreeSpace(requireContext(), threshold)
+                    if (isAdded) updateStorageCard()
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     override fun onDestroyView() {
         downloadProgressJob?.cancel()
         downloadProgressJob = null
         backdropImageView()?.let { GlideHelper.clear(it) }
+        unregisterStorageReceiver()
         super.onDestroyView()
+    }
+
+    private fun buildShortStorageDesc(): String {
+        val internalFree = ApplicationHelper.getInternalFreeBytes()
+        val externalFree = ApplicationHelper.getExternalFreeBytes()
+        val internalShort = ApplicationHelper.formatFreeBytes(internalFree)
+        val externalShort = if (ApplicationHelper.isExternalStorageAvailable()) ApplicationHelper.formatFreeBytes(externalFree) else "—"
+        return "Internal: $internalShort • External: $externalShort"
+        // ponytail: short single line for hero card; use icons if needed
+    }
+
+    private fun updateStorageCard() {
+        val adapter = chatsAdapter ?: return
+        val old = storageDashboardItem ?: return
+        val newDesc = buildShortStorageDesc()
+        if (old.description == newDesc) return
+        val updated = old.copy(description = newDesc)
+        storageDashboardItem = updated
+        val idx = adapter.indexOf(old)
+        if (idx >= 0) adapter.replace(idx, updated)
+    }
+
+    private fun registerStorageReceiver() {
+        if (storageReceiver != null) return
+        storageReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                updateStorageCard()
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_REMOVED)
+            addAction(Intent.ACTION_MEDIA_EJECT)
+            addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+            addDataScheme("file")
+        }
+        try {
+            requireContext().registerReceiver(storageReceiver, filter)
+        } catch (_: Exception) { }
+    }
+
+    private fun unregisterStorageReceiver() {
+        storageReceiver?.let {
+            try { requireContext().unregisterReceiver(it) } catch (_: Exception) { }
+        }
+        storageReceiver = null
     }
 
     private fun refreshDashboardBackdrop() {
@@ -183,6 +284,31 @@ class MainFragment : BrowseSupportFragment() {
         }
     }
 
+    private fun updateWelcomeMessage() {
+        val view = welcomeTextView ?: activity?.findViewById(R.id.welcome_message) ?: return
+        if (welcomeTextView == null) welcomeTextView = view
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val greeting = when (hour) {
+            in 5..11 -> "Good Morning"
+            in 12..16 -> "Good Afternoon"
+            in 17..20 -> "Good Evening"
+            else -> "Good Evening"
+        }
+        lifecycleScope.launch {
+            val telegramName = try {
+                suspendCancellableCoroutine<String?> { cont ->
+                    TelegramClientManager.client?.send(TdApi.GetMe()) { obj ->
+                        if (obj is TdApi.User) cont.resume("${obj.firstName} ${obj.lastName}".trim().ifEmpty { obj.usernames?.activeUsernames?.firstOrNull() ?: "User" })
+                        else cont.resume(null)
+                    } ?: cont.resume(null)
+                }
+            } catch (_: Exception) { null } ?: "User"
+            val subtitle = welcomeSubtitles[welcomeSubtitleIndex % welcomeSubtitles.size].also { welcomeSubtitleIndex++ }
+            view.text = "$greeting $telegramName,\n$subtitle"
+            view.visibility = View.VISIBLE
+        }
+    }
+
     override fun onCreateHeadersSupportFragment(): HeadersSupportFragment {
         return DashboardHeadersSupportFragment()
     }
@@ -196,7 +322,7 @@ class MainFragment : BrowseSupportFragment() {
         }
         val rowPresenterSelector = ClassPresenterSelector().apply {
             addClassPresenter(ListRow::class.java, listRowPresenter)
-            addClassPresenter(DownloadingListRow::class.java, downloadingRowPresenter)
+            addClassPresenter(DownloadingListRow::class.java, inProgressRowPresenter)
         }
         rowsAdapter = ArrayObjectAdapter(rowPresenterSelector)
 
@@ -225,11 +351,22 @@ class MainFragment : BrowseSupportFragment() {
                 isHero = true
             )
         )
+        val storageItem = DashboardItem(
+            id = "storage_manager",
+            iconRes = R.drawable.ic_storage,
+            eyebrow = "Storage",
+            title = "Storage Manager",
+            description = buildShortStorageDesc(),
+            actionLabel = "Clear Cache",
+            isHero = true
+        )
+        chatsAdapter.add(storageItem)
+        this.chatsAdapter = chatsAdapter
+        storageDashboardItem = storageItem
         rowsAdapter!!.add(ListRow(chatsHeader, chatsAdapter))
 
         // --- Preferences row: icon cards (trimmed for store review accounts) ---
         val preferenceItems = listOf(
-            DashboardItem("clear_cache", R.drawable.ic_clear_cache, "Clear Cache"),
             DashboardItem("clear_history", R.drawable.ic_history, "Clear History"),
             DashboardItem("settings", R.drawable.ic_settings, "Settings"),
             DashboardItem("close", R.drawable.ic_refresh, "Close"),
@@ -244,7 +381,7 @@ class MainFragment : BrowseSupportFragment() {
         }
 
         adapter = rowsAdapter
-        refreshDownloadingRow()
+        refreshInProgressRow()
     }
 
     private fun observeDownloadProgress() {
@@ -254,9 +391,19 @@ class MainFragment : BrowseSupportFragment() {
                 DownloadProgressTracker.updates.collect { fileId ->
                     val activeFileId = ActiveDownloadManager.currentSession()?.fileId
                     when {
-                        fileId == activeFileId -> refreshDownloadingCard()
-                        activeFileId == null -> refreshDownloadingRow()
-                        ActiveDownloadManager.wasRecentlyCompleted(fileId) -> refreshDownloadingRow()
+                        fileId == activeFileId -> {
+                            // ponytail: adapter clear only when ids/positions change; progress ticks update views in-place to avoid Glide unbind/reload ceiling.
+                            if (!updateVisibleDownloadingProgressByFileId(fileId)) {
+                                refreshInProgressRow()
+                            } else {
+                                // also refresh continue watching progress in-place if row exists (no adapter clear)
+                                cachedContinueItem?.let { item ->
+                                    updateContinueWatchingProgressInTree(view ?: return@collect, item.message.fileId, item.positionMs, item.durationMs)
+                                }
+                            }
+                        }
+                        activeFileId == null -> refreshInProgressRow()
+                        ActiveDownloadManager.wasRecentlyCompleted(fileId) -> refreshInProgressRow()
                     }
                 }
             }
@@ -264,69 +411,336 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private fun refreshDownloadingRow() {
+        refreshInProgressRow()
+    }
+
+    private fun refreshDownloadingCard() {
+        refreshInProgressRow()
+    }
+
+    private fun refreshInProgressRow() {
         val adapter = rowsAdapter ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            val item = try {
+            val downloadItem = try {
                 DownloadingDashboardHelper.loadDashboardDownloadItem(requireContext())
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load dashboard download item", e)
                 null
             }
+            val continueItem = try {
+                loadContinueWatchingItem()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load continue watching item", e)
+                null
+            }
             if (!isAdded) return@launch
 
-            when (item) {
-                null -> {
-                    if (!downloadingShowReady) {
-                        removeDownloadingRow(adapter)
-                    }
-                }
+            // Handle download Ready vs InProgress for header styling
+            when (downloadItem) {
                 is DownloadingDashboardHelper.DashboardDownloadItem.Ready -> {
-                    ensureDownloadingRow(adapter, item.message)
-                    showDownloadingReadyState(item.message)
-                    ActiveDownloadManager.clearCompletedSession()
+                    if (continueItem == null) {
+                        ensureInProgressRow(adapter, listOf(downloadItem.message))
+                        showDownloadingReadyState(downloadItem.message)
+                        ActiveDownloadManager.clearCompletedSession()
+                        // auto-check storage after download complete
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            try {
+                                val autoDelete = settingsDataStore.storageAutoDelete.first()
+                                val threshold = settingsDataStore.storageThresholdMb.first()
+                                if (autoDelete && ApplicationHelper.getInternalFreeBytes() < threshold.toLong() * 1024L * 1024L) {
+                                    com.aes.grammplayer.helper.StorageAutoManager.ensureFreeSpace(requireContext(), threshold)
+                                    if (isAdded) updateStorageCard()
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        return@launch
+                    } else {
+                        resetDownloadingReadyState()
+                    }
                 }
                 is DownloadingDashboardHelper.DashboardDownloadItem.InProgress -> {
                     resetDownloadingReadyState()
-                    ensureDownloadingRow(adapter, item.message)
-                    updateVisibleDownloadingProgress(item.message)
+                    updateVisibleDownloadingProgress(downloadItem.message)
+                }
+                null -> {
+                    if (downloadingShowReady && continueItem == null) {
+                        // keep ready row until cleared; else remove if no continue item
+                    } else if (downloadItem == null && continueItem == null) {
+                        if (!downloadingShowReady) {
+                            removeInProgressRow(adapter)
+                        } else if (continueItem == null) {
+                            // if ready but no continue and no download, let next download clear it
+                        }
+                        if (continueItem == null) {
+                            // no items at all
+                        }
+                    }
+                }
+            }
+
+            val items = buildList<Any> {
+                when (downloadItem) {
+                    is DownloadingDashboardHelper.DashboardDownloadItem.InProgress -> add(downloadItem.message)
+                    is DownloadingDashboardHelper.DashboardDownloadItem.Ready -> add(downloadItem.message)
+                    null -> {}
+                }
+                continueItem?.let { add(it) }
+            }
+
+            // Prevent duplicate continue item if same as download (same fileId/messageId)
+            val deduped = dedupeInProgressItems(items)
+
+            if (deduped.isEmpty()) {
+                if (!downloadingShowReady) {
+                    removeInProgressRow(adapter)
+                } else if (downloadItem == null) {
+                    // keep ready until new download or clear
+                    // if we have no continue and ready was showing, remove when no download
+                    removeInProgressRow(adapter)
+                }
+            } else {
+                ensureInProgressRow(adapter, deduped)
+                // re-apply ready state styling if needed
+                if (downloadItem is DownloadingDashboardHelper.DashboardDownloadItem.Ready && deduped.size == 1) {
+                    showDownloadingReadyState(downloadItem.message)
+                    ActiveDownloadManager.clearCompletedSession()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        try {
+                            val autoDelete = settingsDataStore.storageAutoDelete.first()
+                            val threshold = settingsDataStore.storageThresholdMb.first()
+                            if (autoDelete && ApplicationHelper.getInternalFreeBytes() < threshold.toLong() * 1024L * 1024L) {
+                                com.aes.grammplayer.helper.StorageAutoManager.ensureFreeSpace(requireContext(), threshold)
+                                if (isAdded) updateStorageCard()
+                            }
+                        } catch (_: Exception) {}
+                    }
                 }
             }
         }
     }
 
-    private fun refreshDownloadingCard() {
-        refreshDownloadingRow()
+    private fun dedupeInProgressItems(items: List<Any>): List<Any> {
+        if (items.size < 2) return items
+        val downloadMsg = items[0] as? MediaMessage ?: return items
+        val continueItem = items[1] as? ContinueWatchingItem ?: return items
+        if (downloadMsg.fileId != 0 && downloadMsg.fileId == continueItem.message.fileId) return listOf(downloadMsg)
+        if (downloadMsg.id != 0L && downloadMsg.id == continueItem.message.id) return listOf(downloadMsg)
+        return items.take(2)
     }
 
-    private fun ensureDownloadingRow(adapter: ArrayObjectAdapter, message: MediaMessage) {
-        val headerTitle = if (downloadingShowReady) {
-            getString(R.string.dashboard_downloading_row_ready)
-        } else {
-            getString(R.string.dashboard_downloading_row_title)
+    private suspend fun loadContinueWatchingItem(): ContinueWatchingItem? = withContext(Dispatchers.IO) {
+        val info = settingsDataStore.getLastPlaybackInfo() ?: run {
+            cachedPlaybackInfo = null
+            cachedContinueItem = null
+            return@withContext null
         }
+        if (info == cachedPlaybackInfo && cachedContinueItem != null) {
+            return@withContext cachedContinueItem
+        }
+        val pos = info.positionMs
+        val dur = info.durationMs
+        if (pos < SettingsDataStore.MIN_RESUME_POSITION_MS) {
+            cachedPlaybackInfo = null
+            cachedContinueItem = null
+            return@withContext null
+        }
+        if (dur > 0L && dur - pos < SettingsDataStore.END_RESUME_CLEAR_MS) {
+            cachedPlaybackInfo = null
+            cachedContinueItem = null
+            return@withContext null
+        }
+        val page = try {
+            com.aes.grammplayer.history.HistoryStore.loadPage(requireContext(), 0, com.aes.grammplayer.history.HistoryStore.MAX_ENTRIES)
+        } catch (_: Exception) { null } ?: return@withContext null
+        var hist = page.items.find { it.message.id == info.messageId }
+        if (hist == null) {
+            // Try to resolve from DB if not in history yet
+            // ponytail: DB removed — fallback to HistoryStore only; live TMDB fetch not needed for continue
+}
+        val target = hist ?: run {
+            cachedPlaybackInfo = null
+            cachedContinueItem = null
+            return@withContext null
+        }
+        val result = ContinueWatchingItem(
+            message = target.message,
+            positionMs = pos,
+            durationMs = dur,
+            historyItem = target
+        )
+        cachedPlaybackInfo = info
+        cachedContinueItem = result
+        result
+    }
 
-        if (downloadingListRow == null) {
-            downloadingHeader = DashboardHeaderItem(
-                DOWNLOADING_ROW_ID,
+    private fun ensureInProgressRow(adapter: ArrayObjectAdapter, items: List<Any>) {
+        val capped = items.take(2)
+        val hasDownload = capped.any { it is MediaMessage }
+        val hasContinue = capped.any { it is ContinueWatchingItem }
+        val headerTitle = when {
+            hasDownload && hasContinue -> getString(R.string.in_progress_combined)
+            hasDownload -> if (downloadingShowReady) getString(R.string.dashboard_downloading_row_ready) else getString(R.string.dashboard_downloading_row_title)
+            hasContinue -> getString(R.string.in_progress_continue_watching)
+            else -> getString(R.string.dashboard_downloading_row_title)
+        }
+        val showProgress = capped.any { it is MediaMessage && DownloadProgressTracker.isDownloading(it.fileId) || it is MediaMessage && it.isDownloadActive }
+
+        if (inProgressListRow == null) {
+            inProgressHeader = DashboardHeaderItem(
+                IN_PROGRESS_ROW_ID,
                 headerTitle,
                 R.drawable.ic_download,
-                showProgressIcon = !downloadingShowReady
+                showProgressIcon = showProgress && !downloadingShowReady
             ).apply {
                 displayName = headerTitle
                 isReady = downloadingShowReady
             }
-            downloadingRowAdapter = ArrayObjectAdapter(downloadingCardPresenter).apply {
-                add(message)
+            val selector = ClassPresenterSelector().apply {
+                addClassPresenter(MediaMessage::class.java, downloadingCardPresenter)
+                addClassPresenter(ContinueWatchingItem::class.java, continueWatchingCardPresenter)
+                addClassPresenter(com.aes.grammplayer.ui.features.history.HistoryItem::class.java, continueWatchingCardPresenter)
             }
-            downloadingListRow = DownloadingListRow(
-                DOWNLOADING_ROW_ID,
-                downloadingHeader!!,
-                downloadingRowAdapter!!
+            inProgressRowAdapter = ArrayObjectAdapter(selector).apply {
+                capped.forEach { add(it) }
+            }
+            inProgressListRow = DownloadingListRow(
+                IN_PROGRESS_ROW_ID,
+                inProgressHeader!!,
+                inProgressRowAdapter!!
             )
-            adapter.add(DOWNLOADING_ROW_INDEX, downloadingListRow!!)
+            adapter.add(IN_PROGRESS_ROW_INDEX, inProgressListRow!!)
+            lastInProgressRefreshMs = android.os.SystemClock.elapsedRealtime()
         } else {
-            downloadingRowAdapter?.replace(0, message)
+            val rowAdapter = inProgressRowAdapter ?: return
+            val existing: List<Any> = (0 until rowAdapter.size()).mapNotNull { rowAdapter.get(it) as? Any }
+            // ponytail: adapter clear only when ids/positions change; progress ticks update views in-place to avoid Glide unbind/reload ceiling.
+            if (areInProgressItemsEqual(existing, capped)) {
+                var headerChanged = false
+                if (inProgressHeader?.displayName != headerTitle) {
+                    inProgressHeader?.displayName = headerTitle
+                    headerChanged = true
+                }
+                if (inProgressHeader?.isReady != downloadingShowReady) {
+                    inProgressHeader?.isReady = downloadingShowReady
+                    headerChanged = true
+                }
+                updateVisibleInProgressProgress(capped)
+                if (headerChanged) notifyInProgressRowChanged()
+                // debounce: no adapter change, still update timestamp for progress ticks
+                lastInProgressRefreshMs = android.os.SystemClock.elapsedRealtime()
+                return
+            }
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - lastInProgressRefreshMs < 200) {
+                // debounce rapid refresh when items changed very quickly; still proceed if header title changes
+                // items have changed, so don't skip — just update timestamp and continue
+            }
+            inProgressHeader?.displayName = headerTitle
+            inProgressHeader?.isReady = downloadingShowReady
+            rowAdapter.clear()
+            capped.forEach { rowAdapter.add(it) }
+            notifyInProgressRowChanged()
+            lastInProgressRefreshMs = now
         }
+    }
+
+    private fun areInProgressItemsEqual(existing: List<Any>, new: List<Any>): Boolean {
+        if (existing.size != new.size) return false
+        for (i in existing.indices) {
+            val a = existing[i]
+            val b = new[i]
+            if (a::class != b::class) return false
+            when {
+                a is MediaMessage && b is MediaMessage -> if (a.fileId != b.fileId || a.id != b.id) return false
+                a is ContinueWatchingItem && b is ContinueWatchingItem -> if (a.message.id != b.message.id || a.message.fileId != b.message.fileId || a.positionMs != b.positionMs || a.durationMs != b.durationMs) return false
+                a is com.aes.grammplayer.ui.features.history.HistoryItem && b is com.aes.grammplayer.ui.features.history.HistoryItem -> if (a.message.id != b.message.id || a.message.fileId != b.message.fileId) return false
+                else -> return false
+            }
+        }
+        return true
+    }
+
+    private fun updateVisibleInProgressProgress(items: List<Any>) {
+        val root = view ?: return
+        items.forEach { item ->
+            when (item) {
+                is MediaMessage -> updateDownloadingProgressInTree(root, item.fileId, item)
+                is ContinueWatchingItem -> updateContinueWatchingProgressInTree(root, item.message.fileId, item.positionMs, item.durationMs)
+                is com.aes.grammplayer.ui.features.history.HistoryItem -> updateContinueWatchingProgressInTree(root, item.message.fileId, 0L, 0L)
+            }
+        }
+    }
+
+    private fun updateContinueWatchingProgressInTree(root: View, fileId: Int, positionMs: Long, durationMs: Long): Boolean {
+        if (root.getTag(R.id.grid_card_file_id) == fileId) {
+            ContinueWatchingCardPresenter.bindProgress(root, positionMs, durationMs)
+            return true
+        }
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) {
+                if (updateContinueWatchingProgressInTree(root.getChildAt(index), fileId, positionMs, durationMs)) return true
+            }
+        }
+        return false
+    }
+
+    private fun updateVisibleDownloadingProgressByFileId(fileId: Int): Boolean {
+        val root = view ?: return false
+        // try downloading card first
+        if (updateDownloadingProgressByFileIdInTree(root, fileId)) return true
+        // fallback: if we have a cached download message in adapter, use it
+        val adapter = inProgressRowAdapter
+        if (adapter != null) {
+            for (i in 0 until adapter.size()) {
+                val item = adapter.get(i)
+                if (item is MediaMessage && item.fileId == fileId) {
+                    return updateDownloadingProgressInTree(root, fileId, item)
+                }
+            }
+        }
+        // also try to load current session message lightweight without DB if possible
+        return false
+    }
+
+    private fun updateDownloadingProgressByFileIdInTree(root: View, fileId: Int): Boolean {
+        if (root.getTag(R.id.grid_card_file_id) == fileId) {
+            val progress = DownloadProgressTracker.progressFor(fileId)
+            if (progress != null) {
+                // use presenter helper via synthetic message-like path: directly update banner/progress
+                val banner = root.findViewById<TextView>(R.id.banner)
+                val progressBar = root.findViewById<android.widget.ProgressBar>(R.id.download_progress_bar)
+                val last = root.getTag(R.id.grid_download_progress) as? Int
+                if (last != progress) {
+                    root.setTag(R.id.grid_download_progress, progress)
+                    banner?.apply {
+                        visibility = View.VISIBLE
+                        text = com.aes.grammplayer.helper.FormatHelper.formatGridDownloadLabel(progress)
+                        setTextColor(ContextCompat.getColor(context, R.color.downloading_border))
+                    }
+                    progressBar?.apply {
+                        visibility = View.VISIBLE
+                        this.progress = progress
+                    }
+                }
+            } else {
+                // fallback to ready check
+                val session = ActiveDownloadManager.currentSession()
+                if (session?.fileId == fileId) {
+                    // still downloading but progress not yet tracked; keep current UI
+                }
+            }
+            return true
+        }
+        if (root is ViewGroup) {
+            for (index in 0 until root.childCount) {
+                if (updateDownloadingProgressByFileIdInTree(root.getChildAt(index), fileId)) return true
+            }
+        }
+        return false
+    }
+
+    private fun ensureDownloadingRow(adapter: ArrayObjectAdapter, message: MediaMessage) {
+        ensureInProgressRow(adapter, listOf(message))
     }
 
     private fun showDownloadingReadyState(message: MediaMessage) {
@@ -349,8 +763,12 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private fun notifyDownloadingRowChanged() {
+        notifyInProgressRowChanged()
+    }
+
+    private fun notifyInProgressRowChanged() {
         val adapter = rowsAdapter ?: return
-        val row = downloadingListRow ?: return
+        val row = inProgressListRow ?: return
         val index = adapter.indexOf(row)
         if (index >= 0) {
             adapter.notifyArrayItemRangeChanged(index, 1)
@@ -398,14 +816,18 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private fun removeDownloadingRow(adapter: ArrayObjectAdapter) {
-        val row = downloadingListRow ?: return
+        removeInProgressRow(adapter)
+    }
+
+    private fun removeInProgressRow(adapter: ArrayObjectAdapter) {
+        val row = inProgressListRow ?: return
         val index = adapter.indexOf(row)
         if (index >= 0) {
             adapter.removeItems(index, 1)
         }
-        downloadingListRow = null
-        downloadingRowAdapter = null
-        downloadingHeader = null
+        inProgressListRow = null
+        inProgressRowAdapter = null
+        inProgressHeader = null
         downloadingShowReady = false
     }
 
@@ -452,6 +874,12 @@ class MainFragment : BrowseSupportFragment() {
             row: Row
         ) {
             when (item) {
+                is ContinueWatchingItem -> {
+                    startActivity(MediaDetailsActivity.newIntent(requireContext(), item.message))
+                }
+                is com.aes.grammplayer.ui.features.history.HistoryItem -> {
+                    startActivity(MediaDetailsActivity.newIntent(requireContext(), item.message))
+                }
                 is MediaMessage -> {
                     startActivity(MediaDetailsActivity.newIntent(requireContext(), item))
                 }
@@ -460,30 +888,22 @@ class MainFragment : BrowseSupportFragment() {
                         return
                     }
                     when (item.id) {
-                        "clear_cache" -> {
+                        "storage_manager" -> {
                             viewLifecycleOwner.lifecycleScope.launch {
                                 try {
-                                    val deletedCount = loadingDialog.runWithLoading("Clearing cache...") {
+                                    val result = loadingDialog.runWithLoading("Clearing cache...") {
                                         withContext(Dispatchers.IO) {
-                                            val count = TelegramClientManager.clearDownloadCache(requireContext())
+                                            val r = TelegramClientManager.clearDownloadCache(requireContext())
                                             SettingsDataStore(requireContext()).clearPlaybackPosition()
-                                            count
+                                            r
                                         }
                                     }
                                     if (!isAdded) return@launch
-                                    val cacheClearText =
-                                        "Cleared $deletedCount downloaded files from cache"
-                                    Toast.makeText(requireContext(), cacheClearText, Toast.LENGTH_SHORT)
-                                        .show()
+                                    Toast.makeText(requireContext(), "Cleared ${result.count} files • ${FormatHelper.formatBytes(result.bytes)} freed", Toast.LENGTH_LONG).show()
+                                    updateStorageCard()
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Clear cache failed", e)
-                                    if (isAdded) {
-                                        Toast.makeText(
-                                            requireContext(),
-                                            "Failed to clear cache",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
+                                    if (isAdded) Toast.makeText(requireContext(), "Failed to clear cache", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -604,6 +1024,8 @@ class MainFragment : BrowseSupportFragment() {
         private val TAG = "MainFragment"
         private const val DOWNLOADING_ROW_INDEX = 0
         private const val DOWNLOADING_ROW_ID = 3L
+        private const val IN_PROGRESS_ROW_INDEX = DOWNLOADING_ROW_INDEX
+        private const val IN_PROGRESS_ROW_ID = DOWNLOADING_ROW_ID
     }
 }
 

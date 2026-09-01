@@ -3,11 +3,11 @@ package com.aes.grammplayer.provider
 
 import android.util.Log
 import com.aes.grammplayer.GPlayerApplication
-import com.aes.grammplayer.db.AppDatabase
+import com.aes.grammplayer.db.model.Chat
+import com.aes.grammplayer.provider.JsonSeedStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
 
 object ChatsDataProvider {
@@ -28,12 +28,11 @@ object ChatsDataProvider {
         filter: ((Chat) -> Boolean)? = null,
     ): Page<Chat> {
         val context = GPlayerApplication.Companion.AppContext
-        val database = AppDatabase.getDatabase(context)
 
         return withContext(Dispatchers.IO) {
             try {
                 val chats = if (mode) {
-                    database.chatDao().getAllPaged(pageSize, offset)
+                    JsonSeedStore.getChatsPaged(pageSize, offset)
                 } else {
                     TelegramClientManager.loadGroupsPage(
                         offset = offset,
@@ -46,10 +45,7 @@ object ChatsDataProvider {
                     items = chats.filter { chat -> filter?.invoke(chat) ?: true },
                     nextOffset = offset + pageSize,
                     nextCursor = 0L,
-                    // Remote pages can come back short of pageSize because
-                    // loadGroupsPage drops skipped chats; only an EMPTY page
-                    // reliably signals the end there.
-                    endReached = if (mode) chats.size < pageSize else chats.isEmpty()
+                    endReached = chats.size < pageSize
                 )
             } catch (e: CancellationException) {
                 throw e

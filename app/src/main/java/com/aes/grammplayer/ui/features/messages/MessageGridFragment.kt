@@ -39,12 +39,7 @@ class MessageGridFragment : BaseGridFragment() {
         setupEventListeners()
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (!isLoadingMessages) {
-            refreshAllCards()
-        }
-    }
+    // ponytail: removed refreshAllCards onResume — full range notify resets Leanback scroll; per-card binder handles labels
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -82,12 +77,14 @@ class MessageGridFragment : BaseGridFragment() {
         }
         userMode = settingsDataStore.isTestMode.first()
         pageSize = settingsDataStore.messagesPageSize.first()
+        // ponytail: save position before clear so future reloads don't snap to 0
+        val savedPos = lastSelectedPosition
         gridAdapter.clear()
         pageOffset = 0
         pageCursor = 0L
         endReached = false
         fetchAndAppendPage()
-        refreshAllCards()
+        if (savedPos > 0) setSelectedPosition(savedPos.coerceAtMost((gridAdapter.size() - 1).coerceAtLeast(0)))
     }
 
     override fun loadNextPage() {

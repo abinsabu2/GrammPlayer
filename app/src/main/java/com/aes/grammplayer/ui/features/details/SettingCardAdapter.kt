@@ -10,8 +10,25 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
 
-class SettingCardAdapter(private val items: List<SettingItem>) :
+class SettingCardAdapter(private var items: List<SettingItem>) :
     RecyclerView.Adapter<SettingCardAdapter.SettingViewHolder>() {
+
+    fun setItems(newItems: List<SettingItem>) {
+        items = newItems
+        notifyDataSetChanged()
+    }
+
+    fun updateStorage(internalText: String, externalText: String, isExternalAvailable: Boolean = externalText != "Not available") {
+        // Handle dynamic size: hide external when not available
+        val nonStorage = items.filterNot { it.caption == "Storage(Int)" || it.caption == "Storage(SD)" }
+        val newList = nonStorage.toMutableList()
+        newList.add(SettingItem(R.drawable.ic_storage, internalText, "Storage(Int)", enabled = true))
+        if (isExternalAvailable) {
+            newList.add(SettingItem(R.drawable.ic_storage, externalText, "Storage(SD)", enabled = true))
+        }
+        items = newList
+        notifyDataSetChanged()
+    }
 
     class SettingViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val cardContainer: LinearLayout = view.findViewById(R.id.card_container)
@@ -54,6 +71,22 @@ class SettingCardAdapter(private val items: List<SettingItem>) :
         val accent = ContextCompat.getColor(context, R.color.accent_teal)
         val white = ContextCompat.getColor(context, android.R.color.white)
         val muted = android.graphics.Color.parseColor("#9A9A9E")
+
+        if (!item.enabled) {
+            holder.cardContainer.setBackgroundResource(R.drawable.setting_card_background)
+            holder.cardContainer.alpha = 0.45f
+            holder.valueText.setTextColor(muted)
+            holder.captionText.setTextColor(muted)
+            holder.subCaptionText.setTextColor(muted)
+            holder.icon.setColorFilter(muted)
+            holder.icon.alpha = 0.6f
+            holder.itemView.isEnabled = false
+            return
+        } else {
+            holder.cardContainer.alpha = 1f
+            holder.icon.alpha = 1f
+            holder.itemView.isEnabled = true
+        }
 
         if (item.selected) {
             holder.cardContainer.setBackgroundResource(R.drawable.setting_card_background_selected)

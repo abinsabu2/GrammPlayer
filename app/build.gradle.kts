@@ -4,7 +4,6 @@ import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
 }
 
 val keystoreProperties = Properties()
@@ -122,17 +121,13 @@ android {
                 newApkName
         }
     }
-
-    // ✅ Fix for KAPT NonExistentClass errors (Retrofit/Room)
-    kapt {
-        correctErrorTypes = true
-    }
 }
 
 dependencies {
     implementation(libs.androidx.leanback)
     implementation(libs.androidx.core.ktx)
     implementation(libs.glide)
+    implementation(libs.glide.okhttp)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.activity.ktx)
@@ -141,9 +136,6 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
 
     // ✅ Added OkHttp
     implementation(libs.okhttp)

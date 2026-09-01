@@ -42,6 +42,9 @@ abstract class BaseGridFragment : VerticalGridSupportFragment() {
     /** True once the data source reports no further pages. */
     protected var endReached = false
 
+    /** Last selected position tracked to restore after adapter clear; prevents snap to 0. */
+    protected var lastSelectedPosition: Int = 0
+
     /**
      * Called when D-pad selection comes within [PAGE_PREFETCH_DISTANCE] items of the
      * grid end and more pages remain. Subclasses override to fetch + append the next page.
@@ -56,6 +59,10 @@ abstract class BaseGridFragment : VerticalGridSupportFragment() {
 
     private fun installPagingTrigger() {
         setOnItemViewSelectedListener { _, item, _, _ ->
+            if (item != null) {
+                val idx = gridAdapter.indexOf(item)
+                if (idx >= 0) lastSelectedPosition = idx
+            }
             if (item == null || isPageLoading || endReached) return@setOnItemViewSelectedListener
             val index = gridAdapter.indexOf(item)
             if (index >= 0 && index >= gridAdapter.size() - PAGE_PREFETCH_DISTANCE) {

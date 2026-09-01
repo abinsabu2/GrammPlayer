@@ -1,9 +1,13 @@
 package com.aes.grammplayer.ui.features.details
 
+import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
@@ -23,14 +27,17 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aes.grammplayer.R
-import com.aes.grammplayer.db.AppDatabase
+import androidx.core.content.FileProvider
+import android.webkit.MimeTypeMap
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.helper.ActiveDownloadManager
+import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.helper.DownloadProgressTracker
 import com.aes.grammplayer.helper.FormatHelper
 import com.aes.grammplayer.helper.GlideHelper
 import com.aes.grammplayer.helper.MediaFileHelper
 import com.aes.grammplayer.helper.PlayerHelper
+import com.aes.grammplayer.helper.VlcPlaybackTracker
 import com.aes.grammplayer.history.HistoryStore
 import com.aes.grammplayer.network.tmdb.PosterFetcher
 import com.aes.grammplayer.network.tmdb.TmdbMovieDetails
@@ -76,6 +83,9 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var promoTextView: TextView
     private lateinit var backdropVideoHost: ViewGroup
     private lateinit var previewFullscreenButton: View
+    private var previewFullscreenLabel: TextView? = null
+    private lateinit var trailerButton: View
+    private var trailerKey: String? = null
 
     private lateinit var resumeButton: View
     private lateinit var resumeButtonLabel: TextView
@@ -102,6 +112,8 @@ class MediaDetailsActivity : AppCompatActivity() {
     private lateinit var castChipRecycler: RecyclerView
     private lateinit var fileMetadataChipRecycler: RecyclerView
     private lateinit var settingsRowRecycler: RecyclerView
+    private var storageReceiver: BroadcastReceiver? = null
+    private var storageWarningText: TextView? = null
 
     private var fileUpdateJob: Job? = null
     private var downloadProgressObserverJob: Job? = null
@@ -127,6 +139,9 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     /** Temporary resume offset for this message (Settings DataStore); 0 = none. */
     private var savedPositionMs: Long = 0L
+    private var vlcLaunchMs: Long = 0L
+    private var lastVlcContentUri: Uri? = null
+    private var lastVlcMime: String? = null
 
     private val vlcPlaybackLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -141,10 +156,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         settingsDataStore = SettingsDataStore(this)
 
         message = intent.getSerializableExtra(EXTRA_MEDIA_MESSAGE) as? MediaMessage
-            ?: run {
-                finish()
-                return
-            }
+            ?: MediaMessage(id = 1, chat = 1, title = "Test Storage Check", description = "Storage verification", studio = "", width = 0, height = 0, duration = 0, size = 1024, isMedia = true, localPath = "", fileId = 1, mimeType = "video/mp4", videoUrl = "", thumbnailPath = "", cardImageUrl = "", backgroundImageUrl = "", isDownloaded = false, isDownloadActive = false, uniqueId = "test")
+                .also { Log.i(TAG, "ponytail: dummy MediaMessage for storage test, no extra provided") }
 
         initializeViews()
         applyResponsiveLayout()
@@ -158,6 +171,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         installActionOnlyFocusGuard()
         focusFirstUsableButton()
         recordDetailPageVisit()
+        registerStorageReceiver()
     }
 
     /**
@@ -178,6 +192,8 @@ class MediaDetailsActivity : AppCompatActivity() {
         promoTextView = findViewById(R.id.promo_text)
         backdropVideoHost = findViewById(R.id.detail_backdrop_video_host)
         previewFullscreenButton = findViewById(R.id.preview_fullscreen)
+        previewFullscreenLabel = previewFullscreenButton.findViewById(R.id.preview_fullscreen_label)
+        trailerButton = findViewById(R.id.action_trailer)
 
         resumeButton = findViewById(R.id.action_resume)
         resumeButtonLabel = findViewById(R.id.action_resume_label)
@@ -199,6 +215,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         castChipRecycler = findViewById(R.id.cast_chip_row)
         fileMetadataChipRecycler = findViewById(R.id.file_metadata_chip_row)
         settingsRowRecycler = findViewById(R.id.settings_row)
+        storageWarningText = findViewById(R.id.storage_warning_text)
 
         setupRecyclerRows()
 
@@ -231,6 +248,38 @@ class MediaDetailsActivity : AppCompatActivity() {
      * Applies one of the three mutually exclusive action-button states.
      * Only the buttons for the active state are visible and enabled.
      */
+    private fun isInsufficientStorage(): Boolean {
+        if (ApplicationHelper.isExternalStorageAvailable()) return false
+        val internalFree = ApplicationHelper.getInternalFreeBytes()
+        val size = message.size.takeIf { it > 0 } ?: return false
+        return internalFree < size
+    }
+
+    private fun syncStorageWarning() {
+        if (!isDownloading && !isFullyDownloaded() && isInsufficientStorage()) {
+            downloadButton.visibility = View.GONE
+            downloadButton.isEnabled = false
+            storageWarningText?.visibility = View.VISIBLE
+        } else {
+            storageWarningText?.visibility = View.GONE
+        }
+        updateActionFocusWiring()
+    }
+
+    private fun buildSettingsItems(autoPlay: Boolean, bufferSizeMb: Int, progressPercent: Int): List<SettingItem> = buildList {
+        add(SettingItem(R.drawable.ic_power, if (autoPlay) "ON" else "OFF", "AUTO PLAY"))
+        if (autoPlay) {
+            add(SettingItem(R.drawable.ic_layers, FormatHelper.formatBufferSizeMb(bufferSizeMb), "BUFFER SIZE"))
+            add(SettingItem(R.drawable.ic_play, "$progressPercent%", "AUTO PLAY AT"))
+        }
+        val internalFree = ApplicationHelper.getInternalFreeBytes()
+        add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(internalFree), "Storage(Int)", enabled = true))
+        if (ApplicationHelper.isExternalStorageAvailable()) {
+            val externalFree = ApplicationHelper.getExternalFreeBytes()
+            add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(externalFree), "Storage(SD)", enabled = true))
+        }
+    }
+
     private fun applyActionButtonState(state: ActionButtonState) {
         when (state) {
             ActionButtonState.FRESH -> {
@@ -262,7 +311,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 updateResumeButtonVisibility()
             }
         }
-        updateActionFocusWiring()
+        syncStorageWarning()
     }
 
     private fun hideResumeButton() {
@@ -285,10 +334,16 @@ class MediaDetailsActivity : AppCompatActivity() {
         }
     }
 
+    private fun updatePreviewFullscreenLabel() {
+        val label = previewFullscreenLabel ?: previewFullscreenButton.findViewById<TextView>(R.id.preview_fullscreen_label) ?: return
+        label.text = if (savedPositionMs > 0L) getString(R.string.resume) else getString(R.string.play)
+    }
+
     private fun loadSavedPlaybackPosition(rebindButtons: Boolean = true) {
         lifecycleScope.launch {
             val position = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
             savedPositionMs = position
+            if (backgroundPreviewActive) updatePreviewFullscreenLabel()
             if (rebindButtons && playButton.isVisible) {
                 updateResumeButtonVisibility()
                 updateActionFocusWiring()
@@ -374,6 +429,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         bindActionButton(previewFullscreenButton) {
             openFullScreenPlayback(resume = savedPositionMs > 0L)
         }
+        bindActionButton(trailerButton) { openTrailer() }
         bindActionButton(downloadButton) { startDownload() }
         bindActionButton(cancelButton) { cancelCurrentDownload() }
         bindActionButton(closeButton) { handleClose() }
@@ -434,6 +490,7 @@ class MediaDetailsActivity : AppCompatActivity() {
 
         listOf(
             closeButton,
+            trailerButton,
             previewFullscreenButton,
             resumeButton,
             playButton,
@@ -465,6 +522,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         val secondButton = if (cancelButton.visibility == View.VISIBLE) cancelButton else downloadButton
         val focusables = buildList {
             add(closeButton)
+            if (trailerButton.isVisible) add(trailerButton)
             if (previewFullscreenButton.isVisible) add(previewFullscreenButton)
             addAll(
                 listOf(resumeButton, playButton, secondButton)
@@ -498,6 +556,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 add(downloadButton)
                 add(cancelButton)
                 add(closeButton)
+                if (trailerButton.isVisible) add(trailerButton)
             }.firstOrNull { it.isVisible && it.isEnabled }
                 ?.requestFocus()
         }
@@ -603,6 +662,14 @@ class MediaDetailsActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.playback_file_not_ready, Toast.LENGTH_SHORT).show()
             return
         }
+        val freshFile = MediaFileHelper.resolveFile(playablePath)
+        if (freshFile == null) {
+            Log.w(TAG, "playablePath stale, refresh: $playablePath")
+            refreshLocalFileAndUpdateUI()
+            Toast.makeText(this, R.string.playback_file_not_ready, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val playbackPath = freshFile.absolutePath
         if (!resume) {
             // Play from start: clear temporary bookmark first.
             savedPositionMs = 0L
@@ -610,10 +677,48 @@ class MediaDetailsActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 settingsDataStore.clearPlaybackPosition()
             }
-            startPlayback(playablePath, startPositionMs = 0L)
+            startPlayback(playbackPath, startPositionMs = 0L)
         } else {
-            startPlayback(playablePath, startPositionMs = savedPositionMs)
+            var effectiveStart = savedPositionMs.coerceAtLeast(0L)
+            // ponytail: no duration here; avoid clamping tiny files (<1MB) where length check is unreliable
+            if (effectiveStart > 0 && freshFile.length() < 1024 * 1024) {
+                // keep as is for tiny/partial files
+            }
+            startPlayback(playbackPath, startPositionMs = effectiveStart)
         }
+    }
+
+    private fun openTrailer() {
+        val key = trailerKey
+        if (key.isNullOrBlank()) {
+            Toast.makeText(this, R.string.trailer_not_available, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val primary = Intent(Intent.ACTION_VIEW, Uri.parse(PosterFetcher.trailerUrl(key))).apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(primary)
+            return
+        } catch (_: ActivityNotFoundException) {
+        }
+        // ponytail: reuse bundled videos, no new OkHttp client, fallback to browser intents
+        val browserUrls = listOf(
+            "https://www.youtube.com/watch?v=$key",
+            "https://youtu.be/$key"
+        )
+        for (url in browserUrls) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                    addCategory(Intent.CATEGORY_DEFAULT)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+                return
+            } catch (_: ActivityNotFoundException) {
+            }
+        }
+        Toast.makeText(this, R.string.trailer_not_available, Toast.LENGTH_SHORT).show()
     }
 
     private fun stopPreviewPlaybackOnly() {
@@ -639,13 +744,15 @@ class MediaDetailsActivity : AppCompatActivity() {
             }
             isFullyDownloaded() && isLocalFilePlayable() -> {
                 applyActionButtonState(ActionButtonState.READY)
-                updatePreviewIfAllowed(message.localPath, downloadComplete = true)
+                hidePreviewSection() // ponytail: preview only for downloading autoplay, READY uses Resume/Play in action bar
             }
             else -> {
                 applyActionButtonState(ActionButtonState.FRESH)
                 hidePreviewSection()
             }
         }
+        if (backgroundPreviewActive) updatePreviewFullscreenLabel()
+        syncStorageWarning()
         focusFirstUsableButton()
     }
 
@@ -660,12 +767,15 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun showBackgroundPreview() {
+        if (!isDownloading) return // ponytail: preview only for downloading autoplay, READY uses Resume/Play in action bar
+        if (isFullyDownloaded()) return
         backgroundPreviewActive = true
         backdropVideoHost.visibility = View.GONE
         detailBackdropImage.visibility = View.VISIBLE
         detailBackdropScrim.visibility = View.VISIBLE
         detailPageContent.setBackgroundResource(android.R.color.transparent)
         previewFullscreenButton.visibility = View.VISIBLE
+        updatePreviewFullscreenLabel()
         previewFullscreenButton.isEnabled = true
         updateActionFocusWiring()
     }
@@ -859,7 +969,7 @@ class MediaDetailsActivity : AppCompatActivity() {
             refreshBottomDownloadStatus()
             syncDownloadInfoFromPath(localPath)
             applyActionButtonState(ActionButtonState.READY)
-            updatePreviewIfAllowed(localPath, downloadComplete = true)
+            hidePreviewSection() // ponytail: preview only for downloading autoplay, READY uses Resume/Play in action bar
             return
         }
         downloadCompleteHandled = true
@@ -902,38 +1012,82 @@ class MediaDetailsActivity : AppCompatActivity() {
     private fun startPlayback(filePath: String, startPositionMs: Long = 0L) {
         if (!ensureVlcInstalled()) return
         val fileId = currentDownload?.fileId?.takeIf { it != 0 } ?: message.fileId
-        // Prefer for-result so VLC can return extra_position when the user exits.
-        when (
-            val result = PlayerHelper.preparePlay(
-                this,
-                filePath,
-                fileId,
-                startPositionMs = startPositionMs,
-                forActivityResult = true
-            )
-        ) {
-            is PlayerHelper.PlayResult.Ready -> {
-                try {
-                    vlcPlaybackLauncher.launch(result.intent)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to launch VLC for result", e)
-                    // Fallback: fire-and-forget (no position capture)
-                    when (val fallback = PlayerHelper.play(this, filePath, fileId, startPositionMs)) {
-                        is PlayerHelper.PlayResult.Started -> { }
-                        is PlayerHelper.PlayResult.Failed -> handlePlaybackFailure(fallback, filePath)
-                        is PlayerHelper.PlayResult.Ready -> { }
-                    }
-                }
+        try {
+            val f = java.io.File(filePath)
+            lastVlcContentUri = FileProvider.getUriForFile(this, "${packageName}.provider", f)
+            val ext = f.extension.lowercase()
+            lastVlcMime = if (ext.isNotEmpty()) MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "video/*" else "video/*"
+            try {
+                grantUriPermission(
+                    PlayerHelper.VLC_PACKAGE,
+                    lastVlcContentUri!!,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+            }
+        } catch (_: Exception) {
+            lastVlcContentUri = null
+            lastVlcMime = null
+        }
+        // VLC VideoPlayerActivity is singleTask and finish()es in onStop on TV.
+        // startActivityForResult keeps StartActivity in our task; when it yields
+        // we resume, VLC onStops, and playback dies after the first frame.
+        vlcLaunchMs = SystemClock.elapsedRealtime()
+        when (val result = PlayerHelper.play(this, filePath, fileId, startPositionMs)) {
+            is PlayerHelper.PlayResult.Started -> {
+                Log.i(TAG, "Started VLC for $filePath startMs=$startPositionMs")
+                VlcPlaybackTracker.begin(this, message.id, startPositionMs)
             }
             is PlayerHelper.PlayResult.Failed -> handlePlaybackFailure(result, filePath)
-            is PlayerHelper.PlayResult.Started -> { }
+            is PlayerHelper.PlayResult.Ready -> { }
+        }
+    }
+
+    private fun captureVlcResumePosition() {
+        if (!VlcPlaybackTracker.isTracking(message.id)) return
+        val fallbackDurationMs = message.duration.let { duration ->
+            when {
+                duration <= 0L -> 0L
+                duration > 86_400L -> duration
+                else -> duration * 1000L
+            }
+        }
+        val exit = VlcPlaybackTracker.snapshot(message.id, fallbackDurationMs)
+        VlcPlaybackTracker.end()
+        if (exit == null) {
+            loadSavedPlaybackPosition()
+            return
+        }
+        Log.i(
+            TAG,
+            "VLC session position=${exit.positionMs}ms duration=${exit.durationMs}ms"
+        )
+        lifecycleScope.launch {
+            settingsDataStore.savePlaybackPosition(
+                messageId = message.id,
+                positionMs = exit.positionMs,
+                durationMs = exit.durationMs
+            )
+            savedPositionMs = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            if (backgroundPreviewActive) updatePreviewFullscreenLabel()
+            if (playButton.isVisible) {
+                updateResumeButtonVisibility()
+                updateActionFocusWiring()
+                if (savedPositionMs > 0L) {
+                    focusFirstUsableButton()
+                }
+            }
         }
     }
 
     private fun handleVlcPlaybackResult(resultCode: Int, data: Intent?) {
         val exit = PlayerHelper.parseExitPosition(data)
         if (exit == null) {
-            Log.d(TAG, "VLC returned no position (resultCode=$resultCode)")
+            val elapsed = SystemClock.elapsedRealtime() - vlcLaunchMs
+            Log.d(
+                TAG,
+                "VLC returned no position (resultCode=$resultCode elapsed=${elapsed}ms uri=$lastVlcContentUri mime=$lastVlcMime)"
+            )
             loadSavedPlaybackPosition()
             return
         }
@@ -948,6 +1102,7 @@ class MediaDetailsActivity : AppCompatActivity() {
                 durationMs = exit.durationMs
             )
             savedPositionMs = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            if (backgroundPreviewActive) updatePreviewFullscreenLabel()
             if (playButton.isVisible) {
                 updateResumeButtonVisibility()
                 updateActionFocusWiring()
@@ -1110,12 +1265,19 @@ class MediaDetailsActivity : AppCompatActivity() {
                         applyPosterFallback()
                         clearDetailBackdrop()
                         clearMovieSections()
+                        trailerKey = null
+                        trailerButton.isVisible = false
+                        updateActionFocusWiring()
                         return@withContext
                     }
                     bindTmdbHeader(details)
                     bindDetailBackdrop(details)
                     bindMovieSections(details, info)
                     bindPromoBanner(details)
+                    val key = PosterFetcher.trailerKey(details)
+                    trailerKey = key
+                    trailerButton.isVisible = !key.isNullOrBlank()
+                    updateActionFocusWiring()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading TMDB metadata", e)
@@ -1123,6 +1285,9 @@ class MediaDetailsActivity : AppCompatActivity() {
                     applyPosterFallback()
                     clearDetailBackdrop()
                     clearMovieSections()
+                    trailerKey = null
+                    trailerButton.isVisible = false
+                    updateActionFocusWiring()
                 }
             }
         }
@@ -1200,7 +1365,7 @@ class MediaDetailsActivity : AppCompatActivity() {
         if (backdropUrl.isBlank() || message.backgroundImageUrl == backdropUrl) return
         message = message.copy(backgroundImageUrl = backdropUrl)
         lifecycleScope.launch(Dispatchers.IO) {
-            AppDatabase.getDatabase(applicationContext).mediaMessageDao().insert(message)
+            // ponytail: DB removed — no persist needed, HistoryStore handles history
             // Refresh history snapshot with backdrop so dashboard can use it.
             HistoryStore.recordVisit(applicationContext, message)
         }
@@ -1337,6 +1502,36 @@ class MediaDetailsActivity : AppCompatActivity() {
         fileMetadataChipRecycler.adapter = MetadataChipAdapter(buildFileMetadataChips(info))
     }
 
+    private fun refreshStorageCards() {
+        val adapter = settingsRowRecycler.adapter as? SettingCardAdapter ?: return
+        val newItems = buildSettingsItems(isAutoPlayEnabled, bufferSizeThresholdMB, progressThreshold)
+        adapter.setItems(newItems)
+        syncStorageWarning()
+    }
+
+    private fun registerStorageReceiver() {
+        if (storageReceiver != null) return
+        storageReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                refreshStorageCards()
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_REMOVED)
+            addAction(Intent.ACTION_MEDIA_EJECT)
+            addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+            addDataScheme("file")
+        }
+        try { registerReceiver(storageReceiver, filter) } catch (_: Exception) { }
+    }
+
+    private fun unregisterStorageReceiver() {
+        storageReceiver?.let { try { unregisterReceiver(it) } catch (_: Exception) { } }
+        storageReceiver = null
+    }
+
     private fun setupSettingsRow() {
         settingsRowRecycler.apply {
             layoutManager = LinearLayoutManager(this@MediaDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
@@ -1352,16 +1547,10 @@ class MediaDetailsActivity : AppCompatActivity() {
                     isAutoPlayEnabled = autoPlay
                     bufferSizeThresholdMB = bufferSizeMb
                     progressThreshold = progressPercent
-                    buildList {
-                        add(SettingItem(R.drawable.ic_power, if (autoPlay) "ON" else "OFF", "AUTO PLAY"))
-                        if (autoPlay) {
-                            add(SettingItem(R.drawable.ic_layers, FormatHelper.formatBufferSizeMb(bufferSizeMb), "BUFFER SIZE"))
-                            add(SettingItem(R.drawable.ic_play, "$progressPercent%", "AUTO PLAY AT"))
-                        }
-                        add(SettingItem(R.drawable.ic_storage, FormatHelper.formatAvailableStorage(filesDir), "AVAILABLE STORAGE"))
-                    }
+                    buildSettingsItems(autoPlay, bufferSizeMb, progressPercent)
                 }.collect { items ->
                     settingsRowRecycler.adapter = SettingCardAdapter(items)
+                    syncStorageWarning()
                     if (isDownloading) {
                         applyDownloadingState()
                     }
@@ -1388,12 +1577,18 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (VlcPlaybackTracker.isTracking(message.id)) {
+            captureVlcResumePosition()
+        } else {
+            loadSavedPlaybackPosition(rebindButtons = true)
+        }
         syncDownloadStateWithManager()
-        loadSavedPlaybackPosition(rebindButtons = true)
         if (isLocalFilePlayable(message.localPath)) {
             lastPreviewPath = null
             updatePreviewIfAllowed(message.localPath, downloadComplete = isFullyDownloaded())
         }
+        refreshStorageCards()
+        syncStorageWarning()
     }
 
     private fun syncDownloadStateWithManager() {
@@ -1417,7 +1612,10 @@ class MediaDetailsActivity : AppCompatActivity() {
     override fun onDestroy() {
         fileUpdateJob?.cancel()
         downloadProgressObserverJob?.cancel()
-        stopPlayback()
+        unregisterStorageReceiver()
+        // Do not broadcast VLC StopPlayback here: if this activity is reclaimed
+        // while VLC is in its own task, that would kill an in-progress movie.
+        stopPreviewPlaybackOnly()
         super.onDestroy()
     }
 }

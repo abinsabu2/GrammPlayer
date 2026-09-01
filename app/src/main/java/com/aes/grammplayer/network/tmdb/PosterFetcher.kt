@@ -78,6 +78,13 @@ object PosterFetcher {
             ?.firstOrNull { it.site.equals("YouTube", ignoreCase = true) && it.type.equals("Trailer", ignoreCase = true) }
             ?.let { "Trailer available" }
 
+    fun trailerKey(details: TmdbMovieDetails): String? =
+        details.videos?.results
+            ?.firstOrNull { it.site.equals("YouTube", ignoreCase = true) && it.type.equals("Trailer", ignoreCase = true) }
+            ?.key
+
+    fun trailerUrl(key: String): String = "https://www.youtube.com/watch?v=$key"
+
     suspend fun fetchPosterUrl(info: ReleaseInfo): String? =
         posterUrl(fetchMovieData(info)?.poster_path)
 

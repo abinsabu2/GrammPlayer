@@ -39,15 +39,8 @@ class HistoryGridFragment : BaseGridFragment() {
 
     override fun onResume() {
         super.onResume()
-        if (::loader.isInitialized) {
-            loader.dismiss()
-        }
-        // Skip the first onResume (pairs with onViewCreated); refresh later returns from details.
-        if (hasLoadedOnce && !isLoadingHistory && view != null) {
-            viewLifecycleOwner.lifecycleScope.launch {
-                loadFirstPage()
-            }
-        }
+        if (::loader.isInitialized) loader.dismiss()
+        // ponytail: removed hasLoadedOnce reload — clearing adapter on every resume snaps to top; new visits show on next explicit load
     }
 
     private suspend fun loadFirstPage() {
@@ -56,6 +49,8 @@ class HistoryGridFragment : BaseGridFragment() {
         isPageLoading = true
         try {
             loader.runWithLoading("Loading history...") { update ->
+                // ponytail: save position before clear so future reloads don't snap to 0
+                val savedPos = lastSelectedPosition
                 gridAdapter.clear()
                 pageOffset = 0
                 endReached = false
@@ -66,8 +61,8 @@ class HistoryGridFragment : BaseGridFragment() {
                 page.items.forEach { gridAdapter.add(it) }
                 pageOffset = page.nextOffset
                 endReached = page.endReached
+                if (savedPos > 0) setSelectedPosition(savedPos.coerceAtMost((gridAdapter.size() - 1).coerceAtLeast(0)))
                 update("Loaded ${page.items.size} items")
-                refreshAllCards()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading history first page", e)

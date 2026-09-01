@@ -3,7 +3,6 @@ package com.aes.grammplayer.util.tdlib
 import android.content.Context
 import android.util.Log
 import com.aes.grammplayer.BuildConfig
-import com.aes.grammplayer.db.AppDatabase
 import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.db.model.MediaMessage
@@ -55,12 +54,15 @@ object TelegramClientManager {
     fun initialize() {
         if (isInitialized) return
 
-        activeStoragePath = ApplicationHelper.getBestAvailableStoragePath()
-        Log.i("StorageManager", "Using storage path: $activeStoragePath")
+        // ponytail: keep DB on internal (reliable, not vfat), files on external when SD present
+        val internalPath = ApplicationHelper.getInternalStoragePath()
+        val filesPath = ApplicationHelper.getBestAvailableStoragePath() // external if mounted else internal
+        activeStoragePath = internalPath
+        activeFileDirectory = ApplicationHelper.getFilesDirectory(filesPath)
+        Log.i("StorageManager", "DB: $internalPath, Files: $activeFileDirectory (ext=${ApplicationHelper.isExternalStorageAvailable()} freeExt=${ApplicationHelper.formatFreeBytes(ApplicationHelper.getExternalFreeBytes())})")
 
         client = Client.create(TdLibUpdateHandler, null, null)
         Client.execute(TdApi.SetLogVerbosityLevel(1))
-        activeFileDirectory = ApplicationHelper.getFilesDirectory(activeStoragePath)
         val parameters = TdApi.SetTdlibParameters().apply {
             apiId = BuildConfig.API_ID
             apiHash = BuildConfig.API_HASH
@@ -68,7 +70,7 @@ object TelegramClientManager {
             deviceModel = "Android TV"
             systemVersion = "10"
             applicationVersion = "1.0"
-            databaseDirectory = activeStoragePath
+            databaseDirectory = internalPath
             useMessageDatabase = true
             useSecretChats = false
             filesDirectory = activeFileDirectory
@@ -78,21 +80,97 @@ object TelegramClientManager {
 
     /**
      * Clears downloaded media cache safely: asks TDLib to drop completed downloads,
-     * deletes local files off the main thread, and resets download flags in Room.
+     * deletes local files off the main thread.
      */
-    suspend fun clearDownloadCache(context: Context): Int = withContext(Dispatchers.IO) {
+    suspend fun clearDownloadCache(context: Context): ApplicationHelper.ClearResult = withContext(Dispatchers.IO) {
+        var totalCount = 0
+        var totalBytes = 0L
+        val candidates = listOf(
+            activeFileDirectory,
+            ApplicationHelper.getFilesDirectory(),
+            ApplicationHelper.getInternalStoragePath() + "/files",
+            ApplicationHelper.getInternalStoragePath() + "/tdlib/files"
+        ).distinct().filter { it.isNotBlank() }
+        for (dir in candidates) {
+            try {
+                val f = java.io.File(dir)
+                if (f.exists() && f.isDirectory) {
+                    val r = ApplicationHelper.clearDownloadedFilesWithStats(dir)
+                    totalCount += r.count
+                    totalBytes += r.bytes
+                }
+            } catch (_: Exception) {}
+        }
+        val roots = listOf(
+            ApplicationHelper.getBestAvailableStoragePath(),
+            ApplicationHelper.getInternalStoragePath()
+        ).distinct()
+        for (root in roots) {
+            try {
+                val testDir = java.io.File(root, "test_videos")
+                if (testDir.exists() && testDir.isDirectory) {
+                    testDir.walkTopDown().forEach { file ->
+                        if (file.isFile) {
+                            val len = file.length()
+                            if (file.delete()) {
+                                totalCount++
+                                totalBytes += len
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        // ponytail: DB removed — file delete suffices
         requestTdLibRemoveCompletedDownloads()
-        val deletedFilesCount = clearDownloadedFiles()
-        AppDatabase.getDatabase(context).mediaMessageDao().clearAllDownloadState()
-        deletedFilesCount
+        ApplicationHelper.ClearResult(totalCount, totalBytes)
     }
 
     /**
      * Deletes files from TDLib's pinned files directory.
      * Prefer [clearDownloadCache] from the UI — it also syncs TDLib and the database.
      */
-    fun clearDownloadedFiles(): Int =
-        ApplicationHelper.clearDownloadedFiles(activeFileDirectory)
+    fun clearDownloadedFiles(): ApplicationHelper.ClearResult {
+        var totalCount = 0
+        var totalBytes = 0L
+        val candidates = listOf(
+            activeFileDirectory,
+            ApplicationHelper.getFilesDirectory(),
+            ApplicationHelper.getInternalStoragePath() + "/files",
+            ApplicationHelper.getInternalStoragePath() + "/tdlib/files"
+        ).distinct().filter { it.isNotBlank() }
+        for (dir in candidates) {
+            try {
+                val f = java.io.File(dir)
+                if (f.exists() && f.isDirectory) {
+                    val r = ApplicationHelper.clearDownloadedFilesWithStats(dir)
+                    totalCount += r.count
+                    totalBytes += r.bytes
+                }
+            } catch (_: Exception) {}
+        }
+        val roots = listOf(
+            ApplicationHelper.getBestAvailableStoragePath(),
+            ApplicationHelper.getInternalStoragePath()
+        ).distinct()
+        for (root in roots) {
+            try {
+                val testDir = java.io.File(root, "test_videos")
+                if (testDir.exists() && testDir.isDirectory) {
+                    testDir.walkTopDown().forEach { file ->
+                        if (file.isFile) {
+                            val len = file.length()
+                            if (file.delete()) {
+                                totalCount++
+                                totalBytes += len
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        return ApplicationHelper.ClearResult(totalCount, totalBytes)
+    }
 
     private suspend fun requestTdLibRemoveCompletedDownloads() {
         val tdClient = client ?: return
@@ -359,7 +437,7 @@ object TelegramClientManager {
                 Log.w("TelegramClientManager", "Timed out waiting for AuthorizationStateClosed during logOut()")
             }
 
-            return clearDownloadedFiles()
+            return clearDownloadedFiles().count
         } finally {
             client = null
             isLoggingOut = false

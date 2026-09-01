@@ -64,7 +64,10 @@ class ChatsGridFragment : BaseGridFragment() {
                 Log.e(TAG, "Error loading chats", e)
             }
         }
-        refreshAllCards()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
     }
 
     private fun setupEventListeners() {
@@ -81,10 +84,13 @@ class ChatsGridFragment : BaseGridFragment() {
 
     private suspend fun loadFirstPage() {
         userMode = settingsDataStore.isTestMode.first()
+        // ponytail: save position before clear so future reloads don't snap to 0
+        val savedPos = lastSelectedPosition
         gridAdapter.clear()
         pageOffset = 0
         endReached = false
         fetchAndAppendPage()
+        if (savedPos > 0) setSelectedPosition(savedPos.coerceAtMost((gridAdapter.size() - 1).coerceAtLeast(0)))
     }
 
     override fun loadNextPage() {
