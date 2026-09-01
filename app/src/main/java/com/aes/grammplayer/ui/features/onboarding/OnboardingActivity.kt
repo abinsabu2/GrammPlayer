@@ -25,6 +25,14 @@ class OnboardingActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Home / icon re-launch starts this launcher activity on top of the
+        // existing task. Auth is already Ready, so navigateToMainApp() would
+        // CLEAR_TASK and destroy Chats. Close-then-open is a new task (isTaskRoot)
+        // and starts cleanly. Finish this trampoline so the live screen resumes.
+        if (!isTaskRoot) {
+            finish()
+            return
+        }
         setContentView(R.layout.activity_splash)
         settingsDataStore = SettingsDataStore(this)
 
@@ -92,7 +100,9 @@ class OnboardingActivity : FragmentActivity() {
     }
     @SuppressLint("SetTextI18n")
     private fun handleAuthorizationState(response: TdApi.Object?) {
+        if (isFinishing) return
         runOnUiThread {
+            if (isFinishing) return@runOnUiThread
             when (response) {
                 is TdApi.AuthorizationStateWaitTdlibParameters -> {
                     loader.show("Initializing The App")
