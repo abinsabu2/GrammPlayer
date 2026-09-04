@@ -49,8 +49,8 @@ android {
         applicationId = "com.aes.grammplayer"
         minSdk = 21
         targetSdk = 36
-        versionCode = 3
-        versionName = "3.1"
+        versionCode = 304
+        versionName = "3.4"
 
         val localProperties = Properties()
         val localPropertiesFile = rootProject.file("local.properties")

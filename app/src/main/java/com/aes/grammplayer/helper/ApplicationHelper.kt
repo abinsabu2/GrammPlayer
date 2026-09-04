@@ -65,15 +65,22 @@ object ApplicationHelper {
 
     fun getExternalStorageFile(): File? {
         val context = GPlayerApplication.AppContext
-        val externalStorageVolumes: Array<out File> =
+        // Fire TV / API 21: getExternalFilesDirs() can include null; isExternalStorageRemovable(null) NPEs.
+        val externalStorageVolumes: Array<out File?> =
             ContextCompat.getExternalFilesDirs(context, null)
 
-        val externalStorage = externalStorageVolumes.firstOrNull {
-            Environment.isExternalStorageRemovable(it) &&
-                Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED
+        return externalStorageVolumes.firstOrNull { dir ->
+            dir != null && isRemovableAndMounted(dir)
         }
+    }
 
-        return externalStorage
+    private fun isRemovableAndMounted(dir: File): Boolean {
+        return try {
+            Environment.isExternalStorageRemovable(dir) &&
+                Environment.getExternalStorageState(dir) == Environment.MEDIA_MOUNTED
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun getExternalStoragePath(): String? =
