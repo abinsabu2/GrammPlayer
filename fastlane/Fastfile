@@ -1,0 +1,22 @@
+# GrammPlayer — fastlane auto-publish to Play
+# ponytail: 1 file, no custom lane magic — supply only
+
+default_platform(:android)
+
+platform :android do
+  desc "Upload AAB to Play track (internal/closed/production)"
+  lane :deploy do |options|
+    track = options[:track] || "internal"
+    aab = options[:aab] || Dir["../app/build/outputs/bundle/release/*.aab"].max_by { |f| File.mtime(f) }
+    UI.user_error!("no AAB found — run ./gradlew :app:bundleRelease first") unless aab && File.exist?(aab)
+    supply(
+      track: track,
+      aab: aab,
+      json_key: options[:json_key] || "../play-service-account.json",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      rollout: options[:rollout] # nil = full rollout
+    )
+  end
+end

@@ -77,3 +77,4 @@ wrapper/
 
 # opencode - local skills/agents/commands (project-specific AI config, not committed)
 .opencode/
+jdks/
