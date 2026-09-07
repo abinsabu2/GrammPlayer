@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest an idea
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the idea! Keep it focused on one feature per issue.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Use case
+      description: What problem does this solve? Who benefits?
+      placeholder: As a viewer I want ... so that ...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How should it work? Alternatives considered?
+      placeholder: Add a ... in Settings / Dashboard / Details ...
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Playback
+        - Dashboard
+        - TMDB
+        - Storage
+        - Telegram / Sync
+        - Other
+      default: 0
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues / discussions
+          required: false
