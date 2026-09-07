@@ -4,6 +4,8 @@ Gramm Player is an Android TV application for browsing and playing media shared 
 
 The UI is built on Android Leanback and is optimized for TV remotes, with optional touchscreen support.
 
+**Demo video:** https://www.youtube.com/watch?v=drXJvzPhmOQ
+
 ## Features
 
 - **Telegram login** — phone number and verification code flow via TDLib; review login `+100` / `12345` seeds local data
