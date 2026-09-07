@@ -299,7 +299,7 @@ object TelegramClientManager {
             unreadReactionCount = this.unreadReactionCount,
             notificationSettingsMuteFor = this.notificationSettings.muteFor,
             replyMarkupMessageId = this.replyMarkupMessageId.toInt(),
-            draftMessageText = (this.draftMessage?.inputMessageText as? TdApi.InputMessageText)
+            draftMessageText = (this.draftMessage?.content as? TdApi.DraftMessageContentText)
                 ?.text?.text ?: "",
             clientData = this.clientData,
             userId = userId
