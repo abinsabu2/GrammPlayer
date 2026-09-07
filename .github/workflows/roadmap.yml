@@ -1,0 +1,36 @@
+name: Roadmap → Issues
+
+on:
+  push:
+    branches: [rework, main, master]
+    paths: [ROADMAP.md, "docs/ROADMAP.md", "scripts/create-roadmap-issues.py"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (preview only)"
+        type: boolean
+        default: false
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Create issues from ROADMAP.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_PROJECT: ${{ secrets.GITLAB_PROJECT }}
+          GITLAB_URL: ${{ secrets.GITLAB_URL }}
+        run: |
+          set -e
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
+          python3 scripts/create-roadmap-issues.py $ARGS
