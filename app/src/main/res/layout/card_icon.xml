@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="@dimen/preference_card_width"
+    android:layout_height="@dimen/preference_card_height"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/preference_card_background_selector"
+    android:clipToOutline="true"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <ImageView
+        android:id="@+id/icon"
+        android:layout_width="@dimen/preference_card_icon_size"
+        android:layout_height="@dimen/preference_card_icon_size"
+        app:tint="@color/accent_teal"
+        tools:ignore="ContentDescription" />
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textColor="@color/accent_teal"
+        android:textSize="13sp" />
+</LinearLayout>

@@ -1,21 +1,36 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# TDLib JNI requires the full binding surface at runtime.
+-keep class org.drinkless.tdlib.** { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Retrofit / Gson
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keepclassmembers,allowshrinking,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+-keep class com.aes.grammplayer.network.tmdb.** { *; }
+-keepclassmembers class com.aes.grammplayer.network.tmdb.** { <fields>; }
+-keep class com.aes.grammplayer.db.model.** { *; }
+-keepclassmembers class com.aes.grammplayer.db.model.** { <fields>; }
+-keep class com.aes.grammplayer.provider.JsonSeedStore$** { *; }
+-keepclassmembers class com.aes.grammplayer.provider.JsonSeedStore$** { <fields>; }
+-keep class com.aes.grammplayer.history.HistoryEntry { *; }
+-keep class com.aes.grammplayer.history.HistoryFile { *; }
+-keepclassmembers class com.aes.grammplayer.history.HistoryEntry { <fields>; }
+-keepclassmembers class com.aes.grammplayer.history.HistoryFile { <fields>; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# DataStore / coroutine continuations: do not merge bookmark readers
+-keep class com.aes.grammplayer.ui.features.settings.SettingsDataStore { *; }
+-keep class com.aes.grammplayer.ui.features.settings.SettingsDataStore$** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Glide
+-keep public class * implements com.bumptech.glide.module.GlideModule
+-keep class * extends com.bumptech.glide.module.AppGlideModule { <init>(...); }
+-keep public enum com.bumptech.glide.load.ImageHeaderParser$** {
+    **[] $VALUES;
+    public *;
+}
+
+# Google Play Services (TLS ProviderInstaller)
+-keep class com.google.android.gms.** { *; }

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="@dimen/grid_card_media_width"
+    android:layout_height="@dimen/grid_card_media_height"
+    android:layout_margin="@dimen/grid_card_margin"
+    android:orientation="horizontal"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:padding="@dimen/grid_card_padding"
+    android:background="@drawable/card_background_selector"
+    android:defaultFocusHighlightEnabled="false"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <FrameLayout
+        android:layout_width="@dimen/grid_card_thumbnail_size"
+        android:layout_height="@dimen/grid_card_thumbnail_size"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="@dimen/grid_card_thumbnail_margin_end"
+        android:clipChildren="true"
+        android:clipToPadding="true"
+        android:background="@drawable/card_background">
+
+        <ImageView
+            android:id="@+id/thumbnail"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_media_placeholder"
+            tools:ignore="ContentDescription" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical|start">
+
+        <TextView
+            android:id="@+id/banner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:textColor="@color/downloading_border"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:text="Downloading: 87%" />
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/grid_card_title_text"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end"
+            tools:text="Some media title" />
+
+        <TextView
+            android:id="@+id/file_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#B0B0B0"
+            android:textSize="@dimen/grid_card_body_text"
+            tools:text="File ID: 12345" />
+
+        <ProgressBar
+            android:id="@+id/download_progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/detail_progress_height"
+            android:layout_marginTop="6dp"
+            android:max="100"
+            android:progressDrawable="@drawable/custom_progress"
+            tools:progress="87" />
+    </LinearLayout>
+</LinearLayout>

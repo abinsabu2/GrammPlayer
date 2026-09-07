@@ -1,23 +1,22 @@
 package com.aes.grammplayer.helper
 
 import android.os.Environment
+import android.os.StatFs
 import androidx.core.content.ContextCompat
 import com.aes.grammplayer.GPlayerApplication
 import java.io.File
 
- object ApplicationHelper {
+object ApplicationHelper {
 
     /**
-     * NEW: Determines the best storage path (internal or external) based on availability.
+     * Determines the best storage path (internal or external) based on availability.
      */
     fun getBestAvailableStoragePath(): String {
         val internalPath = GPlayerApplication.AppContext.filesDir.absolutePath + "/tdlib"
         val externalPath = getExternalStoragePath()
 
-        // Prioritize external storage if it's available and writable.
         if (externalPath != null) {
             val externalDir = File(externalPath)
-            // Ensure the directory can be created and written to.
             if (externalDir.exists() || externalDir.mkdirs()) {
                 if (externalDir.canWrite()) {
                     return externalPath
@@ -25,76 +24,84 @@ import java.io.File
             }
         }
 
-        // Fallback to internal storage if external is not available or not writable.
         return internalPath
     }
 
-    /**
-     * NEW: Finds a writable external storage path (USB, SD card, etc.).
-     */
-    private fun getExternalStoragePath(): String? {
-        val context = GPlayerApplication.AppContext
-        // Get all possible external storage directories.
-        val externalStorageVolumes: Array<out File> = ContextCompat.getExternalFilesDirs(context, null)
+    fun getInternalStoragePath(): String = GPlayerApplication.AppContext.filesDir.absolutePath + "/tdlib"
 
-        // Find the first one that is removable and mounted.
-        val externalStorage = externalStorageVolumes.firstOrNull {
-            // isRemovable is the key to finding USB drives/SD cards on Android TV.
-            Environment.isExternalStorageRemovable(it) && Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED
-        }
+    fun getFilesDirectory(storagePath: String = getBestAvailableStoragePath()): String =
+        "$storagePath/files"
 
-        return externalStorage?.let { it.absolutePath + "/tdlib" }
-    }
+    data class ClearResult(val count: Int, val bytes: Long)
 
-    /**
-     * UPDATED: Deletes files from the currently active storage path.
-     * This now works for both internal and external storage.
-     */
-    fun clearDownloadedFiles(): Int {
-        // Use the activeStoragePath which could be internal or external
+    fun clearDownloadedFilesWithStats(filesDirectory: String = getFilesDirectory()): ClearResult {
         var deletedFilesCount = 0
-        val subdirectoriesToClear = listOf("documents", "temp", "videos")
-        val activeFileDirectory = getActiveFileDirectory()
+        var freedBytes = 0L
+        val subdirectoriesToClear = listOf("documents", "temp", "videos", "test_videos")
+
         subdirectoriesToClear.forEach { subdir ->
-            // Construct path based on the active storage directory
-            val directory = File(activeFileDirectory, subdir)
+            val directory = File(filesDirectory, subdir)
             if (directory.exists() && directory.isDirectory) {
                 directory.walkTopDown().forEach { file ->
-                    if (file.isFile && file.delete()) {
-                        deletedFilesCount++
+                    if (file.isFile) {
+                        val len = file.length()
+                        if (file.delete()) {
+                            deletedFilesCount++
+                            freedBytes += len
+                        }
                     }
                 }
             }
         }
-        return deletedFilesCount
+        return ClearResult(deletedFilesCount, freedBytes)
     }
 
     /**
-     * NEW: Calculates the size of the activeFileDirectory and its contents.
-     * @return The total size in MB, or 0.0 if the directory does not exist.
+     * Deletes downloaded media files under TDLib's files directory.
+     * Pass [filesDirectory] when TDLib has a pinned path from client initialization.
      */
-    fun getDirectorySize(): Double {
-        val activeFileDirectory = getActiveFileDirectory()
-        val directory = File(activeFileDirectory)
-        if (!directory.exists() || !directory.isDirectory) {
-            return 0.0
-        }
+    fun clearDownloadedFiles(filesDirectory: String = getFilesDirectory()): Int =
+        clearDownloadedFilesWithStats(filesDirectory).count
 
-        var totalSize = 0L
-        directory.walkTopDown().forEach { file ->
-            if (file.isFile) {
-                totalSize += file.length()
-            }
+    fun getExternalStorageFile(): File? {
+        val context = GPlayerApplication.AppContext
+        // Fire TV / API 21: getExternalFilesDirs() can include null; isExternalStorageRemovable(null) NPEs.
+        val externalStorageVolumes: Array<out File?> =
+            ContextCompat.getExternalFilesDirs(context, null)
+
+        return externalStorageVolumes.firstOrNull { dir ->
+            dir != null && isRemovableAndMounted(dir)
         }
-        return totalSize / (1024.0 * 1024.0)
     }
 
-    fun getActiveFileDirectory(): String {
-        val activeStoragePath = getBestAvailableStoragePath()
-        val activeFileDirectory = "$activeStoragePath/files"
-
-        return activeFileDirectory
+    private fun isRemovableAndMounted(dir: File): Boolean {
+        return try {
+            Environment.isExternalStorageRemovable(dir) &&
+                Environment.getExternalStorageState(dir) == Environment.MEDIA_MOUNTED
+        } catch (_: Exception) {
+            false
+        }
     }
 
+    private fun getExternalStoragePath(): String? =
+        getExternalStorageFile()?.let { it.absolutePath + "/tdlib" }
 
+    fun isExternalStorageAvailable(): Boolean =
+        getExternalStorageFile()?.let { it.exists() && it.canWrite() } == true
+
+    fun getExternalFreeBytes(): Long = getExternalStorageFile()?.let { file ->
+        try {
+            StatFs(file.absolutePath).availableBytes
+        } catch (_: Exception) {
+            file.freeSpace
+        }
+    } ?: 0L
+
+    fun getInternalFreeBytes(): Long = try {
+        GPlayerApplication.AppContext.filesDir.run { StatFs(absolutePath).availableBytes }
+    } catch (_: Exception) {
+        0L
+    }
+
+    fun formatFreeBytes(bytes: Long): String = FormatHelper.formatBytes(bytes)
 }

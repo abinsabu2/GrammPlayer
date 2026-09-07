@@ -24,6 +24,7 @@ keystore.properties
 # Generated build folders
 build/
 app/build/
+app/release/
 */build/
 
 # Generated APKs, AABs, and other outputs
@@ -31,6 +32,8 @@ app/build/
 *.aab
 *.ap_
 *.json
+!app/src/main/assets/**/*.json
+!app/src/main/assets/*.json
 *.flat
 
 # =========================================
@@ -45,6 +48,7 @@ build-cache/
 #  System Files
 # =========================================
 # macOS generated files
+**/.DS_Store
 .DS_Store
 # Windows thumbnail cache
 Thumbs.db
@@ -68,3 +72,9 @@ daemon/
 kotlin-profile/
 native/
 wrapper/
+.tmp/
+.kotlin/
+
+# opencode - local skills/agents/commands (project-specific AI config, not committed)
+.opencode/
+jdks/

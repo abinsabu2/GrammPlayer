@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="@dimen/grid_card_chat_size"
+    android:layout_height="@dimen/grid_card_chat_size"
+    android:layout_margin="@dimen/grid_card_margin"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:background="@drawable/card_background_selector"
+    android:defaultFocusHighlightEnabled="false"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <TextView
+        android:id="@+id/type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/accent_teal"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/grid_card_chat_title_text"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:maxLines="3"
+        android:ellipsize="end"
+        tools:text="Chat title goes here" />
+</LinearLayout>

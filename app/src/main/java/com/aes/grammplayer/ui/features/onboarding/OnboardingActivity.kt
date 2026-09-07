@@ -1,0 +1,134 @@
+package com.aes.grammplayer.ui.features.onboarding
+
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.os.Bundle
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.aes.grammplayer.ui.features.authentication.LoginActivity
+import com.aes.grammplayer.ui.features.dashboard.MainActivity
+import com.aes.grammplayer.R
+import com.aes.grammplayer.helper.DialogHelper
+import com.aes.grammplayer.ui.features.settings.SettingsDataStore
+import com.aes.grammplayer.util.tdlib.TdLibUpdateHandler
+import com.aes.grammplayer.util.tdlib.TelegramClientManager
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import org.drinkless.tdlib.TdApi
+
+class OnboardingActivity : FragmentActivity() {
+
+    private lateinit var settingsDataStore: SettingsDataStore
+    private lateinit var loader: DialogHelper
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Home / icon re-launch starts this launcher activity on top of the
+        // existing task. Auth is already Ready, so navigateToMainApp() would
+        // CLEAR_TASK and destroy Chats. Close-then-open is a new task (isTaskRoot)
+        // and starts cleanly. Finish this trampoline so the live screen resumes.
+        if (!isTaskRoot) {
+            finish()
+            return
+        }
+        setContentView(R.layout.activity_splash)
+        settingsDataStore = SettingsDataStore(this)
+
+        // ✅ Initialize LoadingDialogManager with supportFragmentManager
+        loader = DialogHelper(supportFragmentManager)
+        if (!TelegramClientManager.isInitialized) {
+            TelegramClientManager.initialize()
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TdLibUpdateHandler.authorizationState.collect { response ->
+                    handleAuthorizationState(response)
+                }
+            }
+        }
+    }
+
+    private fun showOnboardingFragment() {
+        setContentView(R.layout.onboarding_main)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.onboarding_fragment_container, OnboardingFragment())
+            .commit()
+    }
+
+    private fun navigateToToc() {
+        val intent = Intent(this, TermsActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
+    }
+
+    private fun navigateToLogin() {
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
+    }
+
+    private fun navigateToMainApp() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
+    }
+
+    private fun observeData() {
+
+        lifecycleScope.launch {
+            loader.updateMessage("Waiting for Parameters...")
+            val isOnboardingDone = settingsDataStore.isOnboardingDone.first()
+            val isTocAccepted = settingsDataStore.isTocAccepted.first()
+            val isTestLogin= settingsDataStore.isTestMode.first()
+            loader.dismiss()
+            when {
+                !isOnboardingDone -> showOnboardingFragment()
+                !isTocAccepted -> navigateToToc()
+                isTestLogin -> navigateToMainApp()
+                else -> navigateToLogin()
+            }
+        }
+    }
+    @SuppressLint("SetTextI18n")
+    private fun handleAuthorizationState(response: TdApi.Object?) {
+        if (isFinishing) return
+        runOnUiThread {
+            if (isFinishing) return@runOnUiThread
+            when (response) {
+                is TdApi.AuthorizationStateWaitTdlibParameters -> {
+                    loader.show("Initializing The App")
+                    loader.updateMessage("Waiting for Parameters...")
+                }
+                is TdApi.AuthorizationStateWaitPhoneNumber -> {
+                    observeData()
+                }
+                is TdApi.AuthorizationStateWaitCode -> {
+                    observeData()
+                }
+                is TdApi.AuthorizationStateReady -> {
+                    navigateToMainApp()
+                }
+                is TdApi.Error -> {
+
+                }
+                is TdApi.AuthorizationStateClosing -> {
+
+                }
+                is TdApi.AuthorizationStateClosed -> {
+
+                }
+                else -> {
+                }
+            }
+        }
+    }
+}
