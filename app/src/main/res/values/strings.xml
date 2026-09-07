@@ -33,7 +33,7 @@
         No external or unauthorised third-party content sources are used. The app follows official TDLib API usage guidelines.
         This app functions as a personal TG media manager for the signed-in user and does not provide or promote unauthorised downloads from any third-party platforms.
         Reference : official TDLib API documentation</string>
-    <string name="connect_with_telegram">Connect with TG</string>
+    <string name="connect_with_telegram">Connect With Your Account</string>
     <string name="play">Play</string>
     <string name="play_from_start">Play from start</string>
     <string name="resume">Resume</string>
