@@ -7,7 +7,7 @@ Platform:        Android TV / Fire TV (Leanback launcher)
 Internet:        Required for first launch, login, and test video download
 
 
-TEST ACCOUNT (use this — no real Telegram account needed)
+TEST ACCOUNT (use this — no real TG account needed)
 -------------------------------------------------------
 Country code:    1
 Phone number:    00
@@ -80,7 +80,7 @@ FEATURES TO VERIFY
 
 TEST MODE NOTES
 ---------------
-• The test account uses local sample data (no real Telegram login).
+• The test account uses local sample data (no real TG login).
 • Video download uses a public sample MP4 file for demonstration.
 • Full-screen playback uses the app's bundled media engine for testers.
 
