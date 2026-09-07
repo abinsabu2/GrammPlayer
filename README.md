@@ -331,9 +331,13 @@ No `store-assets/amazon_test_instructions.txt` at `HEAD` (deleted Sept 2026). Fo
 | Play upload rejected (versionCode) | `versionCode` must increase each upload — use `scripts/publish-playstore.py --bump patch` |
 | Play warning targetSdk drift | Align `AndroidManifest.xml` `targetSdkVersion` to `36` or remove `<uses-sdk>`; `publish-playstore.py` flags `34 != 36` |
 
+## Roadmap
+
+Planned features are tracked in [`ROADMAP.md`](ROADMAP.md) — grouped Quick wins / Medium / Big bets. Open a **Feature Request** (`Issues → New issue`) or 👍 an item to vote. Suggested first: Progress bar on cards → Auto-play next → Watchlist.
+
 ## Contributing
 
-Contributions are welcome. Please open an issue or submit a pull request.
+Contributions are welcome. Please open an issue or submit a pull request. For bugs and ideas, use the templates: `Issues → New issue → Bug report / Feature request`.
 
 ## References
 
