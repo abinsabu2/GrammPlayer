@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a bug
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! Fill out the details so we can reproduce it.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Steps to reproduce, expected vs actual behavior.
+      placeholder: |
+        1. Go to Dashboard > ...
+        2. Click ...
+        3. Expected X, got Y
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / Device
+      description: e.g. 3.4 (304), Fire TV Stick 4K, Android TV emulator
+      placeholder: 3.4 (304) on Fire TV Stick
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Screenshots
+      description: Paste relevant logcat or drag screenshots here.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues
+          required: false
