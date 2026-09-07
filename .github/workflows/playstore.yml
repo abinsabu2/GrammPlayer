@@ -1,0 +1,70 @@
+name: Play Store Release
+on:
+  push:
+    tags: ["v*"]          # git tag v3.3.1 -> build + upload
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Play track"
+        default: "internal"
+        type: choice
+        options: [internal, closed, production]
+      bump:
+        description: "version bump (patch/minor/major/none)"
+        default: "none"
+        type: choice
+        options: [none, patch, minor, major]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+
+      # secrets needed:
+      #  PLAY_SERVICE_ACCOUNT_JSON  — file content of play-service-account.json
+      #  KEYSTORE_BASE64            — base64 of grammplayer-release.keystore
+      #  KEYSTORE_PROPERTIES        — content of keystore.properties
+      #  LOCAL_PROPERTIES           — content of local.properties (api_key/api_hash/tmbd_key + sdk.dir not needed in CI)
+      - name: Restore signing + secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PROPS: ${{ secrets.KEYSTORE_PROPERTIES }}
+          LOCAL_PROPS: ${{ secrets.LOCAL_PROPERTIES }}
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -e
+          if [ -n "$LOCAL_PROPS" ]; then printf "%s" "$LOCAL_PROPS" > local.properties; fi
+          if [ -n "$KEYSTORE_PROPS" ]; then printf "%s" "$KEYSTORE_PROPS" > keystore.properties; fi
+          if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > grammplayer-release.keystore; fi
+          if [ -n "$PLAY_JSON" ]; then printf "%s" "$PLAY_JSON" > play-service-account.json; fi
+          ls -l *.keystore *.properties play-service-account.json 2>&1 | head -20
+
+      - name: Build AAB
+        run: |
+          TRACK="${{ inputs.track || 'internal' }}"
+          BUMP="${{ inputs.bump || 'none' }}"
+          ARGS=""
+          if [ "$BUMP" != "none" ]; then ARGS="--bump $BUMP"; fi
+          # tag trigger auto-bump patch
+          if [ "${{ github.ref_type }}" = "tag" ]; then ARGS=""; fi
+          python3 scripts/publish-playstore.py $ARGS --track "$TRACK"
+
+      - name: Upload to Play (fastlane)
+        if: hashFiles('play-service-account.json') != ''
+        env:
+          TRACK: ${{ inputs.track || 'internal' }}
+        run: |
+          gem install fastlane --no-document
+          AAB=$(ls -t app/build/outputs/bundle/release/*.aab | head -1)
+          fastlane android deploy track:"$TRACK" aab:"$AAB" json_key:"play-service-account.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: app/build/outputs/bundle/release/*.aab

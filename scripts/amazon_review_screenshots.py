@@ -13,9 +13,10 @@ from pathlib import Path
 ADB = Path.home() / "Library/Android/sdk/platform-tools/adb"
 PKG = "com.aes.grammplayer"
 SER = "emulator-5554"
-OUT = Path(__file__).resolve().parents[1] / "amazon-review-screenshots"
-APK = Path(__file__).resolve().parents[1] / "app/build/outputs/apk/debug/tgPlayer_v1.0_(1)_release.apk"
-SEED_WAIT_SEC = 90
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "amazon-review-screenshots"
+APK = next((ROOT / "app/build/outputs/apk/debug").glob("*.apk"), None)
+SEED_WAIT_SEC = 20
 
 KEY_BACK = 4
 KEY_DPAD_DOWN = 20
@@ -82,23 +83,57 @@ def start(component: str, extras: str = "", serial: str = SER) -> None:
     shell(cmd, serial=serial)
 
 
+def dump_ui(serial: str = SER) -> str:
+    shell("uiautomator dump /sdcard/window_dump.xml", serial=serial)
+    return shell("cat /sdcard/window_dump.xml", serial=serial)
+
+
+def bounds_center(xml: str, resource_id: str) -> tuple[int, int] | None:
+    pat = rf'resource-id="{re.escape(resource_id)}"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"'
+    m = re.search(pat, xml)
+    if not m:
+        pat = rf'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"[^>]*resource-id="{re.escape(resource_id)}"'
+        m = re.search(pat, xml)
+    if not m:
+        return None
+    x1, y1, x2, y2 = map(int, m.groups())
+    return ((x1 + x2) // 2, (y1 + y2) // 2)
+
+
+def tap_id(resource_id: str, serial: str = SER) -> bool:
+    xml = dump_ui(serial)
+    pos = bounds_center(xml, resource_id)
+    if not pos:
+        return False
+    tap(*pos, serial=serial)
+    return True
+
+
 def login_review_user(serial: str = SER) -> None:
     start(".ui.features.authentication.LoginActivity", serial=serial)
     time.sleep(2)
     screenshot("01_login_phone", serial=serial)
 
-    tap(360, 420, serial)
+    tap_id(f"{PKG}:id/countryCodeEditText", serial=serial)
+    shell("input keyevent 123", serial=serial)  # move end
     shell("input text 1", serial=serial)
-    tap(620, 420, serial)
+    tap_id(f"{PKG}:id/phoneNumberEditText", serial=serial)
+    shell("input keyevent 123", serial=serial)
+    # clear then type 00
+    for _ in range(12):
+        shell("input keyevent 67", serial=serial)
     shell("input text 00", serial=serial)
-    tap(960, 520, serial)
+    time.sleep(0.4)
+    screenshot("01_login_phone_filled", serial=serial)
+    if not tap_id(f"{PKG}:id/submitButton", serial=serial):
+        tap(960, 520, serial)
     time.sleep(3)
     screenshot("02_login_code", serial=serial)
 
-    tap(640, 500, serial)
-    shell("input text 12345", serial=serial)
-    tap(960, 580, serial)
-    wait_activity("MainActivity", timeout=30, serial=serial)
+    # Test account auto-fills 12345; just submit.
+    if not tap_id(f"{PKG}:id/submitButton", serial=serial):
+        tap(960, 580, serial)
+    wait_activity("MainActivity", timeout=40, serial=serial)
     time.sleep(2)
 
 
@@ -157,7 +192,7 @@ def capture_chats(serial: str = SER) -> None:
 def capture_messages_and_details(serial: str = SER) -> None:
     start(
         ".ui.features.messages.MessageGridActivity",
-        '--el chat_id 1 --es chat_title "Movies Channel"',
+        '--el chat_id 1 --es chat_title "Open Films"',
         serial=serial,
     )
     time.sleep(16)
@@ -192,10 +227,13 @@ def capture_download_and_play(serial: str = SER) -> None:
 
     time.sleep(2)
     screenshot("13_ready_to_play", serial=serial)
-    tap(1180, 980, serial)
-    time.sleep(0.5)
-    keyevent(KEY_DPAD_CENTER, serial)
-    wait_activity("InAppPlaybackActivity", timeout=20, serial=serial)
+    xml = dump_ui(serial)
+    play = bounds_center(xml, f"{PKG}:id/action_play") or bounds_center(xml, f"{PKG}:id/btn_play")
+    if play:
+        tap(*play, serial=serial)
+    else:
+        tap(1180, 980, serial)
+        keyevent(KEY_DPAD_CENTER, serial)
     time.sleep(5)
     screenshot("14_fullscreen_playback", serial=serial)
     keyevent(KEY_BACK, serial)
@@ -236,9 +274,9 @@ def main() -> int:
         print(f"{SER} not connected", file=sys.stderr)
         return 1
 
-    if APK.exists():
+    if APK and APK.exists():
         print(f"Installing {APK.name}...", flush=True)
-        adb("install", "-r", str(APK), serial=SER)
+        adb("install", "-r", "-d", str(APK), serial=SER)
         time.sleep(2)
 
     print(f"Capturing -> {OUT}", flush=True)

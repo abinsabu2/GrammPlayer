@@ -9,6 +9,18 @@
 }
 -keep class com.aes.grammplayer.network.tmdb.** { *; }
 -keepclassmembers class com.aes.grammplayer.network.tmdb.** { <fields>; }
+-keep class com.aes.grammplayer.db.model.** { *; }
+-keepclassmembers class com.aes.grammplayer.db.model.** { <fields>; }
+-keep class com.aes.grammplayer.provider.JsonSeedStore$** { *; }
+-keepclassmembers class com.aes.grammplayer.provider.JsonSeedStore$** { <fields>; }
+-keep class com.aes.grammplayer.history.HistoryEntry { *; }
+-keep class com.aes.grammplayer.history.HistoryFile { *; }
+-keepclassmembers class com.aes.grammplayer.history.HistoryEntry { <fields>; }
+-keepclassmembers class com.aes.grammplayer.history.HistoryFile { <fields>; }
+
+# DataStore / coroutine continuations: do not merge bookmark readers
+-keep class com.aes.grammplayer.ui.features.settings.SettingsDataStore { *; }
+-keep class com.aes.grammplayer.ui.features.settings.SettingsDataStore$** { *; }
 -dontwarn okhttp3.**
 -dontwarn okio.**
 

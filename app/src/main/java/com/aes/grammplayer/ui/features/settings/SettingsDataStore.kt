@@ -1,6 +1,7 @@
 package com.aes.grammplayer.ui.features.settings
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -20,6 +21,8 @@ class SettingsDataStore(context: Context) {
     private val appContext = context.applicationContext
 
     companion object {
+        private const val TAG = "SettingsDataStore"
+
         val AUTO_PLAY = booleanPreferencesKey("auto_play")
         val PROGRESS_THRESHOLD = intPreferencesKey("progress_threshold")
         val BUFFER_SIZE_THRESHOLD = intPreferencesKey("buffer_size_threshold")
@@ -152,40 +155,48 @@ class SettingsDataStore(context: Context) {
         }
     }
 
-    /** Returns saved position ms for [messageId], or null if none / different title. */
-    suspend fun getPlaybackPosition(messageId: Long): Long? {
-        val prefs = appContext.dataStore.data.first()
-        val savedId = prefs[LAST_PLAYBACK_MESSAGE_ID] ?: return null
-        if (savedId != messageId) return null
-        val positionMs = prefs[LAST_PLAYBACK_POSITION_MS] ?: return null
-        if (positionMs < MIN_RESUME_POSITION_MS) return null
-        val durationMs = prefs[LAST_PLAYBACK_DURATION_MS] ?: 0L
-        if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) return null
-        return positionMs
-    }
-
     data class PlaybackInfo(val messageId: Long, val positionMs: Long, val durationMs: Long)
 
-    // ponytail: single bookmark only; switch to map keys playback_${id}_pos when >1 resume needed
-    suspend fun getLastPlaybackInfo(): PlaybackInfo? {
-        val prefs = appContext.dataStore.data.first()
-        val savedId = prefs[LAST_PLAYBACK_MESSAGE_ID] ?: return null
-        val positionMs = prefs[LAST_PLAYBACK_POSITION_MS] ?: return null
-        val durationMs = prefs[LAST_PLAYBACK_DURATION_MS] ?: 0L
-        if (positionMs < MIN_RESUME_POSITION_MS) return null
-        if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) return null
-        return PlaybackInfo(savedId, positionMs, durationMs)
+    /** One DataStore read so R8 cannot merge Long? vs PlaybackInfo? continuations. */
+    private suspend fun readPlaybackBookmark(): PlaybackInfo? {
+        val prefs = try {
+            appContext.dataStore.data.first()
+        } catch (e: ClassCastException) {
+            Log.e(TAG, "Corrupt playback preferences", e)
+            runCatching { clearPlaybackPosition() }
+            return null
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read playback preferences", e)
+            return null
+        }
+        return try {
+            val savedId = prefs[LAST_PLAYBACK_MESSAGE_ID] ?: return null
+            val positionMs = prefs[LAST_PLAYBACK_POSITION_MS] ?: return null
+            val durationMs = prefs[LAST_PLAYBACK_DURATION_MS] ?: 0L
+            if (positionMs < MIN_RESUME_POSITION_MS) return null
+            if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) return null
+            PlaybackInfo(savedId, positionMs, durationMs)
+        } catch (e: ClassCastException) {
+            Log.e(TAG, "Playback preference type mismatch", e)
+            runCatching { clearPlaybackPosition() }
+            null
+        }
     }
 
+    /** Returns saved position ms for [messageId], or null if none / different title. */
+    suspend fun getPlaybackPosition(messageId: Long): Long? {
+        val info = readPlaybackBookmark() ?: return null
+        if (info.messageId != messageId) return null
+        return info.positionMs
+    }
+
+    // ponytail: single bookmark only; switch to map keys playback_${id}_pos when >1 resume needed
+    suspend fun getLastPlaybackInfo(): PlaybackInfo? = readPlaybackBookmark()
+
     suspend fun getPlaybackProgress(messageId: Long): Pair<Long, Long>? {
-        val prefs = appContext.dataStore.data.first()
-        val savedId = prefs[LAST_PLAYBACK_MESSAGE_ID] ?: return null
-        if (savedId != messageId) return null
-        val positionMs = prefs[LAST_PLAYBACK_POSITION_MS] ?: return null
-        val durationMs = prefs[LAST_PLAYBACK_DURATION_MS] ?: 0L
-        if (positionMs < MIN_RESUME_POSITION_MS) return null
-        if (durationMs > 0L && durationMs - positionMs < END_RESUME_CLEAR_MS) return null
-        return positionMs to durationMs
+        val info = readPlaybackBookmark() ?: return null
+        if (info.messageId != messageId) return null
+        return info.positionMs to info.durationMs
     }
 
     suspend fun clearPlaybackPosition() {

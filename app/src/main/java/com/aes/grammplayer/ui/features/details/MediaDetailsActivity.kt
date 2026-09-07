@@ -341,7 +341,11 @@ class MediaDetailsActivity : AppCompatActivity() {
 
     private fun loadSavedPlaybackPosition(rebindButtons: Boolean = true) {
         lifecycleScope.launch {
-            val position = settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            val position = try {
+                settingsDataStore.getPlaybackPosition(message.id) ?: 0L
+            } catch (_: Exception) {
+                0L
+            }
             savedPositionMs = position
             if (backgroundPreviewActive) updatePreviewFullscreenLabel()
             if (rebindButtons && playButton.isVisible) {
