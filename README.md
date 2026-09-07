@@ -6,13 +6,16 @@ The UI is built on Android Leanback and is optimized for TV remotes, with option
 
 ## Features
 
-- **Telegram login** — phone number and verification code flow via TDLib
-- **Chat browsing** — browse chats, channels, and groups that contain media
-- **Media library** — grid views for chats, messages, and watch history
-- **Title details** — metadata, cast, ratings, download progress, and playback controls
-- **Playback** — in-app player with VLC fallback when available
-- **Watch history** — locally stored playback history with dashboard hero/backdrop support
-- **Privacy-focused** — Telegram session and app data stay on-device; no third-party media hosting
+- **Telegram login** — phone number and verification code flow via TDLib; review login `+100` / `12345` seeds local data
+- **Chat browsing** — paged Leanback grids via `JsonSeedStore` + `ChatsDataProvider` (`messagesPageSize` configurable)
+- **Media library** — paged message grids per chat via `MediaMessageDataProvider` + `MediaDownloadDataProvider`
+- **Title details** — `ReleaseTitleParser` + TMDB enrichment (poster/backdrop, cast, ratings, trailer), file metadata chips, download progress, and fixed Auto-Play thresholds (progress % / buffer MB)
+- **Playback** — **external VLC only** (`PlayerHelper.play()` with `FLAG_ACTIVITY_NEW_TASK` + `FileProvider`); never `startActivityForResult` on TV. Resume restored via `VlcPlaybackTracker` (MediaBrowser session) + `SettingsDataStore` bookmark (`MIN_RESUME 5s`, end-clear `5s`)
+- **Watch history** — per-login file store (`filesDir/history/history_{login}.json`, cap 100, newest-first) via `HistoryStore`; recorded on detail-page visit, cleared on logout/clear-history; powers Continue Watching row + dashboard backdrop
+- **Storage auto-manager** — threshold-based oldest-first delete (`documents/temp/videos/test_videos` under `filesDir/tdlib/files`) + optional move-to-SD (`StorageAutoManager`), triggered from Dashboard `onResume` and Settings → Run now; SD detection is Fire TV-safe
+- **Dashboard** — Leanback `BrowseSupportFragment` with Continue Watching, Active Download, and internal/external free-space cards; hero backdrop from latest history entry
+- **TMDB enrichment** — `PosterFetcher` with OkHttp `MODERN_TLS`, 4-permit semaphore, in-flight dedup, movie + TV search caches, `Glide` wired to `TmdbClient.okHttpClient`
+- **Privacy-focused** — Telegram session (`tdlib` dir) and app data stay on-device; no third-party media hosting
 
 ## Tech Stack
 
@@ -20,13 +23,13 @@ The UI is built on Android Leanback and is optimized for TV remotes, with option
 |---|---|
 | Language | Kotlin |
 | UI | Android Leanback, Material, ViewBinding |
-| Telegram | TDLib |
-| Networking | OkHttp, Retrofit |
-| Images | Glide |
-| Database | Room |
-| Settings | DataStore |
-| Playback | libVLC (optional), system intents |
-| Build | Gradle 9.x, AGP 9.x, R8 |
+| Telegram | TDLib (`org.drinkless:tdlib`) |
+| Networking | OkHttp 4.12, Retrofit 3.0 + Gson, `PosterFetcher`/`TmdbClient` |
+| Images | Glide 4.11 (OkHttp integration, `GlideUrl` → `TmdbClient.okHttpClient`) |
+| Persistence | No Room — `JsonSeedStore` (`assets/seed/test_seed.json`) + `HistoryStore` JSON per login + `SettingsDataStore` (DataStore Preferences) |
+| Playback | External VLC (`org.videolan.vlc`) via `PlayerHelper` + `VlcPlaybackTracker` (MediaBrowser) + `SettingsDataStore` bookmark; system `ACTION_VIEW` intents |
+| Storage | `ApplicationHelper` + `StorageAutoManager` + `MediaFileHelper` |
+| Build | Gradle 9.x, AGP 9.0.1, R8, `sanitize-for-amazon-appstore.py` (native + DEX) |
 
 ## Prerequisites
 
@@ -53,7 +56,7 @@ The UI is built on Android Leanback and is optimized for TV remotes, with option
    tmbd_key=YOUR_TMDB_API_KEY
    ```
 
-3. Optional: add `app/google-services.json` if you use Firebase Analytics.
+3. Optional: `app/google-services.json` is not required — Firebase/Analytics was removed (Sept 2026). Skip unless you re-add it.
 
 4. Open the project in Android Studio and sync Gradle, or build from the terminal:
    ```bash
@@ -73,59 +76,82 @@ Release builds apply R8 shrinking and run Amazon Appstore sanitization scripts a
 GrammPlayer/
 ├── app/
 │   ├── src/main/java/com/aes/grammplayer/
-│   │   ├── config/          # Review/test mode helpers
-│   │   ├── db/              # Room database, DAOs, models, seeder
-│   │   ├── helper/          # Playback, downloads, navigation, UI helpers
-│   │   ├── network/tmdb/    # TMDB API client, poster/backdrop fetching
-│   │   ├── provider/        # Leanback data providers
+│   │   ├── config/          # Review/test mode helpers (ReviewModeHelper, TestUserConfig)
+│   │   ├── db/model/        # Plain models only (Chat, MediaMessage) — Room removed, see JsonSeedStore
+│   │   ├── helper/          # PlayerHelper, VlcPlaybackTracker, StorageAutoManager,
+│   │   │                    #   ApplicationHelper, MediaFileHelper, ActiveDownloadManager,
+│   │   │                    #   DashboardBackdropHelper, GlideHelper, FormatHelper, etc.
+│   │   ├── history/         # HistoryStore (per-login JSON) + HistoryEntry
+│   │   ├── network/tmdb/    # TmdbClient/Api, PosterFetcher, TlsHelper
+│   │   ├── provider/        # JsonSeedStore (assets/seed/test_seed.json), ChatsDataProvider,
+│   │   │                    #   MediaMessageDataProvider, HistoryDataProvider, Page
+│   │   ├── session/         # UserSession
 │   │   ├── ui/
-│   │   │   ├── common/      # Shared fragments, binders, widgets
+│   │   │   ├── common/      # BaseGridFragment/BaseHostActivity, binders, widgets
 │   │   │   └── features/    # authentication, dashboard, chats, messages,
-│   │   │                    # history, details, playback, settings, onboarding
-│   │   └── util/tdlib/      # Telegram client manager, message mapping, thumbnails
+│   │   │                    # history, details (ReleaseTitleParser UI), settings, onboarding
+│   │   └── util/tdlib/      # TelegramClientManager, MediaMessageMapper, ReleaseTitleParser, thumbnails
+│   ├── src/main/assets/seed/test_seed.json  # Bundled seed for TEST/REVIEW mode (TMDB-shared)
 │   └── src/main/res/        # Leanback layouts, drawables, themes, values
 ├── scripts/
 │   ├── full_app_test.py                 # TV smoke test + screenshot capture
-│   ├── amazon_review_screenshots.py     # Amazon review screenshot workflow
-│   └── sanitize-for-amazon-appstore.py  # TDLib/DEX symbol sanitization for store scans
-├── store-assets/            # App icons, promo banners, store listing screenshots
-├── amazon-review-screenshots/  # Amazon Appstore review submission captures
-├── test-screenshots/        # Automated/manual UI verification images
+│   ├── amazon_review_screenshots.py     # Amazon review screenshot workflow (writes amazon-review-screenshots/)
+│   ├── sanitize-for-amazon-appstore.py  # TDLib/DEX symbol sanitization for store scans
+│   ├── publish-playstore.py             # One-command checks + bundleRelease + optional Play upload (rung 1)
+│   └── record_login_demo.py             # Login demo recording helper
+├── fastlane/                # Fastfile + Appfile — Play upload via supply (rung 2)
+├── .github/workflows/playstore.yml  # Tag/manual CI: build AAB + upload to Play (rung 3)
+├── docs/
+│   └── playstore-automation.md  # Rungs 1-3 guide + Play checklist
 ├── privacy-policy.html
 ├── terms-conditions.html
 └── about-me.html
 ```
 
+> `store-assets/`, `amazon-review-screenshots/`, `test-screenshots/` are **not** in the repo at `HEAD` — they are generated or kept locally for store listings. Past commits shipped them; current tree relies on `app/src/main/res/drawable` banners/icons + `scripts/amazon_review_screenshots.py` to regenerate captures.
+
 ### Main user flow
 
-1. **Onboarding / Terms** → accept terms on first launch
-2. **Login** → Telegram phone + code authentication
-3. **Dashboard** (`MainFragment`) → sidebar navigation with history hero and backdrop
-4. **Chats** → pick a chat containing media
-5. **Messages** → browse downloadable media items in a grid
-6. **Details** → view metadata, start download, play content
-7. **History / Settings** → revisit watched items or manage preferences
+1. **Onboarding / Terms** (`OnboardingActivity` / `TermsActivity`) → accept terms on first launch (`SettingsDataStore.isTocAccepted`)
+2. **Login** (`LoginActivity`) → TDLib phone + code; review shortcut `+100` / `12345` → `ReviewModeHelper.isReviewMode()` true
+3. **Dashboard** (`MainFragment : BrowseSupportFragment`) → sidebar (Chats / History / Settings) + Continue Watching row (`HistoryStore`) + Active Download row + Storage cards (internal/external free) + hero backdrop (`DashboardBackdropHelper`)
+4. **Chats** (`ChatsGridActivity/Fragment`) → paged via `ChatsDataProvider` → `JsonSeedStore.getChatsPaged()` in review mode, TDLib otherwise
+5. **Messages** (`MessageGridActivity/Fragment`) → paged via `MediaMessageDataProvider` (`messagesPageSize` from `SettingsDataStore`, choices 25/50/100/200)
+6. **Details** (`MediaDetailsActivity`) → `ReleaseTitleParser` display title, TMDB poster/backdrop/cast/trailer (`PosterFetcher`), file metadata chips, `SettingsDataStore` Auto-Play thresholds (progress % / buffer MB), download → `MediaDownloadDataProvider` + `ActiveDownloadManager` + `DownloadProgressTracker`, then **external VLC** (`PlayerHelper.play()` + `VlcPlaybackTracker` bookmark)
+7. **History** (`HistoryGridActivity/Fragment`) → `HistoryDataProvider` → `HistoryStore.loadPage()`
+8. **Settings** (`SettingsActivity/Fragment : GuidedStepSupportFragment`) → Auto-Play, thresholds, Messages per page, Storage auto-delete / move-to-SD / threshold (300/500/1000 MB), Run auto-clean now
 
 ## Scripts
 
 | Script | Purpose |
 |---|---|
 | `scripts/full_app_test.py` | End-to-end smoke test on a connected Android TV emulator; writes screenshots to `test-screenshots/full-app/` |
-| `scripts/amazon_review_screenshots.py` | Captures the Amazon review screenshot set |
+| `scripts/amazon_review_screenshots.py` | Captures the Amazon review screenshot set → `amazon-review-screenshots/` (`SER=emulator-5554` by default) |
 | `scripts/sanitize-for-amazon-appstore.py` | Renames TDLib symbols and scrubs release DEX metadata that Amazon's scanner can misclassify |
+| `scripts/publish-playstore.py` | One-command Play bundle flow: validates `local.properties`/`keystore.properties`, warns on `targetSdk` drift, runs sanitization, `bundleRelease`, `jarsigner`/`bundletool` verify, optional `fastlane supply` (`--bump patch|minor|major`, `--upload --track internal|closed|production`) |
+| `scripts/record_login_demo.py` | Login demo recording helper |
 
 Example smoke test:
 ```bash
 python3 scripts/full_app_test.py
 ```
 
+Play bundle (no service account needed):
+```bash
+python3 scripts/publish-playstore.py                 # checks + signed AAB
+python3 scripts/publish-playstore.py --bump patch    # bump 3.4 (304) → 3.4.1 (305) + build
+python3 scripts/publish-playstore.py --upload --track internal  # + supply if play-service-account.json present
+```
+
+CI (`.github/workflows/playstore.yml`): push tag `v*` or manual dispatch; needs `LOCAL_PROPERTIES`, `KEYSTORE_BASE64`, `KEYSTORE_PROPERTIES`, `PLAY_SERVICE_ACCOUNT_JSON` secrets. See `docs/playstore-automation.md`.
+
 ## Store & Marketing Assets
 
-These directories are intentional project content, not build output:
+No `store-assets/` / `amazon-review-screenshots/` / `test-screenshots/` at `HEAD` — they are **generated locally**:
 
-- `store-assets/` — icons, feature graphics, and landscape screenshots for store listings
-- `amazon-review-screenshots/` — step-by-step review flow captures for Amazon submission
-- `test-screenshots/` — regression/reference screenshots produced by test scripts
+- Run `scripts/amazon_review_screenshots.py` on a TV emulator to regenerate `amazon-review-screenshots/` (and `for-amazon/` curated set 01–08).
+- Run `scripts/full_app_test.py` for `test-screenshots/`.
+- Store listing icons/banners live as drawables (`app/src/main/res/drawable/banner.png`, `tv_banner.png`, `ic_launcher*`) and are referenced by `docs/playstore-automation.md` when filling Play Console listing; keep any exported 512 px / 1280×720 / 1920×1080 assets out of git or add them under a local `store-assets/` ignored by `.gitignore` `*.aab`/`*.apk` rules.
 
 ## Build Output & Cleanup
 
@@ -186,22 +212,28 @@ When `keystore.properties` is present, `app/build.gradle.kts` applies the `relea
 
 Alternatively, configure signing in Android Studio under **Build → Generate Signed App Bundle / APK**.
 
-### 2. Build a release APK
+### 2. Build a release APK or AAB
 
-Then build:
+Then build (Amazon = APK, Play = AAB):
 
 ```bash
 export GRADLE_USER_HOME="$HOME/.gradle"
-./gradlew :app:assembleRelease -x lint -x lintVitalRelease
+./gradlew :app:assembleRelease -x lint -x lintVitalRelease   # Amazon APK
+./gradlew :app:bundleRelease                                  # Play AAB
+# or one-command (validates + sanitizes + builds + verifies):
+python3 scripts/publish-playstore.py                 # signed AAB
+python3 scripts/publish-playstore.py --bump patch    # version bump + AAB
+python3 scripts/publish-playstore.py --upload --track internal  # + fastlane supply
 ```
 
-The release APK is written to:
+Outputs (renamed via `applicationVariants.all`):
 
 ```
 app/build/outputs/apk/release/tgPlayer_v{versionName}_({versionCode})_release.apk
+app/build/outputs/bundle/release/*.aab
 ```
 
-Current version: **1.1** (versionCode **2**).
+Current version: **3.4** (versionCode **304**) — `app/build.gradle.kts`. The old `1.1 (2)` in earlier README was stale. Bump via `scripts/publish-playstore.py --bump patch|minor|major` (versionCode always +1; Play rejects reused codes).
 
 Release builds enable R8 minification and resource shrinking. Two sanitization steps run automatically via `app/build.gradle.kts`:
 
@@ -217,19 +249,20 @@ python3 scripts/sanitize-for-amazon-appstore.py              # native libs
 python3 scripts/sanitize-for-amazon-appstore.py --dex-dir <path-to-dex>  # release DEX
 ```
 
+`sanitize-for-amazon-appstore.py` is harmless for Play — keep it.
+
+> `AndroidManifest.xml` currently declares `targetSdkVersion="34"` while `app/build.gradle.kts` targets `36`. AGP 9 drives the merged manifest, but align the manifest to `36` (or remove the `<uses-sdk>` tag) before Play upload — `scripts/publish-playstore.py` warns on this drift.
+
 ### 3. Prepare listing assets
 
-Ready-made assets live in `store-assets/`:
+No `store-assets/` at `HEAD` — export from drawables or regenerate:
 
-| Asset | Location |
+| Asset | Source / how to produce |
 |---|---|
-| App icon (512 px) | `store-assets/app_icon_512.png` |
-| Feature graphic (1280×720) | `store-assets/feature_graphic_1280x720.png` |
-| Promo banners | `store-assets/promo_banner_*.png` / `.jpg` |
-| Screenshots (1920×1080) | `store-assets/screenshots_1920x1080/` |
-| Landscape banners | `store-assets/landscape_1920x1080/` |
-
-Curated submission screenshots are also in `amazon-review-screenshots/for-amazon/` (01–08, home dashboard through watch history).
+| App icon (512 px) | `app/src/main/res/drawable/ic_launcher_512.png` + `mipmap-*/ic_launcher.png`; export 512 px for console |
+| Feature graphic (1280×720) | `app/src/main/res/drawable/banner.png` / `tv_banner.png` / `gp_logo_bk_bg.png` |
+| Screenshots (1920×1080) | Run `python3 scripts/amazon_review_screenshots.py` → `amazon-review-screenshots/` (also `for-amazon/` curated 01–08) |
+| Play listing | `docs/playstore-automation.md` — Store listing, Data safety, Content rating, App access (`+100` / `12345`) |
 
 To regenerate screenshots on a connected TV emulator:
 
@@ -238,6 +271,21 @@ python3 scripts/amazon_review_screenshots.py
 ```
 
 Outputs land in `amazon-review-screenshots/`. The script expects `emulator-5554` by default; edit `SER` in the script if needed.
+
+### 3b. Google Play upload (optional)
+
+One-command local (needs `keystore.properties` + `local.properties` + signing):
+
+```bash
+python3 scripts/publish-playstore.py --upload --track internal   # needs play-service-account.json
+# or directly:
+gem install fastlane   # or bundle install (Gemfile)
+fastlane android deploy track:internal
+fastlane android deploy track:closed
+fastlane android deploy track:production
+```
+
+Enable once: Play Console → Setup → API access → Link Cloud project → Enable Play Developer API → Create Service Account (Release manager) → Invite email in Users and permissions → Download JSON → `play-service-account.json` (gitignored via `*.json`). CI via `.github/workflows/playstore.yml` (`LOCAL_PROPERTIES`, `KEYSTORE_BASE64`, `KEYSTORE_PROPERTIES`, `PLAY_SERVICE_ACCOUNT_JSON` secrets; trigger `git tag v3.4.1 && git push origin v3.4.1` or manual dispatch). Full guide: `docs/playstore-automation.md`.
 
 ### 4. Provide reviewer test credentials
 
@@ -256,16 +304,16 @@ In review mode (`ReviewModeHelper`):
 - Destructive dashboard actions (logout, clear cache/history, settings) are hidden
 - Downloads use a public sample MP4; playback works without VLC installed
 
-Copy `store-assets/amazon_test_instructions.txt` into the Amazon Developer Console **Testing Instructions** field. It documents the full 5–10 minute reviewer flow.
+No `store-assets/amazon_test_instructions.txt` at `HEAD` (deleted Sept 2026). For Amazon **Testing Instructions**, paste the review login (`+100` / `12345`) + 5–10 min flow: Onboarding → Login → Dashboard → Chats → Messages → Details → Download → Play (VLC) → History. The same creds apply for Play Console → App access.
 
 ### 5. Pre-submission checklist
 
-- [ ] `keystore.properties` configured and release APK signed (verify with `apksigner verify --print-certs app/build/outputs/apk/release/*.apk`)
+- [ ] `keystore.properties` configured and release signed (verify: `apksigner verify --print-certs app/build/outputs/apk/release/*.apk` or `jarsigner -verify` for AAB; `scripts/publish-playstore.py` also verifies)
 - [ ] Sanitization tasks ran without errors (check Gradle output for `sanitizeForAmazonAppstore` / `sanitizeReleaseDex`)
-- [ ] Privacy policy and terms URLs are live and referenced in `TermsActivity.kt`
-- [ ] Listing screenshots uploaded (1920×1080 landscape for TV)
-- [ ] Feature graphic and app icon uploaded
-- [ ] Test credentials and `amazon_test_instructions.txt` pasted into the submission form
+- [ ] Privacy policy and terms URLs are live and referenced in `TermsActivity.kt` (host `privacy-policy.html` via GitHub Pages)
+- [ ] Listing screenshots uploaded (1920×1080 landscape for TV) — regenerate via `scripts/amazon_review_screenshots.py` if needed
+- [ ] Feature graphic and app icon uploaded (from `drawable/banner.png` / `ic_launcher_512.png`)
+- [ ] Test credentials (`+100` / `12345`) pasted into Amazon Testing Instructions and Play → App access
 - [ ] Smoke test passes on a Fire TV or Android TV emulator:
   ```bash
   python3 scripts/full_app_test.py
@@ -276,9 +324,12 @@ Copy `store-assets/amazon_test_instructions.txt` into the Amazon Developer Conso
 | Issue | Fix |
 |---|---|
 | Automated scan flags TDLib as ad SDK | Rebuild release so sanitization tasks run; do not skip `preBuild` |
-| Blank grids after fresh install | Wait 30–60 s for `DatabaseSeeder` on first launch, then relogin with `+100` / `12345` |
-| Download or Play button missing | Confirm network access; wait for download progress to reach 100% |
-| Login rejected | Use exactly country `1`, phone `00`, code `12345` |
+| Blank grids after fresh install | Seed is now `assets/seed/test_seed.json` (no `DatabaseSeeder`); just login with `+100` / `12345` — old 30–60 s wait no longer applies |
+| Download or Play button missing | Details uses a 3-state button model: `FRESH` (Download) → `DOWNLOADING` (Cancel) → `READY` (Play + Resume). Confirm network; wait for 100% or Auto-Play thresholds (progress % / buffer MB in Settings) |
+| Login rejected | Use exactly country `1`, phone `00`, code `12345` (`+100`) |
+| VLC not launching | Install VLC (`org.videolan.vlc`) — `PlayerHelper.isVlcInstalled()` checks `<queries>` visibility; `VlcPlaybackTracker` resumes via `SettingsDataStore` bookmark |
+| Play upload rejected (versionCode) | `versionCode` must increase each upload — use `scripts/publish-playstore.py --bump patch` |
+| Play warning targetSdk drift | Align `AndroidManifest.xml` `targetSdkVersion` to `36` or remove `<uses-sdk>`; `publish-playstore.py` flags `34 != 36` |
 
 ## Contributing
 
