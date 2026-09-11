@@ -1,0 +1,99 @@
+User-agent: *
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: CCBot
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: Bytespider
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: Amazonbot
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /test_html_checks.py
+Disallow: /test_store_links.py
+Disallow: /.DS_Store
+Disallow: /amazon-review-screenshots/for-amazon/
+
+Sitemap: https://effrix.com/sitemap.xml

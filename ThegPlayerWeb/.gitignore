@@ -1,0 +1,7 @@
+.DS_Store
+*.pyc
+__pycache__/
+test_html_checks.py
+test_store_links.py
+# gplayer.mp4 is unused by the site and excluded from deploy; owner can decide later
+gplayer.mp4
