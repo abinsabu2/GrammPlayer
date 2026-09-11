@@ -1,8 +1,6 @@
 # 1. Force HTTPS (proxy-aware: also check X-Forwarded-Proto)
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteRule ^privacy\.html$ /privacy-policy.html [R=301,L]
-RewriteRule ^terms\.html$ /terms-conditions.html [R=301,L]
 RewriteCond %{HTTPS} off [OR]
 RewriteCond %{HTTP:X-Forwarded-Proto} !https
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
