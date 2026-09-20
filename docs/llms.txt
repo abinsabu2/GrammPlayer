@@ -1,0 +1,66 @@
+# Effrix — llms.txt
+# This file helps LLM crawlers and AI agents discover structured content.
+# See https://llmstxt.org
+
+> Effrix is the publisher of gPlayer (GrammPlayer) for Fire TV & Android TV and Effrix Books by Ephraim Mathew on Amazon KDP.
+
+## Site
+- Home: https://effrix.com/
+- Books: https://effrix.com/books.html
+- Privacy: https://effrix.com/privacy.html
+- Terms: https://effrix.com/terms.html
+- GitHub: https://github.com/abinsabu2/GrammPlayer
+- Sitemap: https://effrix.com/sitemap.xml
+
+## Effrix Books — Amazon KDP by Ephraim Mathew
+All books are matte cover, white paper, black & white interior, thick outlines for crayons/markers. Expanded distribution: US UK DE FR ES IT NL PL SE BE IE JP CA AU (amazon.com, amazon.co.uk, amazon.de, amazon.fr, amazon.es, amazon.it, amazon.nl, amazon.pl, amazon.se, amazon.com.be, amazon.ie, amazon.co.jp, amazon.ca, amazon.com.au).
+
+### 1. My First Bible Stories Coloring Book — ASIN B0HJRHS916
+- Title: My First Bible Stories Coloring Book — 15 Stories to Read and Color — Ages 3-8
+- Author: Ephraim Mathew
+- ASIN: B0HJRHS916
+- URL: https://www.amazon.com/dp/B0HJRHS916 (use marketplace selector on https://effrix.com/books.html to get local store)
+- Trim: 6" x 9", 32 pages, paperback, matte
+- Audience: Ages 3-8, preschool to early reader, parents, Sunday school
+- Description: 15 beloved Bible stories — Creation, Noah, Moses, David, Daniel, Jonah, Joseph, Birth of Jesus and more. Left page: bold chibi coloring art. Right page: 60-90 word story at Grade 1 reading level. Includes full-colour inspiration guide.
+- Keywords: bible coloring book kids 3-8, christian coloring book toddlers, bible stories for children, jesus coloring book ages 4-8, noahs ark coloring book, sunday school activity book, preschool bible stories color
+- Categories: Children's Books > Activities, Crafts & Games > Coloring Books, Children's Books > Religions > Christianity
+- Images: https://effrix.com/books/cover-bible-stories.png, samples at https://effrix.com/books/samples/bible-001.png
+
+### 2. Jesus and Friends Colouring Book
+- Title: Jesus and Friends Colouring Book — 27 Big & Bold Bible Scenes to Colour — Jesus with Children, Animals and Joyful Moments
+- Author: Ephraim Mathew
+- Trim: 8.5" x 11", 34 pages, matte
+- Audience: Ages 3-8
+- Description: A joyful premium colouring book — friendly smiling Jesus with happy children reading, praying, playing, sharing bread, caring for animals. Extra-thick clean outlines, huge open areas, white backgrounds, plus full-colour inspiration guide.
+- Keywords: jesus colouring book toddlers, christian colouring book preschool, bible scenes kids colouring, jesus and children activity book, preschool religious colouring pages, sunday school colouring book ages 3-5, cute jesus animals colouring book
+- Amazon search: https://www.amazon.com/s?k=Jesus+and+Friends+Colouring+Book+Ephraim+Mathew
+- Images: https://effrix.com/books/cover-jesus-friends.png
+
+### 3. The Legendary Web Hero and Friends
+- Title: The Legendary Web Hero and Friends — 15 Inspirational Hero Stories to Colour — Courage, Kindness and Teamwork Adventure
+- Author: Ephraim Mathew
+- Trim: 8.5" x 11", 34 pages, matte
+- Audience: Kids 4-10, parents and teachers seeking inspirational hero tales with colouring
+- Description: 15 bold thick-outline colouring pages featuring adult Spider-Man, Avengers heroes, Dog Man, Paw Patrol pups, Mowgli and wolf family — each paired with an inspiring 100-120 word story centered on the page with a bold moral at the end. From teamwork with Iron Man to loyalty with Dog Man and jungle wisdom with Mowgli's wolves.
+- Keywords: spiderman super hero colouring book, avengers story colouring kids, paw patrol dog man colouring, mowgli wolves jungle story book, inspirational hero stories kids, teamwork courage colouring book, kids colouring story moral book
+- Amazon search: https://www.amazon.com/s?k=The+Legendary+Web+Hero+and+Friends+Ephraim+Mathew
+- Images: https://effrix.com/books/cover-web-hero.png
+
+## How to buy on your marketplace
+Visit https://effrix.com/books.html and select your marketplace: US UK DE FR ES IT NL PL SE BE IE JP CA AU. All "Buy on Amazon" buttons rewrite to https://www.{domain}/dp/{ASIN} or https://www.{domain}/s?k={query}. The choice is saved in localStorage (effrix_marketplace) and synced to ?marketplace= query param.
+
+## Structured data
+- CollectionPage + ItemList + 3× Book JSON-LD on https://effrix.com/books.html (ids: #biblestories, #jesusfriends, #webhero)
+- SoftwareApplication JSON-LD on https://effrix.com/ for gPlayer
+- BreadcrumbList on both pages
+- Open Graph + Twitter cards on both pages
+
+## Contact
+- Publisher: Effrix (effrix.com)
+- Author: Ephraim Mathew
+- Email: firegram2025@gmail.com
+- Amazon author search: https://www.amazon.com/s?k=Ephraim+Mathew
+
+## Keywords (comprehensive)
+Effrix Books, Ephraim Mathew, Amazon books, KDP books, B0HJRHS916, My First Bible Stories Coloring Book, Jesus and Friends Colouring Book, The Legendary Web Hero and Friends, bible coloring book, christian coloring book, sunday school, preschool bible stories, jesus colouring book, hero colouring book, teamwork courage, amazon expanded distribution, coloring books ages 3-8, 6x9, 8.5x11

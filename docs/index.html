@@ -15,8 +15,8 @@
     
     <!-- SEO Meta Tags -->
     <title>Effrix | gPlayer - The Ultimate Telegram Media Player for Fire TV & Smart TVs</title>
-    <meta name="description" content="Effrix presents gPlayer (GrammPlayer) — Seamlessly stream personal videos, documents, and media from your personal Telegram cloud on Amazon Fire TV & Android TV using your remote.">
-    <meta name="keywords" content="Effrix, gPlayer, GrammPlayer, Telegram Fire TV player, Telegram Android TV player, stream Telegram videos on TV, Telegram cloud player, Firestick Telegram app">
+    <meta name="description" content="Effrix presents gPlayer (GrammPlayer) — Seamlessly stream personal videos, documents, and media from your personal Telegram cloud on Amazon Fire TV & Android TV using your remote. Also discover Effrix Books by Ephraim Mathew — Bible coloring books & hero adventures on Amazon (B0HJRHS916).">
+    <meta name="keywords" content="Effrix, gPlayer, GrammPlayer, Telegram Fire TV player, Telegram Android TV player, stream Telegram videos on TV, Telegram cloud player, Firestick Telegram app, Effrix Books, Ephraim Mathew, My First Bible Stories Coloring Book, B0HJRHS916, Jesus and Friends Colouring Book, bible coloring book kids 3-8, christian coloring book">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://effrix.com/">
     <link rel="sitemap" type="application/xml" href="/sitemap.xml">
@@ -33,6 +33,7 @@
     <meta name="twitter:description" content="Browse and play your Telegram cloud videos on TV with a native TV remote experience.">
     <meta name="twitter:image" content="https://m.media-amazon.com/images/I/61k-dE8qFvL._AC_SL1500_.jpg">
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"gPlayer","applicationCategory":"MultimediaApplication","operatingSystem":"Fire OS, Android TV, Android","description":"Effrix presents gPlayer (GrammPlayer) — Seamlessly stream personal videos, documents, and media from your personal Telegram cloud on Amazon Fire TV & Android TV using your remote.","url":"https://effrix.com/","image":"https://effrix.com/amazon-review-screenshots/03_dashboard.png","screenshot":["https://effrix.com/amazon-review-screenshots/03_dashboard.png","https://effrix.com/amazon-review-screenshots/14_fullscreen_playback.png","https://effrix.com/amazon-review-screenshots/00_onboarding.png"],"offers":{"@type":"Offer","url":"https://www.amazon.com/dp/B0H85JCRT1","availability":"https://schema.org/InStock"},"publisher":{"@type":"Organization","name":"Effrix"},"author":{"@type":"Organization","name":"Effrix"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"ItemList","name":"Effrix Books on Amazon","itemListElement":[{"@type":"ListItem","position":1,"item":{"@type":"Book","name":"My First Bible Stories Coloring Book","author":{"@type":"Person","name":"Ephraim Mathew"},"image":"https://effrix.com/books/cover-bible-stories.png","url":"https://www.amazon.com/dp/B0HJRHS916","keywords":"bible coloring book kids 3-8, christian coloring book toddlers, sunday school activity book"}},{"@type":"ListItem","position":2,"item":{"@type":"Book","name":"Jesus and Friends Colouring Book","author":{"@type":"Person","name":"Ephraim Mathew"},"image":"https://effrix.com/books/cover-jesus-friends.png","url":"https://effrix.com/books.html"}},{"@type":"ListItem","position":3,"item":{"@type":"Book","name":"The Legendary Web Hero and Friends","author":{"@type":"Person","name":"Ephraim Mathew"},"image":"https://effrix.com/books/cover-web-hero.png","url":"https://effrix.com/books.html"}}]}</script>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -70,6 +71,7 @@
             <nav class="hidden md:flex gap-8 text-sm font-medium text-slate-300">
                 <a href="#features" class="hover:text-cyan-400 transition">Features</a>
                 <a href="#apps" class="hover:text-cyan-400 transition">Apps & Products</a>
+                <a href="books.html" class="hover:text-amber-400 transition">Books</a>
                 <a href="#login" class="hover:text-cyan-400 transition">How to Log in</a>
                 <a href="#screenshots" class="hover:text-cyan-400 transition">Screenshots</a>
                 <a href="#open-source" class="hover:text-cyan-400 transition">Open Source</a>
@@ -273,6 +275,80 @@
         </div>
     </section>
 
+    <!-- Books by Effrix — Mini Showcase (full catalog at /books.html) -->
+    <section id="books" class="py-20 bg-slate-900/40 border-y border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-10">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold mb-3">New · Effrix Books on Amazon</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">Coloring & story books for little artists</h2>
+                <p class="text-slate-400">By Ephraim Mathew — Bible stories, Jesus & friends, and hero adventures. Thick outlines, big & bold art for crayons & markers. Choose your Amazon store at checkout.</p>
+            </div>
+            <!-- Marketplace quick picker (same 14 stores as books.html) -->
+            <form id="books-marketplace-form" class="max-w-3xl mx-auto border border-slate-700/60 rounded-xl p-3 bg-slate-900 mb-8" aria-label="Amazon marketplace selector">
+                <fieldset>
+                    <legend class="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-1.5"><i data-lucide="globe" class="w-3.5 h-3.5"></i> Choose your Amazon marketplace — updates all book links</legend>
+                    <div class="flex flex-wrap gap-1.5">
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="US" class="sr-only peer" checked><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">US</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="UK" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">UK</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="DE" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">DE</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="FR" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">FR</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="ES" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">ES</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="IT" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">IT</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="NL" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">NL</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="PL" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">PL</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="SE" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">SE</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="BE" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">BE</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="IE" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">IE</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="JP" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">JP</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="CA" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">CA</span></label>
+                        <label class="cursor-pointer"><input type="radio" name="books_marketplace" value="AU" class="sr-only peer"><span class="peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 inline-block px-3 py-1 rounded-lg border border-slate-700 bg-slate-950 text-slate-300 text-xs font-semibold">AU</span></label>
+                    </div>
+                </fieldset>
+                <p class="text-[11px] text-slate-500 mt-2"><span id="books-marketplace-label" class="font-semibold text-amber-400">US · amazon.com</span> — US UK DE FR ES IT NL PL SE BE IE JP CA AU</p>
+            </form>
+            <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                <div class="bg-slate-900 rounded-2xl border border-amber-500/20 overflow-hidden flex flex-col">
+                    <img src="books/cover-bible-stories.png" alt="My First Bible Stories Coloring Book cover by Ephraim Mathew" class="w-full aspect-[3/4] object-cover object-top" loading="lazy" decoding="async">
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="text-xs font-semibold text-amber-400">Ages 3-8 · 6×9 · 32pp</div>
+                        <h3 class="font-bold text-white mt-1">My First Bible Stories Coloring Book</h3>
+                        <p class="text-sm text-slate-400 mt-1">15 Stories to Read and Color</p>
+                        <p class="text-xs text-slate-500 mt-3 line-clamp-3">Creation, Noah, Moses, David & more — bold chibi art + 60-90 word stories. Great for Sunday school.</p>
+                        <a href="https://www.amazon.com/dp/B0HJRHS916" data-asin="B0HJRHS916" target="_blank" rel="noopener" class="mt-4 w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">Buy on Amazon <i data-lucide="external-link" class="w-4 h-4"></i></a>
+                        <p class="text-[11px] text-slate-500 text-center mt-1.5">ASIN B0HJRHS916</p>
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
+                    <img src="books/cover-jesus-friends.png" alt="Jesus and Friends Colouring Book cover" class="w-full aspect-[3/4] object-cover object-top" loading="lazy" decoding="async">
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="text-xs font-semibold text-sky-400">Ages 3-8 · 8.5×11 · 34pp</div>
+                        <h3 class="font-bold text-white mt-1">Jesus and Friends Colouring Book</h3>
+                        <p class="text-sm text-slate-400 mt-1">27 Big & Bold Bible Scenes</p>
+                        <p class="text-xs text-slate-500 mt-3">Jesus with children & animals — extra-thick outlines, inspiration guide included.</p>
+                        <a href="https://www.amazon.com/s?k=Jesus+and+Friends+Colouring+Book+Ephraim+Mathew" data-search="Jesus and Friends Colouring Book Ephraim Mathew" target="_blank" rel="noopener" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 border border-slate-700">Search on Amazon <i data-lucide="external-link" class="w-4 h-4"></i></a>
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
+                    <img src="books/cover-web-hero.png" alt="The Legendary Web Hero and Friends cover" class="w-full aspect-[3/4] object-cover object-top" loading="lazy" decoding="async">
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="text-xs font-semibold text-violet-400">Ages 4-10 · 8.5×11 · 34pp</div>
+                        <h3 class="font-bold text-white mt-1">The Legendary Web Hero and Friends</h3>
+                        <p class="text-sm text-slate-400 mt-1">15 Inspirational Hero Stories</p>
+                        <p class="text-xs text-slate-500 mt-3">Web Hero, Avengers, Dog Man & Mowgli — courage, kindness & teamwork.</p>
+                        <a href="https://www.amazon.com/s?k=The+Legendary+Web+Hero+and+Friends+Ephraim+Mathew" data-search="The Legendary Web Hero and Friends Ephraim Mathew" target="_blank" rel="noopener" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 border border-slate-700">Search on Amazon <i data-lucide="external-link" class="w-4 h-4"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-8">
+                <a href="books.html" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-semibold px-6 py-3 rounded-xl transition">View all books & choose your Amazon store <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+            </div>
+            <!-- SEO keyword strip (visible + crawler) -->
+            <p class="max-w-5xl mx-auto text-xs text-slate-500 text-center mt-6 leading-relaxed">
+                Keywords: bible coloring book kids 3-8, christian coloring book toddlers, sunday school activity book, jesus colouring book toddlers, super hero colouring book, teamwork courage colouring book — by Ephraim Mathew, Effrix Books. Available on Amazon US UK DE FR ES IT NL PL SE BE IE JP CA AU. Featured ASIN <a href="https://www.amazon.com/dp/B0HJRHS916" data-asin="B0HJRHS916" target="_blank" rel="noopener" class="text-cyan-400 underline">B0HJRHS916</a>.
+            </p>
+        </div>
+    </section>
+
     <!-- How to Log in -->
     <section id="login" class="py-16 bg-slate-900/50 border-y border-slate-800/80">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -452,10 +528,45 @@
         </div>
     </footer>
 
-    <!-- Initialize Lucide Icons + YouTube facade + country-aware Amazon links -->
+    <!-- Initialize Lucide Icons + YouTube facade + Amazon marketplace selector -->
     <script>
         lucide.createIcons();
-        try{(function(){var m={"US":"amazon.com","GB":"amazon.co.uk","DE":"amazon.de","FR":"amazon.fr","IT":"amazon.it","ES":"amazon.es","NL":"amazon.nl","SE":"amazon.se","PL":"amazon.pl","CA":"amazon.ca","MX":"amazon.com.mx","BR":"amazon.com.br","IN":"amazon.in","JP":"amazon.co.jp","AU":"amazon.com.au","SG":"amazon.sg","AE":"amazon.ae","SA":"amazon.sa","TR":"amazon.com.tr","EG":"amazon.eg","BE":"amazon.com.be"};var t={"Europe/London":"GB","Europe/Berlin":"DE","Europe/Paris":"FR","Europe/Rome":"IT","Europe/Madrid":"ES","Europe/Amsterdam":"NL","Europe/Stockholm":"SE","Europe/Warsaw":"PL","Europe/Brussels":"BE","America/Toronto":"CA","America/Vancouver":"CA","America/Mexico_City":"MX","America/Sao_Paulo":"BR","Asia/Kolkata":"IN","Asia/Calcutta":"IN","Asia/Tokyo":"JP","Australia/Sydney":"AU","Australia/Melbourne":"AU","Asia/Singapore":"SG","Asia/Dubai":"AE","Asia/Riyadh":"SA","Europe/Istanbul":"TR","Asia/Istanbul":"TR","Africa/Cairo":"EG","America/New_York":"US","America/Chicago":"US","America/Los_Angeles":"US"};function c(){var ls=navigator.languages||[navigator.language||""];for(var i=0;i<ls.length;i++){var x=(ls[i]||"").match(/-([a-zA-Z]{2})(?:-|$)/);if(x)return x[1].toUpperCase();}var z="";try{z=Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(e){}if(t[z])return t[z];return "";}var cc=c();var d=m[cc];if(!d||d==="amazon.com")return;document.querySelectorAll("a[data-asin]").forEach(function(a){var asin=a.getAttribute("data-asin");if(!asin)return;a.href="https://www."+d+"/dp/"+asin;});})();}catch(e){}
+        (function(){
+            var domains={"US":"amazon.com","GB":"amazon.co.uk","UK":"amazon.co.uk","DE":"amazon.de","FR":"amazon.fr","ES":"amazon.es","IT":"amazon.it","NL":"amazon.nl","PL":"amazon.pl","SE":"amazon.se","BE":"amazon.com.be","IE":"amazon.ie","JP":"amazon.co.jp","CA":"amazon.ca","AU":"amazon.com.au","MX":"amazon.com.mx","BR":"amazon.com.br","IN":"amazon.in","SG":"amazon.sg","AE":"amazon.ae","SA":"amazon.sa","TR":"amazon.com.tr","EG":"amazon.eg"};
+            var labels={"US":"US · amazon.com","UK":"UK · amazon.co.uk","DE":"DE · amazon.de","FR":"FR · amazon.fr","ES":"ES · amazon.es","IT":"IT · amazon.it","NL":"NL · amazon.nl","PL":"PL · amazon.pl","SE":"SE · amazon.se","BE":"BE · amazon.com.be","IE":"IE · amazon.ie","JP":"JP · amazon.co.jp","CA":"CA · amazon.ca","AU":"AU · amazon.com.au"};
+            var tzMap={"Europe/London":"UK","Europe/Berlin":"DE","Europe/Paris":"FR","Europe/Rome":"IT","Europe/Madrid":"ES","Europe/Amsterdam":"NL","Europe/Warsaw":"PL","Europe/Stockholm":"SE","Europe/Brussels":"BE","Europe/Dublin":"IE","Asia/Tokyo":"JP","America/Toronto":"CA","Australia/Sydney":"AU"};
+            function guess(){
+                var ls=navigator.languages||[navigator.language||""];
+                for(var i=0;i<ls.length;i++){var m=(ls[i]||"").match(/-([a-zA-Z]{2})(?:-|$)/); if(m){var cc=m[1].toUpperCase(); if(domains[cc]) return cc==="GB"?"UK":cc;}}
+                try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||""; if(tzMap[tz]) return tzMap[tz];}catch(e){}
+                return "US";
+            }
+            function apply(code){
+                var d=domains[code]||"amazon.com";
+                var lbl=document.getElementById('books-marketplace-label');
+                if(lbl) lbl.textContent=labels[code]||code+" · "+d;
+                document.querySelectorAll("a[data-asin]").forEach(function(a){var asin=a.getAttribute("data-asin"); if(!asin) return; // keep gPlayer app ASINs also marketplace-aware
+                a.href="https://www."+d+"/dp/"+asin;});
+                document.querySelectorAll("a[data-search]").forEach(function(a){var q=a.getAttribute("data-search"); if(!q) return; a.href="https://www."+d+"/s?k="+encodeURIComponent(q);});
+                document.querySelectorAll(".marketplace-suffix").forEach(function(el){el.textContent="· "+code;});
+            }
+            var KEY="effrix_marketplace";
+            var form=document.getElementById('books-marketplace-form');
+            var initial=null;
+            try{var p=new URLSearchParams(location.search).get('marketplace'); if(p) initial=p.toUpperCase();}catch(e){}
+            if(!initial) try{initial=localStorage.getItem(KEY);}catch(e){}
+            if(!initial||!domains[initial]) initial=guess();
+            // sync radio
+            if(form){ var r=form.querySelector('input[value="'+initial+'"]'); if(r) r.checked=true; }
+            // apply even if no form (for generic links)
+            try{ apply(initial); }catch(e){}
+            if(form){
+                form.addEventListener('change',function(e){ if(e.target.name==='books_marketplace'){ var c=e.target.value; try{localStorage.setItem(KEY,c);}catch(e){} try{var u=new URL(location.href); u.searchParams.set('marketplace',c); history.replaceState(null,'',u);}catch(e){} apply(c); }});
+            } else {
+                // no books form on this page view (e.g. direct), still rewrite links once using guessed domain
+                try{ if(!localStorage.getItem(KEY)) localStorage.setItem(KEY,initial);}catch(e){}
+            }
+        })();
         (function(){
             var f=document.getElementById('yt-facade');
             function load(){
