@@ -145,5 +145,8 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
 
+    // QR login code rendering
+    implementation(libs.zxing.core)
+
     implementation("com.google.android.gms:play-services-basement:18.5.0")
 }

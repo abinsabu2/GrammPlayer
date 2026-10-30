@@ -111,7 +111,9 @@ class OnboardingActivity : FragmentActivity() {
                 is TdApi.AuthorizationStateWaitPhoneNumber -> {
                     observeData()
                 }
-                is TdApi.AuthorizationStateWaitCode -> {
+                is TdApi.AuthorizationStateWaitCode,
+                is TdApi.AuthorizationStateWaitPassword,
+                is TdApi.AuthorizationStateWaitOtherDeviceConfirmation -> {
                     observeData()
                 }
                 is TdApi.AuthorizationStateReady -> {

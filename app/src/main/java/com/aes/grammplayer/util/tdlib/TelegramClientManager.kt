@@ -205,6 +205,44 @@ object TelegramClientManager {
     }
 
     /**
+     * Sends the two-step verification (2FA) password. The result is handled by the global handler.
+     */
+    fun sendAuthPassword(password: String) {
+        client?.send(TdApi.CheckAuthenticationPassword(password), TdLibUpdateHandler)
+    }
+
+    /**
+     * Requests "link device" QR login. TDLib answers with AuthorizationStateWaitOtherDeviceConfirmation.
+     */
+    fun requestQrLogin() {
+        client?.send(TdApi.RequestQrCodeAuthentication(longArrayOf()), TdLibUpdateHandler)
+    }
+
+    /**
+     * Drops a pending QR login and starts a fresh client back at AuthorizationStateWaitPhoneNumber.
+     * TDLib rejects SetAuthenticationPhoneNumber while a QR code is live, so this is the only way back.
+     */
+    suspend fun restartLogin() {
+        logOut()
+        initialize()
+    }
+
+    /**
+     * Phone number of the signed-in account ("+" prefixed), or null. QR login never asks for it.
+     */
+    suspend fun getMyPhoneNumber(): String? = suspendCancellableCoroutine { continuation ->
+        val activeClient = client
+        if (activeClient == null) {
+            continuation.resume(null)
+            return@suspendCancellableCoroutine
+        }
+        activeClient.send(TdApi.GetMe()) { result ->
+            val phone = (result as? TdApi.User)?.phoneNumber?.takeIf { it.isNotBlank() }
+            continuation.resume(phone?.let { "+$it" })
+        }
+    }
+
+    /**
      * Starts a file download. Progress updates will be sent to the global handler.
      */
     fun startFileDownload(fileId: Int) {

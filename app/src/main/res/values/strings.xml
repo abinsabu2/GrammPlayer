@@ -58,6 +58,18 @@
     <string name="authentication_code">Authentication Code</string>
     <string name="phone_hint">1234567890</string>
     <string name="submit">Submit</string>
+    <string name="two_step_password">Two-Step Verification Password</string>
+    <string name="qr_login_description">Telegram login QR code</string>
+    <string name="qr_login_instructions">On your phone open Telegram, go to Settings > Devices > Link Desktop Device and scan this code</string>
+    <string name="login_subtitle">Choose how you want to sign in</string>
+    <string name="login_phone_title">Log in with phone number</string>
+    <string name="login_qr_title">Scan QR code</string>
+    <string name="login_or">OR</string>
+    <string name="login_phone_step_hint">Enter your country code and phone number</string>
+    <string name="login_code_step_hint">Enter the code Telegram sent you</string>
+    <string name="login_password_step_hint">Your account has two-step verification. Enter your password</string>
+    <string name="qr_generating">Generating QR code…</string>
+    <string name="qr_unavailable">Finish signing in on the left</string>
 
     <!-- Navigation -->
     <string name="back">Back</string>

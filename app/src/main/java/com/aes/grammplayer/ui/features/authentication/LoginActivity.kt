@@ -9,8 +9,10 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.annotation.StringRes
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
@@ -38,7 +40,11 @@ class LoginActivity : FragmentActivity() {
     private lateinit var countryCodeEditText: EditText
     private lateinit var phoneNumberEditText: EditText
     private lateinit var authCodeEditText: EditText
+    private lateinit var passwordEditText: EditText
     private lateinit var submitButton: Button
+    private lateinit var phoneStepHintTextView: TextView
+    private lateinit var qrImageView: ImageView
+    private lateinit var qrInstructionsTextView: TextView
     private lateinit var logCardView: CardView
     private lateinit var logTextView: TextView
     private lateinit var progressBar: ProgressBar
@@ -46,6 +52,15 @@ class LoginActivity : FragmentActivity() {
     private lateinit var loader: DialogHelper
 
     private var isWaitingForCode = false
+    private var isWaitingForPassword = false
+    private var currentStep: LoginStep? = null
+
+    // Set when the user submits a phone number while a QR code is live; sent once
+    // TelegramClientManager.restartLogin() brings TDLib back to WaitPhoneNumber.
+    private var pendingPhoneNumber: String? = null
+
+    // True while that phone number is in flight; if TDLib rejects it, the QR code is requested again.
+    private var restoreQrOnPhoneError = false
     private var isTestMode = false
     private var popupJob: Job? = null
 
@@ -61,7 +76,10 @@ class LoginActivity : FragmentActivity() {
         private const val DELAY_MEDIUM = 1000L
         private const val DELAY_LONG = 1500L
         private const val DELAY_ERROR_DISPLAY = 3000L
+        private const val QR_SIZE_PX = 512
     }
+
+    private enum class LoginStep { PHONE, CODE, PASSWORD }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,7 +110,11 @@ class LoginActivity : FragmentActivity() {
         countryCodeEditText = findViewById(R.id.countryCodeEditText)
         phoneNumberEditText = findViewById(R.id.phoneNumberEditText)
         authCodeEditText = findViewById(R.id.authCodeEditText)
+        passwordEditText = findViewById(R.id.passwordEditText)
         submitButton = findViewById(R.id.submitButton)
+        phoneStepHintTextView = findViewById(R.id.phoneStepHintTextView)
+        qrImageView = findViewById(R.id.qrImageView)
+        qrInstructionsTextView = findViewById(R.id.qrInstructionsTextView)
         logCardView = findViewById(R.id.logCardView)
         logTextView = findViewById(R.id.logTextView)
         progressBar = findViewById(R.id.progressBar)
@@ -121,7 +143,20 @@ class LoginActivity : FragmentActivity() {
     private suspend fun handleSubmit() {
         showPopup(true)
 
-        if (isWaitingForCode) {
+        if (isWaitingForPassword) {
+            // Not trimmed: spaces can be part of a 2FA password.
+            val password = passwordEditText.text.toString()
+            if (password.isNotEmpty()) {
+                loader.show("Checking password...")
+                TelegramClientManager.sendAuthPassword(password)
+            } else {
+                loader.show("Invalid Password!")
+                lifecycleScope.launch {
+                    delay(DELAY_LONG.milliseconds)
+                    loader.dismiss()
+                }
+            }
+        } else if (isWaitingForCode) {
             val code = authCodeEditText.text.toString().trim()
             if (code.isNotEmpty()) {
                 if (isTestMode) {
@@ -176,12 +211,9 @@ class LoginActivity : FragmentActivity() {
                         delay(DELAY_LONG.milliseconds)
                         loader.dismiss()
                     }
-                    isWaitingForCode = true
-                    countryCodeEditText.visibility = View.GONE
-                    phoneNumberEditText.visibility = View.GONE
-                    authCodeEditText.visibility = View.VISIBLE
+                    showLoginStep(LoginStep.CODE)
+                    showQrPanel(null, R.string.qr_unavailable)
                     authCodeEditText.setText("12345")
-                    authCodeEditText.requestFocus()
                     return
                 }
 
@@ -191,7 +223,13 @@ class LoginActivity : FragmentActivity() {
                     loader.updateMessage("Sending verification code to $fullPhoneNumber...")
                     delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
-                    TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                    if (TdLibUpdateHandler.authorizationState.value is TdApi.AuthorizationStateWaitOtherDeviceConfirmation) {
+                        // QR code is live: TDLib refuses phone login until the session restarts.
+                        pendingPhoneNumber = fullPhoneNumber
+                        TelegramClientManager.restartLogin()
+                    } else {
+                        TelegramClientManager.sendPhoneNumber(fullPhoneNumber)
+                    }
                 }
             } else {
                 loader.show("Invalid phone number!")
@@ -231,6 +269,7 @@ class LoginActivity : FragmentActivity() {
         // Cancel any pending delayed loader updates from a previous state before reacting to the new one,
         // so fast-firing transitions (e.g. WaitPhoneNumber -> WaitCode on session resume) don't race each other.
         loaderSequenceJob?.cancel()
+        restoreQrOnPhoneError = false
 
         when (state) {
             is TdApi.AuthorizationStateWaitTdlibParameters -> {
@@ -240,18 +279,25 @@ class LoginActivity : FragmentActivity() {
 
             is TdApi.AuthorizationStateWaitPhoneNumber -> {
                 loader.dismiss()
+                val pendingPhone = pendingPhoneNumber
+                if (pendingPhone != null) {
+                    // Back from restartLogin(): finish the phone login the user asked for.
+                    pendingPhoneNumber = null
+                    showQrPanel(null, R.string.qr_unavailable)
+                    loader.show("Sending verification code to $pendingPhone...")
+                    restoreQrOnPhoneError = true
+                    TelegramClientManager.sendPhoneNumber(pendingPhone)
+                    return
+                }
                 loaderSequenceJob = lifecycleScope.launch {
                     delay(DELAY_SHORT.milliseconds)
                     loader.updateMessage("Loading Login Screen")
                     delay(DELAY_MEDIUM.milliseconds)
                     loader.dismiss()
                 }
-                isWaitingForCode = false
-                countryCodeEditText.visibility = View.VISIBLE
-                phoneNumberEditText.visibility = View.VISIBLE
-                authCodeEditText.visibility = View.GONE
-                submitButton.text = "Submit"
-                countryCodeEditText.requestFocus()
+                showLoginStep(LoginStep.PHONE)
+                showQrPanel(null, R.string.qr_generating)
+                TelegramClientManager.requestQrLogin()
             }
 
             is TdApi.AuthorizationStateWaitCode -> {
@@ -260,29 +306,35 @@ class LoginActivity : FragmentActivity() {
                     loader.updateMessage("Loading Login Screen")
                     loader.dismiss()
                 }
-                isWaitingForCode = true
-                countryCodeEditText.visibility = View.GONE
-                phoneNumberEditText.visibility = View.GONE
-                authCodeEditText.visibility = View.VISIBLE
-                submitButton.text = "Submit"
-                authCodeEditText.requestFocus()
+                showLoginStep(LoginStep.CODE)
+                showQrPanel(null, R.string.qr_unavailable)
+            }
+
+            is TdApi.AuthorizationStateWaitOtherDeviceConfirmation -> {
+                // QR login. TDLib re-emits this state with a fresh link when the old one expires.
+                loader.dismiss()
+                showLoginStep(LoginStep.PHONE)
+                showQrPanel(state.link, R.string.qr_login_instructions)
             }
 
             is TdApi.AuthorizationStateWaitPassword -> {
-                // Two-step verification (2FA). Without this branch, 2FA users previously
-                // fell into `else` and got stuck on a "Processing..." message forever.
-                // NOTE: there's no password input view in activity_login.xml yet — this
-                // just unblocks the state machine and logs it. You'll want a real password
-                // EditText + submit path wired to TelegramClientManager.sendAuthPassword(...)
-                // (or whatever your manager's equivalent call is named) before this is usable.
+                // Two-step verification (2FA), reached after the code or after a QR scan.
                 loader.dismiss()
-                Log.w(TAG, "2FA required (AuthorizationStateWaitPassword) — no password UI wired up yet")
+                showLoginStep(LoginStep.PASSWORD)
+                showQrPanel(null, R.string.qr_unavailable)
+                passwordEditText.hint = state.passwordHint.takeIf { !it.isNullOrBlank() }
+                    ?.let { "${getString(R.string.two_step_password)} (hint: $it)" }
+                    ?: getString(R.string.two_step_password)
             }
 
             is TdApi.AuthorizationStateReady -> {
                 loader.dismiss()
                 loader.show("Login successful!")
                 loaderSequenceJob = lifecycleScope.launch {
+                    // QR login skips the phone step; per-user history is keyed by phone number.
+                    if (UserSession.phoneNumber.isBlank()) {
+                        TelegramClientManager.getMyPhoneNumber()?.let { UserSession.initialize(it) }
+                    }
                     delay(DELAY_SHORT.milliseconds)
                     loader.updateMessage("Initializing app...")
                     delay(DELAY_MEDIUM.milliseconds)
@@ -291,8 +343,9 @@ class LoginActivity : FragmentActivity() {
                 }
             }
 
+            is TdApi.AuthorizationStateLoggingOut,
             is TdApi.AuthorizationStateClosing -> {
-                loader.show("Closing session...")
+                loader.show(if (pendingPhoneNumber != null) "Switching to phone login..." else "Closing session...")
                 loader.updateMessage("Please wait...")
             }
 
@@ -306,13 +359,50 @@ class LoginActivity : FragmentActivity() {
 
             else -> {
                 // Logged instead of silently showing "Processing..." so any future/unhandled
-                // AuthorizationState subtype (e.g. WaitEmailAddress, WaitEmailCode,
-                // WaitOtherDeviceConfirmation) is noticeable during testing rather than
+                // AuthorizationState subtype (e.g. WaitEmailAddress, WaitEmailCode)
+                // is noticeable during testing rather than
                 // leaving the user on a vague spinner.
                 Log.w(TAG, "Unhandled authorization state: ${state.javaClass.simpleName}")
                 loader.updateMessage("Processing...")
             }
         }
+    }
+
+    /**
+     * Shows the left panel's inputs for [step]. Skipped when unchanged, so a QR link
+     * refresh doesn't pull focus away from a half-typed phone number.
+     */
+    @SuppressLint("SetTextI18n")
+    private fun showLoginStep(step: LoginStep) {
+        if (step == currentStep) return
+        currentStep = step
+        isWaitingForCode = step == LoginStep.CODE
+        isWaitingForPassword = step == LoginStep.PASSWORD
+        val phoneVisibility = if (step == LoginStep.PHONE) View.VISIBLE else View.GONE
+        countryCodeEditText.visibility = phoneVisibility
+        phoneNumberEditText.visibility = phoneVisibility
+        authCodeEditText.visibility = if (isWaitingForCode) View.VISIBLE else View.GONE
+        passwordEditText.visibility = if (isWaitingForPassword) View.VISIBLE else View.GONE
+        phoneStepHintTextView.setText(
+            when (step) {
+                LoginStep.PHONE -> R.string.login_phone_step_hint
+                LoginStep.CODE -> R.string.login_code_step_hint
+                LoginStep.PASSWORD -> R.string.login_password_step_hint
+            }
+        )
+        submitButton.text = "Submit"
+        when (step) {
+            LoginStep.PHONE -> countryCodeEditText
+            LoginStep.CODE -> authCodeEditText
+            LoginStep.PASSWORD -> passwordEditText
+        }.requestFocus()
+    }
+
+    /** Right panel: shows [link] as a QR code (or nothing when null) above [message]. */
+    private fun showQrPanel(link: String?, @StringRes message: Int) {
+        if (link != null) qrImageView.setImageBitmap(QrCodeBitmap.create(link, QR_SIZE_PX))
+        qrImageView.visibility = if (link != null) View.VISIBLE else View.GONE
+        qrInstructionsTextView.setText(message)
     }
 
     /**
@@ -323,6 +413,11 @@ class LoginActivity : FragmentActivity() {
         Log.e(TAG, "TDLib error ${error.code}: ${error.message}")
         loaderSequenceJob?.cancel()
         loader.show(error.message ?: "Something went wrong. Please try again.")
+        if (restoreQrOnPhoneError) {
+            restoreQrOnPhoneError = false
+            showQrPanel(null, R.string.qr_generating)
+            TelegramClientManager.requestQrLogin()
+        }
         loaderSequenceJob = lifecycleScope.launch {
             delay(DELAY_ERROR_DISPLAY.milliseconds)
             loader.dismiss()
@@ -351,6 +446,10 @@ class LoginActivity : FragmentActivity() {
             false
         }
         authCodeEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) hideKeyboard()
+            false
+        }
+        passwordEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) hideKeyboard()
             false
         }
