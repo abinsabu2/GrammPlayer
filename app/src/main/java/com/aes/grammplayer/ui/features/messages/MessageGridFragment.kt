@@ -34,7 +34,7 @@ class MessageGridFragment : BaseGridFragment() {
         super.onCreate(savedInstanceState)
         settingsDataStore = SettingsDataStore(requireActivity())
         loader = DialogHelper(childFragmentManager)
-        title = chatTitle.ifEmpty { "Messages" }
+        title = chatTitle.ifEmpty { getString(R.string.messages_title) }
         setupGrid()
         setupEventListeners()
     }

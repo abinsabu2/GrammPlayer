@@ -57,7 +57,7 @@ class ChatsGridFragment : BaseGridFragment() {
         super.onViewCreated(view, savedInstanceState)
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                loader.runWithLoading("Loading chats...") {
+                loader.runWithLoading(getString(R.string.loading_chats)) {
                     loadFirstPage()
                 }
             } catch (e: Exception) {

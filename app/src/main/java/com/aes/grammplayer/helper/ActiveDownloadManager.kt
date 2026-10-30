@@ -1,6 +1,8 @@
 package com.aes.grammplayer.helper
 
 import android.content.Context
+import com.aes.grammplayer.GPlayerApplication
+import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import com.aes.grammplayer.util.tdlib.TelegramClientManager
@@ -16,7 +18,7 @@ object ActiveDownloadManager {
         val localPath: String?
     ) {
         val displayTitle: String
-            get() = ReleaseTitleParser.parse(title).displayTitle.ifEmpty { title.ifEmpty { "Untitled" } }
+            get() = ReleaseTitleParser.parse(title).displayTitle.ifEmpty { title.ifEmpty { GPlayerApplication.AppContext.getString(R.string.label_untitled) } }
     }
 
     @Volatile

@@ -35,9 +35,9 @@ class MessageCardPresenter : Presenter() {
 
         val info = ReleaseTitleParser.parse(item.title)
         view.findViewById<TextView>(R.id.title).text = info.displayTitle
-        view.findViewById<TextView>(R.id.file_id).text = "File ID: ${item.fileId}"
+        view.findViewById<TextView>(R.id.file_id).text = view.context.getString(R.string.card_file_id, item.fileId)
         view.findViewById<TextView>(R.id.size).text =
-            "Size: ${FormatHelper.formatBytesMb(item.size)}"
+            view.context.getString(R.string.card_size, FormatHelper.formatBytesMb(item.size))
 
         view.findViewById<TextView>(R.id.quality_source)?.apply {
             val qualitySourceText = listOfNotNull(
@@ -48,7 +48,7 @@ class MessageCardPresenter : Presenter() {
             ).joinToString(" · ")
             if (qualitySourceText.isNotBlank()) {
                 visibility = android.view.View.VISIBLE
-                text = "Quality: ${qualitySourceText}"
+                text = view.context.getString(R.string.card_quality, qualitySourceText)
             } else {
                 visibility = android.view.View.GONE
             }

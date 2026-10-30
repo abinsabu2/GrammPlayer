@@ -1,31 +1,12 @@
 <resources>
-    <string name="app_name">The gPlayer</string>
-    <string name="browse_title">Videos gPlayer</string>
-    <string name="related_movies">Related Videos</string>
-    <string name="grid_view">Grid View</string>
-    <string name="error_fragment">Error Fragment</string>
-    <string name="personal_settings">Personal Settings</string>
-    <string name="watch_trailer_1">Watch trailer</string>
-    <string name="watch_trailer_2">FREE</string>
-    <string name="rent_1">Rent By Day</string>
-    <string name="rent_2">From $1.99</string>
-    <string name="buy_1">Buy and Own</string>
-    <string name="buy_2">AT $9.99</string>
-    <string name="movie">Movie</string>
+    <string name="app_name" translatable="false">The gPlayer</string>
 
     <!-- Error messages -->
     <string name="error_fragment_message">An error occurred</string>
-    <string name="dismiss_error">Dismiss</string>
-    <string name="title_activity_login">LoginActivity</string>
     <string name="title_activity_toc">Terms and Conditions</string>
     <string name="toc_heading">Our Terms and Conditions</string>
-    <string name="toc_content">Please read our terms and conditions carefully. By using this application, you agree to be bound by these terms. If you do not agree to these terms, you may not use this application.</string>
     <string name="privacy_policy_heading">Privacy Policy</string>
-    <string name="privacy_policy_content">We are committed to protecting your privacy. This policy outlines how we collect, use, and disclose your personal information. By using this application, you consent to the practices described in this policy.</string>
-    <string name="agree_and_continue">Agree and Continue</string>
-    <string name="toc_explanation">Please accept the terms and conditions to proceed.</string>
     <string name="toc_accept_checkbox">I accept the terms and conditions</string>
-    <string name="toc_proceed_to_login">Proceed to Login</string>
 
     <string name="toc_note">
         Note: The gPlayer app does not facilitate downloading, converting, or streaming content from unauthorised third-party sources such as YouTube, Instagram, or similar services. Instead, it is designed to work exclusively with the user’s personal TG account using the official TDLib API.
@@ -38,8 +19,6 @@
     <string name="play_from_start">Play from start</string>
     <string name="resume">Resume</string>
     <string name="resume_with_time">Resume · %1$s</string>
-    <string name="save">Save</string>
-    <string name="stop">Stop</string>
     <string name="history_badge_viewed">Viewed</string>
     <string name="history_badge_downloaded">Downloaded</string>
     <string name="history_badge_downloading">Downloading</string>
@@ -48,17 +27,10 @@
     <string name="clear_history_done">History cleared</string>
 
     <string name="close_button_description">Close</string>
-    <string name="media_title_placeholder">Media Title</string>
-    <string name="media_description_placeholder">Description of the media file.</string>
-    <string name="file_info_placeholder">File ID: %1$d\nSize: %2$s</string>
-    <string name="available_storage_placeholder">Available Storage: %.2f GB</string>
-    <string name="applied_settings_placeholder">Settings: Auto-Play, Progress Threshold: %2$d%%, Buffer Threshold: %3$dMB</string>
-    <string name="applied_settings_placeholder_off">Auto-Play : Off</string>
-    <string name="download_status_placeholder">Downloading: %1$d%% | %.2f MB of %.2f MB</string>
     <string name="authentication_code">Authentication Code</string>
-    <string name="phone_hint">1234567890</string>
+    <string name="phone_hint" translatable="false">1234567890</string>
     <string name="submit">Submit</string>
-    <string name="two_step_password">Two-Step Verification Password</string>
+    <string name="password_hint">Password</string>
     <string name="qr_login_description">Telegram login QR code</string>
     <string name="qr_login_instructions">On your phone open Telegram, go to Settings > Devices > Link Desktop Device and scan this code</string>
     <string name="login_subtitle">Choose how you want to sign in</string>
@@ -71,12 +43,7 @@
     <string name="qr_generating">Generating QR code…</string>
     <string name="qr_unavailable">Finish signing in on the left</string>
 
-    <!-- Navigation -->
-    <string name="back">Back</string>
-
     <!-- Buttons -->
-    <string name="btn_play">Play</string>
-    <string name="btn_download">Download</string>
     <string name="btn_downloading">Downloading…</string>
     <string name="download_replace_title">Download in progress</string>
     <string name="download_replace_message">A download is already in progress for \"%1$s\". If you continue, that download will be stopped and its partial file will be removed.</string>
@@ -88,8 +55,6 @@
     <string name="in_progress_combined">In Progress</string>
     <string name="continue_watching_banner">Resume • %1$s</string>
     <string name="grid_label_ready">Ready</string>
-    <string name="loading_messages_progress">Loading messages: %1$d</string>
-    <string name="preview_label">PREVIEW</string>
     <string name="preview_fullscreen">Full Screen</string>
     <string name="playback_vlc_required_title">VLC required</string>
     <string name="playback_vlc_required_message">Full screen playback opens in VLC for Android. Install VLC to continue.</string>
@@ -98,55 +63,21 @@
     <string name="playback_vlc_install_fire">Get VLC on Amazon</string>
     <string name="playback_vlc_install_failed">Could not open a store or browser. Install VLC for Android (org.videolan.vlc) manually.</string>
     <string name="playback_file_not_ready">Video file is not ready to play. Download it first.</string>
-    <string name="activity_log_title">ACTIVITY LOG</string>
-    <string name="toggle_log_show">SHOW LOG</string>
-    <string name="toggle_log_hide">HIDE LOG</string>
 
     <!-- Fallback values -->
     <string name="label_untitled">Untitled</string>
-    <string name="label_unknown_studio">Unknown Studio</string>
-    <string name="label_no_description">No description available.</string>
-    <string name="label_not_available">N/A</string>
-    <string name="label_unknown">—</string>
 
     <!-- Format strings -->
-    <string name="format_resolution">%1$d × %2$d</string>
-    <string name="format_file_id">#%1$d</string>
-
-    <!-- Field labels -->
-    <string name="label_description">Description</string>
-    <string name="label_duration">Duration</string>
-    <string name="label_resolution">Resolution</string>
-    <string name="label_size">File size</string>
-    <string name="label_mime_type">Format</string>
-    <string name="label_local_path">Local path</string>
-    <string name="label_video_url">Video URL</string>
-    <string name="label_message_id">Message ID</string>
-    <string name="label_file_id">File ID</string>
-    <string name="label_chat_id">Chat ID</string>
-    <string name="label_unique_id">Unique ID</string>
-
-    <!-- Section headers -->
-    <string name="section_media_info">Media info</string>
-    <string name="section_paths">Paths</string>
-    <string name="section_identifiers">Identifiers</string>
+    <string name="format_file_id" translatable="false">#%1$d</string>
 
     <!-- Chips -->
-    <string name="chip_media">Media</string>
-    <string name="chip_file">File</string>
     <string name="chip_downloaded">Downloaded</string>
-    <string name="chip_not_downloaded">Not downloaded</string>
-    <string name="chip_downloading">Downloading…</string>
-    <string name="chip_idle">Idle</string>
     <string name="cancel">Stop</string>
-    <string name="description">DESCRIPTION</string>
     <string name="download">DOWNLOAD</string>
     <string name="detail_promo_cast">Starring %1$s</string>
     <string name="detail_section_synopsis">Synopsis</string>
     <string name="detail_section_movie_info">Movie info</string>
-    <string name="detail_section_genres">Genres</string>
     <string name="detail_section_cast">Cast</string>
-    <string name="detail_section_crew">Crew</string>
     <string name="detail_section_file_details">File details</string>
     <string name="detail_section_playback">Playback settings</string>
     <string name="detail_stat_rating">Rating</string>
@@ -155,11 +86,134 @@
     <string name="detail_stat_released">Released</string>
     <string name="detail_stat_status">Status</string>
 
-    <string name="detail_crew_director">Director: %1$s</string>
-    <string name="detail_crew_writer">Writer: %1$s</string>
-    <string name="detail_crew_producer">Producer: %1$s</string>
     <string name="detail_cast_role_unknown">Cast</string>
     <string name="detail_no_synopsis">No synopsis available.</string>
     <string name="trailer">Trailer</string>
     <string name="trailer_not_available">No trailer available</string>
+
+    <!-- Language -->
+    <string name="language_title">Language</string>
+    <string name="language_button">Language: %1$s</string>
+    <string name="onboarding_get_started">Let\'s Get Started!</string>
+    <string name="toc_login">Login</string>
+    <string name="toc_error_loading">Error loading page: %1$s</string>
+    <string name="close">Close</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Adjust your preferences</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_on">On</string>
+    <string name="settings_off">Off</string>
+    <string name="settings_auto_play">Auto Play</string>
+    <string name="settings_progress_threshold">Start when Download Progress Reaches:</string>
+    <string name="settings_buffer_threshold">Start when Download Buffer Size Reaches:</string>
+    <string name="settings_messages_page_size">Messages Loaded per Page:</string>
+    <string name="settings_reset">Reset to Default</string>
+    <string name="settings_reset_description">Restore default settings</string>
+    <string name="settings_auto_delete">Auto-delete oldest</string>
+    <string name="settings_move_to_sd">Move to SD when available</string>
+    <string name="settings_no_sd">(no SD)</string>
+    <string name="settings_low_space_threshold">Low-space threshold</string>
+    <string name="settings_run_clean">Run auto-clean now</string>
+    <string name="settings_run_clean_description">Free space and move to SD</string>
+    <string name="settings_no_sd_toast">No SD card available</string>
+    <string name="settings_clean_result">Cleaned %1$d files, moved %2$d to SD</string>
+
+    <!-- Dashboard -->
+    <string name="welcome_subtitle_1">How are you?</string>
+    <string name="welcome_subtitle_2">What\'s your plan for today?</string>
+    <string name="welcome_subtitle_3">What are you going to watch today?</string>
+    <string name="welcome_subtitle_4">New movies are out there, please check your chats.</string>
+    <string name="greeting_morning">Good Morning</string>
+    <string name="greeting_afternoon">Good Afternoon</string>
+    <string name="greeting_evening">Good Evening</string>
+    <string name="greeting_format">%1$s %2$s,\n%3$s</string>
+    <string name="user_fallback">User</string>
+    <string name="storage_desc_format">Internal: %1$s • External: %2$s</string>
+    <string name="dashboard_chats">Chats</string>
+    <string name="dashboard_chat_management">Chat Management</string>
+    <string name="dashboard_chats_description">Your Conversations</string>
+    <string name="dashboard_open_chats">Open Chats</string>
+    <string name="dashboard_history_management">History Management</string>
+    <string name="dashboard_history_description">Your History</string>
+    <string name="dashboard_open_history">Open History</string>
+    <string name="dashboard_storage">Storage</string>
+    <string name="dashboard_storage_manager">Storage Manager</string>
+    <string name="dashboard_clear_cache">Clear Cache</string>
+    <string name="dashboard_logout">Logout</string>
+    <string name="dashboard_preferences">Preferences</string>
+    <string name="clearing_history">Clearing history…</string>
+    <string name="clear_history_failed">Failed to clear history</string>
+    <string name="clearing_cache">Clearing cache…</string>
+    <string name="cache_cleared">Cleared %1$d files • %2$s freed</string>
+    <string name="clear_cache_failed">Failed to clear cache</string>
+    <string name="logging_out">Logging out</string>
+    <string name="logged_out">Logged out</string>
+    <string name="clicked_on">Clicked on: %1$s</string>
+
+    <!-- Lists -->
+    <string name="messages_title">Messages</string>
+    <string name="history_title">History</string>
+    <string name="loading_history">Loading history…</string>
+    <string name="history_loaded_items">Loaded %1$d items</string>
+    <string name="loading_chats">Loading chats…</string>
+    <string name="card_file_id">File ID: %1$d</string>
+    <string name="card_size">Size: %1$s</string>
+    <string name="card_quality">Quality: %1$s</string>
+    <string name="chat_type_private">Private</string>
+    <string name="chat_type_basic_group">Basic Group</string>
+    <string name="chat_type_supergroup">Supergroup</string>
+    <string name="chat_type_secret">Secret</string>
+    <string name="chat_type_unknown">Unknown</string>
+    <string name="grid_downloading">Downloading: %1$d%%</string>
+    <string name="download_progress_detail">Downloading : %1$d%% (%2$s MB / %3$s MB)</string>
+    <string name="fallback_video">Video</string>
+    <string name="fallback_document">Document</string>
+    <string name="unsupported_title">Unsupported Content</string>
+    <string name="unsupported_description">This message type is not currently supported.</string>
+    <string name="trailer_available">Trailer available</string>
+
+    <!-- Details -->
+    <string name="detail_on">ON</string>
+    <string name="detail_off">OFF</string>
+    <string name="detail_auto_play">AUTO PLAY</string>
+    <string name="detail_buffer_size">BUFFER SIZE</string>
+    <string name="detail_auto_play_at">AUTO PLAY AT</string>
+    <string name="detail_storage_internal">Storage(Int)</string>
+    <string name="detail_storage_sd">Storage(SD)</string>
+    <string name="storage_warning">Clear app cache to recover some space</string>
+
+    <!-- Loading -->
+    <string name="loading_default">Loading…</string>
+    <string name="please_wait">Please wait…</string>
+    <string name="loading_initializing_app">Initializing the app</string>
+    <string name="loading_waiting_parameters">Waiting for parameters…</string>
+
+    <!-- Login -->
+    <string name="login_checking_password">Checking password…</string>
+    <string name="login_invalid_password">Invalid password!</string>
+    <string name="login_verifying_code">Verifying code…</string>
+    <string name="login_test_code_accepted">Test code accepted — logging in…</string>
+    <string name="login_navigating">Navigating to main app…</string>
+    <string name="login_submitting_code">Submitting authentication code…</string>
+    <string name="login_processing">Processing authentication…</string>
+    <string name="login_invalid_code">Invalid authentication code!</string>
+    <string name="login_test_account">Test account detected…</string>
+    <string name="login_enter_code_to_continue">Enter authentication code to continue</string>
+    <string name="login_validating_phone">Validating phone number…</string>
+    <string name="login_sending_code">Sending verification code to %1$s…</string>
+    <string name="login_invalid_phone">Invalid phone number!</string>
+    <string name="login_initializing_tdlib">Initializing TDLib…</string>
+    <string name="login_waiting_tdlib">Waiting for TDLib parameters…</string>
+    <string name="login_loading_screen">Loading login screen</string>
+    <string name="login_success">Login successful!</string>
+    <string name="login_initializing_app">Initializing app…</string>
+    <string name="login_switching_to_phone">Switching to phone login…</string>
+    <string name="login_closing_session">Closing session…</string>
+    <string name="login_session_closed">Session closed</string>
+    <string name="login_processing_generic">Processing…</string>
+    <string name="login_generic_error">Something went wrong. Please try again.</string>
+    <string name="login_password_hint_format">%1$s (hint: %2$s)</string>
+    <string name="country_code_hint" translatable="false">+1</string>
 </resources>

@@ -36,7 +36,7 @@ object GridDownloadLabelBinder {
             }
             message.isDownloaded || MediaFileHelper.isPlayable(message.localPath) -> {
                 banner.visibility = View.VISIBLE
-                banner.text = "Ready"
+                banner.setText(R.string.grid_label_ready)
                 banner.setTextColor(
                     ContextCompat.getColor(view.context, R.color.accent_teal)
                 )

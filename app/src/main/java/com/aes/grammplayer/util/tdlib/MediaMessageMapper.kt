@@ -1,5 +1,7 @@
 package com.aes.grammplayer.util.tdlib
 
+import com.aes.grammplayer.GPlayerApplication
+import com.aes.grammplayer.R
 import com.aes.grammplayer.db.model.MediaMessage
 import org.drinkless.tdlib.TdApi
 
@@ -45,8 +47,8 @@ object MediaMessageMapper {
     fun unsupported(
         chatId: Long,
         id: Long,
-        title: String = "Unsupported Content",
-        description: String = "This message type is not currently supported."
+        title: String = GPlayerApplication.AppContext.getString(R.string.unsupported_title),
+        description: String = GPlayerApplication.AppContext.getString(R.string.unsupported_description)
     ): MediaMessage =
         MediaMessage(
             id = id,

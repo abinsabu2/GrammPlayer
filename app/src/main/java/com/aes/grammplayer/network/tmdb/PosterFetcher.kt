@@ -3,6 +3,8 @@ package com.aes.grammplayer.network.tmdb
 import android.net.Uri
 import android.util.Log
 import com.aes.grammplayer.BuildConfig
+import com.aes.grammplayer.GPlayerApplication
+import com.aes.grammplayer.R
 import com.aes.grammplayer.util.tdlib.ReleaseInfo
 import com.aes.grammplayer.util.tdlib.ReleaseTitleParser
 import kotlinx.coroutines.CoroutineScope
@@ -76,7 +78,7 @@ object PosterFetcher {
     fun trailerLabel(details: TmdbMovieDetails): String? =
         details.videos?.results
             ?.firstOrNull { it.site.equals("YouTube", ignoreCase = true) && it.type.equals("Trailer", ignoreCase = true) }
-            ?.let { "Trailer available" }
+            ?.let { GPlayerApplication.AppContext.getString(R.string.trailer_available) }
 
     fun trailerKey(details: TmdbMovieDetails): String? =
         details.videos?.results

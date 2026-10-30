@@ -12,6 +12,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
+import com.aes.grammplayer.GPlayerApplication
 import com.aes.grammplayer.R
 import androidx.core.graphics.toColorInt
 
@@ -34,7 +35,7 @@ class ModernLoadingDialogFragment : DialogFragment() {
         private const val ARG_CANCELLABLE = "cancellable"
 
         fun newInstance(
-            message: String = "Loading...",
+            message: String = GPlayerApplication.AppContext.getString(R.string.loading_default),
             isCancellable: Boolean = true
         ): ModernLoadingDialogFragment {
             return ModernLoadingDialogFragment().apply {
@@ -46,12 +47,12 @@ class ModernLoadingDialogFragment : DialogFragment() {
         }
     }
 
-    private var loadingMessage: String = "Loading..."
+    private var loadingMessage: String = ""
     private var isCancellable: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        loadingMessage = arguments?.getString(ARG_MESSAGE) ?: "Loading..."
+        loadingMessage = arguments?.getString(ARG_MESSAGE) ?: getString(R.string.loading_default)
         isCancellable = arguments?.getBoolean(ARG_CANCELLABLE) ?: false
         setStyle(STYLE_NO_TITLE, android.R.style.Theme_Translucent_NoTitleBar)
     }
@@ -131,7 +132,7 @@ class ModernLoadingDialogFragment : DialogFragment() {
                     gravity = android.view.Gravity.CENTER_HORIZONTAL
                     topMargin = 8f.dpToPx(ctx)
                 }
-                text = "Please wait..."
+                text = context.getString(R.string.please_wait)
                 textSize = 12f
                 setTextColor(Color.parseColor("#757575")) // Medium gray
                 gravity = android.view.Gravity.CENTER

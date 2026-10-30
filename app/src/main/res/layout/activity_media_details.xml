@@ -477,7 +477,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:text="Clear app cache to recover some space"
+                android:text="@string/storage_warning"
                 android:textColor="@color/detail_text_muted"
                 android:textSize="14sp"
                 android:visibility="gone" />

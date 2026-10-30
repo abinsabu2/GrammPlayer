@@ -1,5 +1,7 @@
 package com.aes.grammplayer.ui.features.onboarding
 
+import android.content.Context
+import com.aes.grammplayer.helper.LocaleHelper
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.ViewGroup
@@ -19,6 +21,10 @@ import com.aes.grammplayer.ui.features.settings.SettingsDataStore
 import kotlinx.coroutines.launch
 
 class TermsActivity : FragmentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     private lateinit var checkBox: CheckBox
     private lateinit var proceedButton: Button
@@ -48,8 +54,8 @@ class TermsActivity : FragmentActivity() {
         }
 
         // Set plain text for links
-        termsText.text = "Terms and Conditions"
-        privacyText.text = "Privacy Policy"
+        termsText.setText(R.string.title_activity_toc)
+        privacyText.setText(R.string.privacy_policy_heading)
 
         // Make links focusable and clickable for D-pad
         termsText.makeFocusableForTv(clickable = true)
@@ -92,7 +98,7 @@ class TermsActivity : FragmentActivity() {
 
         val dialog = AlertDialog.Builder(this)
             .setView(webView)
-            .setPositiveButton("Close") { _, _ -> }
+            .setPositiveButton(R.string.close) { _, _ -> }
             .create()
 
         dialog.show()
@@ -105,7 +111,7 @@ class TermsActivity : FragmentActivity() {
                 description: String?,
                 failingUrl: String?
             ) {
-                Toast.makeText(this@TermsActivity, "Error loading page: $description", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@TermsActivity, getString(R.string.toc_error_loading, description), Toast.LENGTH_LONG).show()
                 dialog.dismiss()
             }
         }

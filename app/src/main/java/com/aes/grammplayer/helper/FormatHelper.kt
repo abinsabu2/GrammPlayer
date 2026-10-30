@@ -1,6 +1,8 @@
 package com.aes.grammplayer.helper
 
 import android.os.StatFs
+import com.aes.grammplayer.GPlayerApplication
+import com.aes.grammplayer.R
 import java.io.File
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -37,10 +39,13 @@ object FormatHelper {
         if (totalBytes <= 0L) return "$progress%"
         val downloadedMb = downloadedBytes / (1024.0 * 1024.0)
         val totalMb = totalBytes / (1024.0 * 1024.0)
-        return "Downloading : $progress% (${oneDecimal.format(downloadedMb)} MB / ${oneDecimal.format(totalMb)} MB)"
+        return GPlayerApplication.AppContext.getString(
+            R.string.download_progress_detail, progress, oneDecimal.format(downloadedMb), oneDecimal.format(totalMb)
+        )
     }
 
-    fun formatGridDownloadLabel(progress: Int): String = "Downloading: $progress%"
+    fun formatGridDownloadLabel(progress: Int): String =
+        GPlayerApplication.AppContext.getString(R.string.grid_downloading, progress)
 
     fun formatRuntime(minutes: Int): String {
         if (minutes <= 0) return "N/A"

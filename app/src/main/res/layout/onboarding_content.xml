@@ -25,7 +25,17 @@
         android:background="@drawable/custom_button_background"
         android:backgroundTint="@android:color/system_accent2_1000"
         android:padding="16dp"
-        android:text="Lets Get Started!"
+        android:text="@string/onboarding_get_started"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/button_language"
+        android:layout_width="228dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/custom_button_background"
+        android:padding="16dp"
         android:textSize="14sp"
         android:textStyle="bold" />
 

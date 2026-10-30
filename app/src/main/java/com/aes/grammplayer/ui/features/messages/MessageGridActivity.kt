@@ -16,7 +16,7 @@ class MessageGridActivity : BaseHostActivity() {
     override fun createFragment(): Fragment? {
         val chatId = intent.getLongExtra(NavigationExtras.CHAT_ID, 0L)
         if (chatId == 0L) return null
-        val chatTitle = intent.getStringExtra(NavigationExtras.CHAT_TITLE) ?: "Messages"
+        val chatTitle = intent.getStringExtra(NavigationExtras.CHAT_TITLE) ?: getString(R.string.messages_title)
         return MessageGridFragment.newInstance(chatId, chatTitle)
     }
 

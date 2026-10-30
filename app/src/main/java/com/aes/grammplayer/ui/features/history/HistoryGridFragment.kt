@@ -6,6 +6,7 @@ import android.view.View
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.leanback.widget.Presenter
 import androidx.lifecycle.lifecycleScope
+import com.aes.grammplayer.R
 import com.aes.grammplayer.helper.DialogHelper
 import com.aes.grammplayer.history.HistoryStore
 import com.aes.grammplayer.provider.HistoryDataProvider
@@ -25,7 +26,7 @@ class HistoryGridFragment : BaseGridFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         loader = DialogHelper(requireActivity().supportFragmentManager)
-        title = "History"
+        title = getString(R.string.history_title)
         setupGrid()
         setupEventListeners()
     }
@@ -48,7 +49,7 @@ class HistoryGridFragment : BaseGridFragment() {
         isLoadingHistory = true
         isPageLoading = true
         try {
-            loader.runWithLoading("Loading history...") { update ->
+            loader.runWithLoading(getString(R.string.loading_history)) { update ->
                 // ponytail: save position before clear so future reloads don't snap to 0
                 val savedPos = lastSelectedPosition
                 gridAdapter.clear()
@@ -62,7 +63,7 @@ class HistoryGridFragment : BaseGridFragment() {
                 pageOffset = page.nextOffset
                 endReached = page.endReached
                 if (savedPos > 0) setSelectedPosition(savedPos.coerceAtMost((gridAdapter.size() - 1).coerceAtLeast(0)))
-                update("Loaded ${page.items.size} items")
+                update(getString(R.string.history_loaded_items, page.items.size))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading history first page", e)

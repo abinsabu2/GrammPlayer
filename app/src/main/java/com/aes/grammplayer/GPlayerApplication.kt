@@ -3,6 +3,7 @@ package com.aes.grammplayer
 import android.app.Application
 import android.content.Context
 import android.util.Log
+import com.aes.grammplayer.helper.LocaleHelper
 import com.aes.grammplayer.network.tmdb.TlsHelper
 import com.aes.grammplayer.network.tmdb.TmdbClient
 import com.bumptech.glide.Glide
@@ -14,6 +15,10 @@ import kotlinx.coroutines.launch
 import java.io.InputStream
 
 class GPlayerApplication : Application() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(base))
+    }
+
     override fun onCreate() {
         super.onCreate()
         AppContext = applicationContext

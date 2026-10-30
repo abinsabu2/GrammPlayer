@@ -1,5 +1,7 @@
 package com.aes.grammplayer.ui.common
 
+import android.content.Context
+import com.aes.grammplayer.helper.LocaleHelper
 import android.os.Bundle
 import androidx.annotation.LayoutRes
 import androidx.fragment.app.Fragment
@@ -10,6 +12,10 @@ import androidx.fragment.app.FragmentActivity
  * Subclasses supply the layout, container id, and fragment to display.
  */
 abstract class BaseHostActivity : FragmentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     @get:LayoutRes
     protected abstract val layoutId: Int

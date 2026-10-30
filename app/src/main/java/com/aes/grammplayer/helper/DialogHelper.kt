@@ -3,6 +3,8 @@ package com.aes.grammplayer.helper
 import android.util.Log
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import com.aes.grammplayer.GPlayerApplication
+import com.aes.grammplayer.R
 import com.aes.grammplayer.ui.common.widgets.ModernLoadingDialogFragment
 
 /**
@@ -17,7 +19,7 @@ class DialogHelper(private val fragmentManager: FragmentManager) {
     /**
      * Show loading dialog with message
      */
-    fun show(message: String = "Loading...") {
+    fun show(message: String = GPlayerApplication.AppContext.getString(R.string.loading_default)) {
         try {
             dismiss()
             loadingDialog = ModernLoadingDialogFragment.newInstance(message)

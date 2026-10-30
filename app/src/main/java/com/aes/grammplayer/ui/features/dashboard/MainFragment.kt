@@ -78,10 +78,10 @@ class MainFragment : BrowseSupportFragment() {
     private var welcomeTextView: TextView? = null
     private var welcomeSubtitleIndex = 0
     private val welcomeSubtitles = listOf(
-        "How are you?",
-        "Whats your plan for today?",
-        "What are you going to watch today?",
-        "New movies are out there, Please check your chats."
+        R.string.welcome_subtitle_1,
+        R.string.welcome_subtitle_2,
+        R.string.welcome_subtitle_3,
+        R.string.welcome_subtitle_4
     )
 
     private var reviewMode = false
@@ -190,7 +190,7 @@ class MainFragment : BrowseSupportFragment() {
         val externalFree = ApplicationHelper.getExternalFreeBytes()
         val internalShort = ApplicationHelper.formatFreeBytes(internalFree)
         val externalShort = if (ApplicationHelper.isExternalStorageAvailable()) ApplicationHelper.formatFreeBytes(externalFree) else "—"
-        return "Internal: $internalShort • External: $externalShort"
+        return getString(R.string.storage_desc_format, internalShort, externalShort)
         // ponytail: short single line for hero card; use icons if needed
     }
 
@@ -288,23 +288,25 @@ class MainFragment : BrowseSupportFragment() {
         val view = welcomeTextView ?: activity?.findViewById(R.id.welcome_message) ?: return
         if (welcomeTextView == null) welcomeTextView = view
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        val greeting = when (hour) {
-            in 5..11 -> "Good Morning"
-            in 12..16 -> "Good Afternoon"
-            in 17..20 -> "Good Evening"
-            else -> "Good Evening"
-        }
+        val greeting = getString(
+            when (hour) {
+                in 5..11 -> R.string.greeting_morning
+                in 12..16 -> R.string.greeting_afternoon
+                else -> R.string.greeting_evening
+            }
+        )
+        val userFallback = getString(R.string.user_fallback)
         lifecycleScope.launch {
             val telegramName = try {
                 suspendCancellableCoroutine<String?> { cont ->
                     TelegramClientManager.client?.send(TdApi.GetMe()) { obj ->
-                        if (obj is TdApi.User) cont.resume("${obj.firstName} ${obj.lastName}".trim().ifEmpty { obj.usernames?.activeUsernames?.firstOrNull() ?: "User" })
+                        if (obj is TdApi.User) cont.resume("${obj.firstName} ${obj.lastName}".trim().ifEmpty { obj.usernames?.activeUsernames?.firstOrNull() ?: userFallback })
                         else cont.resume(null)
                     } ?: cont.resume(null)
                 }
-            } catch (_: Exception) { null } ?: "User"
-            val subtitle = welcomeSubtitles[welcomeSubtitleIndex % welcomeSubtitles.size].also { welcomeSubtitleIndex++ }
-            view.text = "$greeting $telegramName,\n$subtitle"
+            } catch (_: Exception) { null } ?: userFallback
+            val subtitle = getString(welcomeSubtitles[welcomeSubtitleIndex % welcomeSubtitles.size]).also { welcomeSubtitleIndex++ }
+            view.text = getString(R.string.greeting_format, greeting, telegramName, subtitle)
             view.visibility = View.VISIBLE
         }
     }
@@ -327,16 +329,16 @@ class MainFragment : BrowseSupportFragment() {
         rowsAdapter = ArrayObjectAdapter(rowPresenterSelector)
 
         // --- Chats row: hero cards for Chats + History ---
-        val chatsHeader = DashboardHeaderItem(1, "Chats", R.drawable.ic_chat)
+        val chatsHeader = DashboardHeaderItem(1, getString(R.string.dashboard_chats), R.drawable.ic_chat)
         val chatsAdapter = ArrayObjectAdapter(HeroCardPresenter())
         chatsAdapter.add(
             DashboardItem(
                 id = "chats",
                 iconRes = R.drawable.ic_chat,
-                eyebrow = "Chat Management",
-                title = "Chats",
-                description = "Your Conversations",
-                actionLabel = "Open Chats",
+                eyebrow = getString(R.string.dashboard_chat_management),
+                title = getString(R.string.dashboard_chats),
+                description = getString(R.string.dashboard_chats_description),
+                actionLabel = getString(R.string.dashboard_open_chats),
                 isHero = true
             )
         )
@@ -344,20 +346,20 @@ class MainFragment : BrowseSupportFragment() {
             DashboardItem(
                 id = "history",
                 iconRes = R.drawable.ic_history,
-                eyebrow = "History Management",
-                title = "History",
-                description = "Your History",
-                actionLabel = "Open History",
+                eyebrow = getString(R.string.dashboard_history_management),
+                title = getString(R.string.history_title),
+                description = getString(R.string.dashboard_history_description),
+                actionLabel = getString(R.string.dashboard_open_history),
                 isHero = true
             )
         )
         val storageItem = DashboardItem(
             id = "storage_manager",
             iconRes = R.drawable.ic_storage,
-            eyebrow = "Storage",
-            title = "Storage Manager",
+            eyebrow = getString(R.string.dashboard_storage),
+            title = getString(R.string.dashboard_storage_manager),
             description = buildShortStorageDesc(),
-            actionLabel = "Clear Cache",
+            actionLabel = getString(R.string.dashboard_clear_cache),
             isHero = true
         )
         chatsAdapter.add(storageItem)
@@ -367,14 +369,14 @@ class MainFragment : BrowseSupportFragment() {
 
         // --- Preferences row: icon cards (trimmed for store review accounts) ---
         val preferenceItems = listOf(
-            DashboardItem("clear_history", R.drawable.ic_history, "Clear History"),
-            DashboardItem("settings", R.drawable.ic_settings, "Settings"),
-            DashboardItem("close", R.drawable.ic_refresh, "Close"),
-            DashboardItem("logout", R.drawable.ic_logout, "Logout")
+            DashboardItem("clear_history", R.drawable.ic_history, getString(R.string.clear_history)),
+            DashboardItem("settings", R.drawable.ic_settings, getString(R.string.settings_title)),
+            DashboardItem("close", R.drawable.ic_refresh, getString(R.string.close)),
+            DashboardItem("logout", R.drawable.ic_logout, getString(R.string.dashboard_logout))
         ).filter { ReviewModeHelper.isDashboardItemVisible(it.id, reviewMode) }
 
         if (preferenceItems.isNotEmpty()) {
-            val settingsHeader = DashboardHeaderItem(2, "Preferences", R.drawable.ic_settings)
+            val settingsHeader = DashboardHeaderItem(2, getString(R.string.dashboard_preferences), R.drawable.ic_settings)
             val settingsRowAdapter = ArrayObjectAdapter(IconCardPresenter())
             preferenceItems.forEach { settingsRowAdapter.add(it) }
             rowsAdapter!!.add(ListRow(settingsHeader, settingsRowAdapter))
@@ -843,7 +845,7 @@ class MainFragment : BrowseSupportFragment() {
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        loadingDialog.runWithLoading("Clearing history...") {
+                        loadingDialog.runWithLoading(getString(R.string.clearing_history)) {
                             HistoryHelper.clear(requireContext())
                         }
                         if (isAdded) {
@@ -855,7 +857,7 @@ class MainFragment : BrowseSupportFragment() {
                         if (isAdded) {
                             Toast.makeText(
                                 requireContext(),
-                                "Failed to clear history",
+                                R.string.clear_history_failed,
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -891,7 +893,7 @@ class MainFragment : BrowseSupportFragment() {
                         "storage_manager" -> {
                             viewLifecycleOwner.lifecycleScope.launch {
                                 try {
-                                    val result = loadingDialog.runWithLoading("Clearing cache...") {
+                                    val result = loadingDialog.runWithLoading(getString(R.string.clearing_cache)) {
                                         withContext(Dispatchers.IO) {
                                             val r = TelegramClientManager.clearDownloadCache(requireContext())
                                             SettingsDataStore(requireContext()).clearPlaybackPosition()
@@ -899,11 +901,11 @@ class MainFragment : BrowseSupportFragment() {
                                         }
                                     }
                                     if (!isAdded) return@launch
-                                    Toast.makeText(requireContext(), "Cleared ${result.count} files • ${FormatHelper.formatBytes(result.bytes)} freed", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(requireContext(), getString(R.string.cache_cleared, result.count, FormatHelper.formatBytes(result.bytes)), Toast.LENGTH_LONG).show()
                                     updateStorageCard()
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Clear cache failed", e)
-                                    if (isAdded) Toast.makeText(requireContext(), "Failed to clear cache", Toast.LENGTH_SHORT).show()
+                                    if (isAdded) Toast.makeText(requireContext(), R.string.clear_cache_failed, Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -919,7 +921,7 @@ class MainFragment : BrowseSupportFragment() {
                         "chats" -> {
                             val intent = Intent(activity, ChatsGridActivity::class.java).apply {
                                 putExtra(NavigationExtras.CHAT_ID, 1000L)
-                                putExtra(NavigationExtras.CHAT_TITLE, "Chats")
+                                putExtra(NavigationExtras.CHAT_TITLE, getString(R.string.dashboard_chats))
                             }
                             startActivity(intent)
                         }
@@ -929,12 +931,12 @@ class MainFragment : BrowseSupportFragment() {
                         "logout" -> {
                             lifecycleScope.launch {
                                 try {
-                                    loadingDialog.runWithLoading("Logging out") { update ->
+                                    loadingDialog.runWithLoading(getString(R.string.logging_out)) { update ->
                                         // Delete this login's history file before leaving the session.
                                         HistoryHelper.clear(requireContext())
-                                        update("Clearing history…")
+                                        update(getString(R.string.clearing_history))
                                         TelegramClientManager.logOut()
-                                        update("Logged out")
+                                        update(getString(R.string.logged_out))
                                         delay(500.milliseconds)
                                     }
                                     val intent = Intent(activity, LoginActivity::class.java).apply {
@@ -948,7 +950,7 @@ class MainFragment : BrowseSupportFragment() {
                             }
                         }
                         else -> {
-                            Toast.makeText(requireContext(), "Clicked on: ${item.title}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), getString(R.string.clicked_on, item.title), Toast.LENGTH_SHORT).show()
                         }
                     }
                 }

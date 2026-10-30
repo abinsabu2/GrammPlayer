@@ -31,13 +31,15 @@ class ChatCardPresenter : Presenter() {
     override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         if (item !is Chat) return
 
-        val chatTypeReadable = when (item.type) {
-            0 -> "Private"
-            1 -> "Basic Group"
-            2 -> "Supergroup"
-            3 -> "Secret"
-            else -> "Unknown"
-        }
+        val chatTypeReadable = viewHolder.view.context.getString(
+            when (item.type) {
+                0 -> R.string.chat_type_private
+                1 -> R.string.chat_type_basic_group
+                2 -> R.string.chat_type_supergroup
+                3 -> R.string.chat_type_secret
+                else -> R.string.chat_type_unknown
+            }
+        )
 
         val view = viewHolder.view
         view.findViewById<TextView>(R.id.type).text = chatTypeReadable

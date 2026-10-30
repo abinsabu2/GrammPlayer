@@ -3,6 +3,8 @@ package com.aes.grammplayer.util.tdlib
 import android.content.Context
 import android.util.Log
 import com.aes.grammplayer.BuildConfig
+import com.aes.grammplayer.GPlayerApplication
+import com.aes.grammplayer.R
 import com.aes.grammplayer.helper.ApplicationHelper
 import com.aes.grammplayer.db.model.Chat
 import com.aes.grammplayer.db.model.MediaMessage
@@ -410,7 +412,7 @@ object TelegramClientManager {
                 MediaMessageMapper.fromTdFile(
                     file = file,
                     chatId = chatId,
-                    title = video.fileName.ifEmpty { "Video" },
+                    title = video.fileName.ifEmpty { GPlayerApplication.AppContext.getString(R.string.fallback_video) },
                     description = content.caption.text,
                     mimeType = video.mimeType,
                     thumbnailPath = getThumbnailPath(file, video.fileName.ifEmpty { "Video" }),
@@ -426,7 +428,7 @@ object TelegramClientManager {
                 MediaMessageMapper.fromTdFile(
                     file = file,
                     chatId = chatId,
-                    title = document.fileName.ifEmpty { "Document" },
+                    title = document.fileName.ifEmpty { GPlayerApplication.AppContext.getString(R.string.fallback_document) },
                     description = content.caption.text,
                     mimeType = document.mimeType,
                     thumbnailPath = getThumbnailPath(file, document.fileName.ifEmpty { "Document" })

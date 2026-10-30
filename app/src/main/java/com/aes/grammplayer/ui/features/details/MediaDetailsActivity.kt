@@ -1,5 +1,6 @@
 package com.aes.grammplayer.ui.features.details
 
+import com.aes.grammplayer.helper.LocaleHelper
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -58,6 +59,10 @@ import kotlinx.coroutines.withContext
 import org.drinkless.tdlib.TdApi
 
 class MediaDetailsActivity : AppCompatActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     private enum class ActionButtonState {
         /** A — no playable file: Download only */
@@ -267,16 +272,16 @@ class MediaDetailsActivity : AppCompatActivity() {
     }
 
     private fun buildSettingsItems(autoPlay: Boolean, bufferSizeMb: Int, progressPercent: Int): List<SettingItem> = buildList {
-        add(SettingItem(R.drawable.ic_power, if (autoPlay) "ON" else "OFF", "AUTO PLAY"))
+        add(SettingItem(R.drawable.ic_power, getString(if (autoPlay) R.string.detail_on else R.string.detail_off), getString(R.string.detail_auto_play)))
         if (autoPlay) {
-            add(SettingItem(R.drawable.ic_layers, FormatHelper.formatBufferSizeMb(bufferSizeMb), "BUFFER SIZE"))
-            add(SettingItem(R.drawable.ic_play, "$progressPercent%", "AUTO PLAY AT"))
+            add(SettingItem(R.drawable.ic_layers, FormatHelper.formatBufferSizeMb(bufferSizeMb), getString(R.string.detail_buffer_size)))
+            add(SettingItem(R.drawable.ic_play, "$progressPercent%", getString(R.string.detail_auto_play_at)))
         }
         val internalFree = ApplicationHelper.getInternalFreeBytes()
-        add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(internalFree), "Storage(Int)", enabled = true))
+        add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(internalFree), getString(R.string.detail_storage_internal), enabled = true))
         if (ApplicationHelper.isExternalStorageAvailable()) {
             val externalFree = ApplicationHelper.getExternalFreeBytes()
-            add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(externalFree), "Storage(SD)", enabled = true))
+            add(SettingItem(R.drawable.ic_storage, ApplicationHelper.formatFreeBytes(externalFree), getString(R.string.detail_storage_sd), enabled = true))
         }
     }
 

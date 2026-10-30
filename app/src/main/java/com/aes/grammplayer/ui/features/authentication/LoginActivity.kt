@@ -1,5 +1,7 @@
 package com.aes.grammplayer.ui.features.authentication
 
+import android.content.Context
+import com.aes.grammplayer.helper.LocaleHelper
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
@@ -36,6 +38,10 @@ import org.drinkless.tdlib.TdApi
 import kotlin.time.Duration.Companion.milliseconds
 
 class LoginActivity : FragmentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     private lateinit var countryCodeEditText: EditText
     private lateinit var phoneNumberEditText: EditText
@@ -147,10 +153,10 @@ class LoginActivity : FragmentActivity() {
             // Not trimmed: spaces can be part of a 2FA password.
             val password = passwordEditText.text.toString()
             if (password.isNotEmpty()) {
-                loader.show("Checking password...")
+                loader.show(getString(R.string.login_checking_password))
                 TelegramClientManager.sendAuthPassword(password)
             } else {
-                loader.show("Invalid Password!")
+                loader.show(getString(R.string.login_invalid_password))
                 lifecycleScope.launch {
                     delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
@@ -161,12 +167,12 @@ class LoginActivity : FragmentActivity() {
             if (code.isNotEmpty()) {
                 if (isTestMode) {
                     settingsDataStore.setTestMode(true)
-                    loader.show("Verifying code...")
+                    loader.show(getString(R.string.login_verifying_code))
                     lifecycleScope.launch {
                         delay(DELAY_LONG.milliseconds)
-                        loader.updateMessage("Test code accepted — logging in...")
+                        loader.updateMessage(getString(R.string.login_test_code_accepted))
                         delay(DELAY_LONG.milliseconds)
-                        loader.updateMessage("Navigating to main app...")
+                        loader.updateMessage(getString(R.string.login_navigating))
                         delay(DELAY_LONG.milliseconds)
                         loader.dismiss()
                         navigateToMainApp()
@@ -174,16 +180,16 @@ class LoginActivity : FragmentActivity() {
                     return
                 }
 
-                loader.show("Submitting authentication code...")
+                loader.show(getString(R.string.login_submitting_code))
                 lifecycleScope.launch {
                     delay(DELAY_LONG.milliseconds)
-                    loader.updateMessage("Processing authentication...")
+                    loader.updateMessage(getString(R.string.login_processing))
                     delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
                     TelegramClientManager.sendAuthCode(code)
                 }
             } else {
-                loader.show("Invalid Authentication Code!")
+                loader.show(getString(R.string.login_invalid_code))
                 lifecycleScope.launch {
                     delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
@@ -204,10 +210,10 @@ class LoginActivity : FragmentActivity() {
                 settingsDataStore.setTestMode(false)
                 if (UserSession.userType == UserType.TEST) {
                     isTestMode = true
-                    loader.show("Test account detected...")
+                    loader.show(getString(R.string.login_test_account))
                     lifecycleScope.launch {
                         delay(DELAY_LONG.milliseconds)
-                        loader.updateMessage("Enter authentication code to continue")
+                        loader.updateMessage(getString(R.string.login_enter_code_to_continue))
                         delay(DELAY_LONG.milliseconds)
                         loader.dismiss()
                     }
@@ -217,10 +223,10 @@ class LoginActivity : FragmentActivity() {
                     return
                 }
 
-                loader.show("Validating phone number...")
+                loader.show(getString(R.string.login_validating_phone))
                 lifecycleScope.launch {
                     delay(DELAY_LONG.milliseconds)
-                    loader.updateMessage("Sending verification code to $fullPhoneNumber...")
+                    loader.updateMessage(getString(R.string.login_sending_code, fullPhoneNumber))
                     delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
                     if (TdLibUpdateHandler.authorizationState.value is TdApi.AuthorizationStateWaitOtherDeviceConfirmation) {
@@ -232,7 +238,7 @@ class LoginActivity : FragmentActivity() {
                     }
                 }
             } else {
-                loader.show("Invalid phone number!")
+                loader.show(getString(R.string.login_invalid_phone))
                 lifecycleScope.launch {
                     delay(DELAY_LONG.milliseconds)
                     loader.dismiss()
@@ -273,8 +279,8 @@ class LoginActivity : FragmentActivity() {
 
         when (state) {
             is TdApi.AuthorizationStateWaitTdlibParameters -> {
-                loader.show("Initializing TDLib...")
-                loader.updateMessage("Waiting for TDLib parameters...")
+                loader.show(getString(R.string.login_initializing_tdlib))
+                loader.updateMessage(getString(R.string.login_waiting_tdlib))
             }
 
             is TdApi.AuthorizationStateWaitPhoneNumber -> {
@@ -284,14 +290,14 @@ class LoginActivity : FragmentActivity() {
                     // Back from restartLogin(): finish the phone login the user asked for.
                     pendingPhoneNumber = null
                     showQrPanel(null, R.string.qr_unavailable)
-                    loader.show("Sending verification code to $pendingPhone...")
+                    loader.show(getString(R.string.login_sending_code, pendingPhone))
                     restoreQrOnPhoneError = true
                     TelegramClientManager.sendPhoneNumber(pendingPhone)
                     return
                 }
                 loaderSequenceJob = lifecycleScope.launch {
                     delay(DELAY_SHORT.milliseconds)
-                    loader.updateMessage("Loading Login Screen")
+                    loader.updateMessage(getString(R.string.login_loading_screen))
                     delay(DELAY_MEDIUM.milliseconds)
                     loader.dismiss()
                 }
@@ -303,7 +309,7 @@ class LoginActivity : FragmentActivity() {
             is TdApi.AuthorizationStateWaitCode -> {
                 loader.dismiss()
                 loaderSequenceJob = lifecycleScope.launch {
-                    loader.updateMessage("Loading Login Screen")
+                    loader.updateMessage(getString(R.string.login_loading_screen))
                     loader.dismiss()
                 }
                 showLoginStep(LoginStep.CODE)
@@ -322,21 +328,23 @@ class LoginActivity : FragmentActivity() {
                 loader.dismiss()
                 showLoginStep(LoginStep.PASSWORD)
                 showQrPanel(null, R.string.qr_unavailable)
-                passwordEditText.hint = state.passwordHint.takeIf { !it.isNullOrBlank() }
-                    ?.let { "${getString(R.string.two_step_password)} (hint: $it)" }
-                    ?: getString(R.string.two_step_password)
+                // The account's own hint goes in the wrapping step text; the field is one line.
+                state.passwordHint.takeIf { !it.isNullOrBlank() }?.let {
+                    phoneStepHintTextView.text =
+                        getString(R.string.login_password_hint_format, getString(R.string.login_password_step_hint), it)
+                }
             }
 
             is TdApi.AuthorizationStateReady -> {
                 loader.dismiss()
-                loader.show("Login successful!")
+                loader.show(getString(R.string.login_success))
                 loaderSequenceJob = lifecycleScope.launch {
                     // QR login skips the phone step; per-user history is keyed by phone number.
                     if (UserSession.phoneNumber.isBlank()) {
                         TelegramClientManager.getMyPhoneNumber()?.let { UserSession.initialize(it) }
                     }
                     delay(DELAY_SHORT.milliseconds)
-                    loader.updateMessage("Initializing app...")
+                    loader.updateMessage(getString(R.string.login_initializing_app))
                     delay(DELAY_MEDIUM.milliseconds)
                     navigateToMainApp()
                     loader.dismiss()
@@ -345,12 +353,12 @@ class LoginActivity : FragmentActivity() {
 
             is TdApi.AuthorizationStateLoggingOut,
             is TdApi.AuthorizationStateClosing -> {
-                loader.show(if (pendingPhoneNumber != null) "Switching to phone login..." else "Closing session...")
-                loader.updateMessage("Please wait...")
+                loader.show(if (pendingPhoneNumber != null) getString(R.string.login_switching_to_phone) else getString(R.string.login_closing_session))
+                loader.updateMessage(getString(R.string.please_wait))
             }
 
             is TdApi.AuthorizationStateClosed -> {
-                loader.updateMessage("Session closed")
+                loader.updateMessage(getString(R.string.login_session_closed))
                 loaderSequenceJob = lifecycleScope.launch {
                     delay(DELAY_MEDIUM.milliseconds)
                     loader.dismiss()
@@ -358,12 +366,12 @@ class LoginActivity : FragmentActivity() {
             }
 
             else -> {
-                // Logged instead of silently showing "Processing..." so any future/unhandled
+                // Logged instead of silently showing getString(R.string.login_processing_generic) so any future/unhandled
                 // AuthorizationState subtype (e.g. WaitEmailAddress, WaitEmailCode)
                 // is noticeable during testing rather than
                 // leaving the user on a vague spinner.
                 Log.w(TAG, "Unhandled authorization state: ${state.javaClass.simpleName}")
-                loader.updateMessage("Processing...")
+                loader.updateMessage(getString(R.string.login_processing_generic))
             }
         }
     }
@@ -390,7 +398,7 @@ class LoginActivity : FragmentActivity() {
                 LoginStep.PASSWORD -> R.string.login_password_step_hint
             }
         )
-        submitButton.text = "Submit"
+        submitButton.setText(R.string.submit)
         when (step) {
             LoginStep.PHONE -> countryCodeEditText
             LoginStep.CODE -> authCodeEditText
@@ -412,7 +420,7 @@ class LoginActivity : FragmentActivity() {
     private fun handleAuthError(error: TdApi.Error) {
         Log.e(TAG, "TDLib error ${error.code}: ${error.message}")
         loaderSequenceJob?.cancel()
-        loader.show(error.message ?: "Something went wrong. Please try again.")
+        loader.show(error.message ?: getString(R.string.login_generic_error))
         if (restoreQrOnPhoneError) {
             restoreQrOnPhoneError = false
             showQrPanel(null, R.string.qr_generating)

@@ -33,10 +33,10 @@ class HistoryCardPresenter : Presenter() {
         val view = viewHolder.view
         val info = ReleaseTitleParser.parse(message.title)
         view.findViewById<TextView>(R.id.title).text =
-            info.displayTitle.ifEmpty { message.title.ifEmpty { "Untitled" } }
-        view.findViewById<TextView>(R.id.file_id).text = "File ID: ${message.fileId}"
+            info.displayTitle.ifEmpty { message.title.ifEmpty { view.context.getString(R.string.label_untitled) } }
+        view.findViewById<TextView>(R.id.file_id).text = view.context.getString(R.string.card_file_id, message.fileId)
         view.findViewById<TextView>(R.id.size).text =
-            "Size: ${FormatHelper.formatBytesMb(message.size)}"
+            view.context.getString(R.string.card_size, FormatHelper.formatBytesMb(message.size))
 
         GridDownloadLabelBinder.bindHistoryBadges(view, item)
         GridThumbnailBinder.bind(view, message, info, scope)

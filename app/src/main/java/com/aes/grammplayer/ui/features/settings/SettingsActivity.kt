@@ -1,11 +1,17 @@
 package com.aes.grammplayer.ui.features.settings
 
+import android.content.Context
+import com.aes.grammplayer.helper.LocaleHelper
 import android.R
 import android.os.Bundle
 import androidx.fragment.app.FragmentActivity
 import androidx.leanback.app.GuidedStepSupportFragment
 
 class SettingsActivity : FragmentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

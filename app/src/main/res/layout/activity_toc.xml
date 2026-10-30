@@ -50,7 +50,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:background="@drawable/custom_button_background"
-        android:text="Login"
+        android:text="@string/toc_login"
         android:textColor="@drawable/custom_button_text_color"
         android:textSize="15sp" />
 

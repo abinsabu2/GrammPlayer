@@ -1,5 +1,7 @@
 package com.aes.grammplayer.ui.features.onboarding
 
+import android.content.Context
+import com.aes.grammplayer.helper.LocaleHelper
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
@@ -19,6 +21,10 @@ import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 
 class OnboardingActivity : FragmentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
 
     private lateinit var settingsDataStore: SettingsDataStore
     private lateinit var loader: DialogHelper
@@ -85,7 +91,7 @@ class OnboardingActivity : FragmentActivity() {
     private fun observeData() {
 
         lifecycleScope.launch {
-            loader.updateMessage("Waiting for Parameters...")
+            loader.updateMessage(getString(R.string.loading_waiting_parameters))
             val isOnboardingDone = settingsDataStore.isOnboardingDone.first()
             val isTocAccepted = settingsDataStore.isTocAccepted.first()
             val isTestLogin= settingsDataStore.isTestMode.first()
@@ -105,8 +111,8 @@ class OnboardingActivity : FragmentActivity() {
             if (isFinishing) return@runOnUiThread
             when (response) {
                 is TdApi.AuthorizationStateWaitTdlibParameters -> {
-                    loader.show("Initializing The App")
-                    loader.updateMessage("Waiting for Parameters...")
+                    loader.show(getString(R.string.loading_initializing_app))
+                    loader.updateMessage(getString(R.string.loading_waiting_parameters))
                 }
                 is TdApi.AuthorizationStateWaitPhoneNumber -> {
                     observeData()

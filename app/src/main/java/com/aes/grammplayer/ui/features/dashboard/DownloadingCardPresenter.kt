@@ -38,8 +38,8 @@ class DownloadingCardPresenter : Presenter() {
 
         val info = ReleaseTitleParser.parse(item.title)
         view.findViewById<TextView>(R.id.title).text =
-            info.displayTitle.ifEmpty { item.title.ifEmpty { "Untitled" } }
-        view.findViewById<TextView>(R.id.file_id).text = "File ID: ${item.fileId}"
+            info.displayTitle.ifEmpty { item.title.ifEmpty { view.context.getString(R.string.label_untitled) } }
+        view.findViewById<TextView>(R.id.file_id).text = view.context.getString(R.string.card_file_id, item.fileId)
 
         bindProgress(view, item)
         GridThumbnailBinder.bind(view, item, info, scope)
